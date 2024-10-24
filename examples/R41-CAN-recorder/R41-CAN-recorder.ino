@@ -51,6 +51,7 @@ ControlPCM186x pcm3(Wire1, PCM186x_I2C_ADDR1, InputTDM::TDM2);
 ControlPCM186x pcm4(Wire1, PCM186x_I2C_ADDR2, InputTDM::TDM2);
 ControlPCM186x *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 ControlPCM186x *pcm = 0;
+uint32_t SamplingRates[3] = {24000, 48000, 96000};
 
 R41CAN can;
 RTClock rtclock;
@@ -141,9 +142,10 @@ void setup() {
   sdcard1.begin(SDCARD1_CS, DEDICATED_SPI, 40, &SPI1);
   files.check(true);
   rtclock.setFromFile(sdcard0);
-  settings.disable("PulseFrequency");
+  settings.disable("PulseFreq");
   settings.disable("DisplayTime");
   settings.disable("SensorsInterval");
+  aisettings.setRateSelection(SamplingRates, 3);
   config.setConfigFile("logger.cfg");
   config.load(sdcard0);
   if (Serial)

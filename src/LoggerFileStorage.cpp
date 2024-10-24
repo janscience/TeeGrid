@@ -273,15 +273,14 @@ bool LoggerFileStorage::store(SDWriter &sdfile, bool backup) {
 void LoggerFileStorage::openBlinkFiles() {
   String fname = File0.name();
   fname.replace(".wav", "-blinks.dat");
-  BlinkFile0 =  SDCard0.openWrite(fname.c_str());
+  BlinkFile0 = SDCard0.openWrite(fname.c_str());
   BlinkFile0.write("time;on\n");
   if (SDCard1.available()) {
-    BlinkFile1 =  SDCard1.openWrite(fname.c_str());
+    BlinkFile1 = SDCard1.openWrite(fname.c_str());
     BlinkFile1.write("time;on\n");
   }
   Serial.print("Store blink times in ");
   Serial.println(fname);
-  Seial.println();
 }
 
 

@@ -39,6 +39,7 @@ ControlPCM186x pcm1(Wire, PCM186x_I2C_ADDR1, InputTDM::TDM1);
 ControlPCM186x pcm2(Wire, PCM186x_I2C_ADDR2, InputTDM::TDM1);
 ControlPCM186x *pcms[NPCMS] = {&pcm1, &pcm2};
 ControlPCM186x *pcm = 0;
+uint32_t SamplingRates[3] = {24000, 48000, 96000};
 
 RTClock rtclock;
 DeviceID deviceid(DEVICEID);
@@ -65,9 +66,10 @@ void setup() {
   sdcard0.begin();
   files.check();
   rtclock.setFromFile(sdcard0);
-  settings.disable("PulseFrequency");
+  settings.disable("PulseFreq");
   settings.disable("DisplayTime");
   settings.disable("SensorsInterval");
+  aisettings.setRateSelection(SamplingRates, 3);
   config.setConfigFile("teegrid.cfg");
   config.load(sdcard0);
   if (Serial)
