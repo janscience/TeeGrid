@@ -61,8 +61,7 @@ SDCard sdcard0("primary");
 SDCard sdcard1("secondary");
 
 Configurator config;
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, 0.0,
-                  0.0, INITIAL_DELAY);
+Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY);
 InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN);                  
 DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard0);
@@ -142,9 +141,7 @@ void setup() {
   sdcard1.begin(SDCARD1_CS, DEDICATED_SPI, 40, &SPI1);
   files.check(true);
   rtclock.setFromFile(sdcard0);
-  settings.disable("PulseFreq");
-  settings.disable("DisplayTime");
-  settings.disable("SensorsInterval");
+  settings.enable("InitialDelay");
   aisettings.setRateSelection(SamplingRates, 3);
   config.setConfigFile("logger.cfg");
   config.load(sdcard0);

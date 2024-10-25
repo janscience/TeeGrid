@@ -48,8 +48,7 @@ SDCard sdcard0;
 SDCard sdcard1;
 
 Configurator config;
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, 0.0,
-                  0.0, INITIAL_DELAY);
+Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY);
 InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN);                  
 
 LoggerFileStorage files(aidata, sdcard0, sdcard1, rtclock, deviceid, blink);
@@ -66,9 +65,7 @@ void setup() {
   sdcard0.begin();
   files.check();
   rtclock.setFromFile(sdcard0);
-  settings.disable("PulseFreq");
-  settings.disable("DisplayTime");
-  settings.disable("SensorsInterval");
+  settings.enable("InitialDelay");
   aisettings.setRateSelection(SamplingRates, 3);
   config.setConfigFile("teegrid.cfg");
   config.load(sdcard0);

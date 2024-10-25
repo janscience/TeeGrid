@@ -56,8 +56,8 @@ SDCard sdcard1;
 Configurator config;
 InputADCSettings aisettings(SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE);
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, PULSE_FREQUENCY,
-                  0.0, INITIAL_DELAY, SENSORS_INTERVAL);
+Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY,
+                  false, PULSE_FREQUENCY, 0.0, SENSORS_INTERVAL);
 
 ESensors sensors;
 TemperatureDS18x20 temp(&sensors);
@@ -108,7 +108,9 @@ void setup() {
   sdcard0.begin();
   files.check();
   rtclock.setFromFile(sdcard0);
-  settings.disable("DisplayTime");
+  settings.enable("InitialDelay");
+  settings.enable("PulseFreq");
+  settings.enable("SensorsInterval");
   config.setConfigFile("teegrid.cfg");
   config.load(sdcard0);
   if (Serial)

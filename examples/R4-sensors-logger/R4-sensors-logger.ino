@@ -29,12 +29,15 @@
 #define FILENAME         "loggerID-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM
 #define FILE_SAVE_TIME   5*60    // seconds
 #define INITIAL_DELAY    10.0    // seconds
+#define SENSORS_INTERVAL 10.0  // interval between sensors readings in seconds
+
+
+// ----------------------------------------------------------------------------
 
 #define LED_PIN          26    // R4.1
 //#define LED_PIN        27    // R4.2
 
 #define TEMP_PIN         35    // pin for DATA line of DS18x20 themperature sensor
-#define SENSORS_INTERVAL 10.0  // interval between sensors readings in seconds
 
 #define SDCARD1_CS       10    // CS pin for second SD card on SPI bus
 
@@ -64,8 +67,8 @@ SDCard sdcard0("primary");
 SDCard sdcard1("secondary");
 
 Configurator config;
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, 0.0,
-                  0.0, INITIAL_DELAY);
+Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY,
+	 	  false, 0, 0, SENSORS_INTERVAL);
 InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN);
 DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard0);
@@ -113,8 +116,8 @@ void setup() {
   sdcard1.begin(SDCARD1_CS, DEDICATED_SPI, 40, &SPI);
   files.check(true);
   rtclock.setFromFile(sdcard0);
-  settings.disable("PulseFreq");
-  settings.disable("DisplayTime");
+  settings.enable("InitialDelay");
+  settings.enable("SensorsInterval");
   aisettings.setRateSelection(SamplingRates, 3);
   config.setConfigFile("logger.cfg");
   config.load(sdcard0);

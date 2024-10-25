@@ -45,8 +45,8 @@ Blink blink(LED_BUILTIN);
 SDCard sdcard0;
 
 Configurator config;
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, PULSE_FREQUENCY,
-                  0.0, INITIAL_DELAY);
+Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY,
+                  false, PULSE_FREQUENCY);
 InputADCSettings aisettings(SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE);
 DateTimeMenu datetime_menu(rtclock);
@@ -71,8 +71,8 @@ void setup() {
   sdcard0.begin();
   files.check(true);
   rtclock.setFromFile(sdcard0);
-  settings.disable("DisplayTime");
-  settings.disable("SensorsInterval");
+  settings.enable("InitialDelay");
+  settings.enable("PulseFreq");
   config.setConfigFile("teegrid.cfg");
   config.load(sdcard0);
   if (Serial)

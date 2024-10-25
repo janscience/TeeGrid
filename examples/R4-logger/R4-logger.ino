@@ -18,16 +18,16 @@
 // Default settings: ----------------------------------------------------------
 // (may be overwritten by config file logger.cfg)
 #define NCHANNELS     16       // number of channels (even, from 2 to 16)
-#define SAMPLING_RATE 48000    // samples per second and channel in Hertz
-#define PREGAIN       1.0     // gain factor of preamplifier
-#define GAIN          0.0     // dB
+#define SAMPLING_RATE  48000   // samples per second and channel in Hertz
+#define PREGAIN        1.0     // gain factor of preamplifier
+#define GAIN           0.0     // dB
 
-#define PATH          "recordings"   // folder where to store the recordings
-#define DEVICEID      2              // may be used for naming files
-#define FILENAME      "loggerID-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define PATH           "recordings"   // folder where to store the recordings
+#define DEVICEID       1              // may be used for naming files
+#define FILENAME       "loggerID-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME 20 //5*60   // seconds
-#define INITIAL_DELAY  10.0  // seconds
-#define RANDOM_BLINKS true   // set to true for random blinks that are also stored to file.
+#define INITIAL_DELAY  10.0   // seconds
+#define RANDOM_BLINKS  false  // set to true for blinking the LED randomly
 
 // ----------------------------------------------------------------------------
 
@@ -68,8 +68,8 @@ SDCard sdcard0;
 #endif
 
 Configurator config;
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, 0.0,
-                  0.0, INITIAL_DELAY);
+Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+                  INITIAL_DELAY, RANDOM_BLINKS);
 InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN);                  
 DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard0);
@@ -112,9 +112,8 @@ void setup() {
 #endif
   files.check(true);
   rtclock.setFromFile(sdcard0);
-  settings.disable("PulseFreq");
-  settings.disable("DisplayTime");
-  settings.disable("SensorsInterval");
+  settings.enable("InitialDelay");
+  settings.enable("RandomBlinks");
   aisettings.setRateSelection(SamplingRates, 3);
   config.setConfigFile("logger.cfg");
   config.load(sdcard0);
@@ -146,7 +145,7 @@ void setup() {
   char gs[16];
   pcm->gainStr(gs, PREGAIN);
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
-              SOFTWARE, gs, RANDOM_BLINKS);
+              SOFTWARE, gs, settings.randomBlinks());
 }
 
 
