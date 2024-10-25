@@ -10,11 +10,32 @@
 
 
 LoggerFileStorage::LoggerFileStorage(Input &aiinput, SDCard &sdcard0,
+				     const RTClock &rtclock,
+				     const DeviceID &deviceid, Blink &blink) :
+  AIInput(aiinput),
+  SDCard0(&sdcard0),
+  SDCard1(0),
+  File0(sdcard0, aiinput, 5),
+  File1(),
+  Clock(rtclock),
+  DeviceIdent(deviceid),
+  BlinkLED(blink),
+  RandomBlinks(false),
+  Filename(NULL),
+  PrevFilename(""),
+  FileCounter(0),
+  Restarts(0),
+  NextStore(0),
+  NextOpen(0) {
+}
+
+
+LoggerFileStorage::LoggerFileStorage(Input &aiinput, SDCard &sdcard0,
 				     SDCard &sdcard1, const RTClock &rtclock,
 				     const DeviceID &deviceid, Blink &blink) :
   AIInput(aiinput),
-  SDCard0(sdcard0),
-  SDCard1(sdcard1),
+  SDCard0(&sdcard0),
+  SDCard1(&sdcard1),
   File0(sdcard0, aiinput, 5),
   File1(sdcard1, aiinput, 5),
   Clock(rtclock),
@@ -37,15 +58,27 @@ void LoggerFileStorage::halt(Stream &stream) {
 
 
 bool LoggerFileStorage::check(bool check_backup, Stream &stream) {
-  if (!SDCard0.check(1e9)) {
-    SDCard0.end();
+  if (!SDCard0->check(1e9)) {
+    SDCard0->end();
     BlinkLED.switchOff();
     halt(stream);
     return false;
   }
-  if ((SDCard1.available() || check_backup) && !SDCard1.check(SDCard0.free()))
-    SDCard1.end();
+  if (SDCard1 != NULL &&
+      (SDCard1->available() || check_backup) &&
+       !SDCard1->check(SDCard0->free()))
+    SDCard1->end();
   return true;
+}
+
+
+void LoggerFileStorage::endBackup(SPIClass *spi) {
+  if (SDCard1 != NULL && !SDCard1->available()) {
+    SDCard1->end();
+    if (spi != NULL)
+      spi->end();
+    BlinkLED.reset();
+  }
 }
 
   
@@ -90,13 +123,17 @@ void LoggerFileStorage::start(const char *path, const char *filename,
   else
     BlinkLED.setTiming(2000);
   if (File0.sdcard()->dataDir(path))
-    Serial.printf("Save recorded data in folder \"%s\" on %sSD card.\n\n", path, File0.sdcard()->name());
-  File1.sdcard()->dataDir(path);
+    Serial.printf("Save recorded data in folder \"%s\" on %sSD card.\n\n",
+		  path, File0.sdcard()->name());
   setup(File0, filetime, software, gainstr);
-  setup(File1, filetime, software, gainstr);
+  if (File1.sdcard() != NULL) {
+    File1.sdcard()->dataDir(path);
+    setup(File1, filetime, software, gainstr);
+  }
   BlinkLED.clearSwitchTimes();
   File0.start();
-  File1.start(File0);
+  if (File1.sdcard() != NULL)
+    File1.start(File0);
   open(false);
   open(true);
   NextStore = 0;
@@ -108,7 +145,7 @@ void LoggerFileStorage::start(const char *path, const char *filename,
 
 void LoggerFileStorage::open(bool backup) {
   if (backup) {
-    if (!File1.sdcard()->available())
+    if (File1.sdcard() == NULL || !File1.sdcard()->available())
       return;
     File1.openWave(File0.name().c_str(), File0.header());
     ssize_t samples = File1.write();
@@ -119,7 +156,7 @@ void LoggerFileStorage::open(bool backup) {
       char mfs[100];
       sprintf(mfs, "%s-backup-error0-overrun.msg", File1.baseName().c_str());
       Serial.println(mfs);
-      FsFile mf = SDCard1.openWrite(mfs);
+      FsFile mf = SDCard1->openWrite(mfs);
       mf.close();
     }
     Serial.printf("and %sSD card)\n", File1.sdcard()->name());
@@ -174,10 +211,10 @@ void LoggerFileStorage::open(bool backup) {
       char mfs[100];
       sprintf(mfs, "%s-error0-overrun.msg", File0.baseName().c_str());
       Serial.println(mfs);
-      FsFile mf = SDCard0.openWrite(mfs);
+      FsFile mf = SDCard0->openWrite(mfs);
       mf.close();
     }
-    if (File1.sdcard()->available()) {
+    if (File1.sdcard() != NULL && File1.sdcard()->available()) {
       Serial.print(File0.name());
       Serial.printf(" (on %s", File0.sdcard()->name());
     }
@@ -220,7 +257,7 @@ bool LoggerFileStorage::store(SDWriter &sdfile, bool backup) {
         Serial.println("  failed to write anything.");
 	if (backup) {
 	  Serial.printf("  %sSD card probably full.\n", sdfile.sdcard()->name());
-	  SDCard1.end();
+	  SDCard1->end();
 	}
 	else {
 	  Serial.printf("  %sSD card probably full -> \n", sdfile.sdcard()->name());
@@ -241,7 +278,7 @@ bool LoggerFileStorage::store(SDWriter &sdfile, bool backup) {
       sprintf(mfs, "%s-error%d-%s.msg", sdfile.baseName().c_str(),
 	      Restarts+1, errorstr);
     Serial.println(mfs);
-    FsFile mf = SDCard0.openWrite(mfs);
+    FsFile mf = SDCard0->openWrite(mfs);
     mf.close();
     // halt after too many errors:
     Restarts++;
@@ -250,7 +287,7 @@ bool LoggerFileStorage::store(SDWriter &sdfile, bool backup) {
       Serial.printf("ERROR in LoggerFileStorage::storeData() on %sSD card: too many file errors", sdfile.sdcard()->name());
       if (backup) {
 	Serial.println(" -> end backups");
-	SDCard1.end();
+	SDCard1->end();
       }
       else {
 	AIInput.stop();
@@ -273,10 +310,10 @@ bool LoggerFileStorage::store(SDWriter &sdfile, bool backup) {
 void LoggerFileStorage::openBlinkFiles() {
   String fname = File0.name();
   fname.replace(".wav", "-blinks.dat");
-  BlinkFile0 = SDCard0.openWrite(fname.c_str());
+  BlinkFile0 = SDCard0->openWrite(fname.c_str());
   BlinkFile0.write("time;on\n");
-  if (SDCard1.available()) {
-    BlinkFile1 = SDCard1.openWrite(fname.c_str());
+  if (SDCard1 != NULL && SDCard1->available()) {
+    BlinkFile1 = SDCard1->openWrite(fname.c_str());
     BlinkFile1.write("time;on\n");
   }
   Serial.print("Store blink times in ");
@@ -298,7 +335,7 @@ void LoggerFileStorage::storeBlinks() {
     m += sprintf(buffer + m, "%lu;%u\n", times[k] - tstart, states[k]);
   BlinkFile0.write(buffer, m);
   BlinkFile0.flush();
-  if (SDCard1.available()) {
+  if (SDCard1 != NULL && SDCard1->available()) {
     BlinkFile1.write(buffer, m);
     BlinkFile1.flush();
   }
@@ -307,7 +344,7 @@ void LoggerFileStorage::storeBlinks() {
 
 void LoggerFileStorage::update() {
   if (NextStore == 0) {
-    if (store(File0, false) && SDCard1.available())
+    if (store(File0, false) && SDCard1 != NULL && SDCard1->available())
       NextStore = 1;
   }
   if (NextStore == 1) {
@@ -325,7 +362,7 @@ void LoggerFileStorage::update() {
       Serial.flush();
       BlinkLED.setTriple();
       MTP.begin();
-      MTP.addFilesystem(SDCard0, "logger");
+      MTP.addFilesystem(*SDCard0, "logger");
       while (true) {
 	MTP.loop();
 	BlinkLED.update();
@@ -334,7 +371,7 @@ void LoggerFileStorage::update() {
 #endif
       synchronize(); // TODO: make this working also for backup.
       open(false);
-      if (SDCard1.available())
+      if (SDCard1 != NULL && SDCard1->available())
 	NextOpen = 1;
     }
   }

@@ -1,6 +1,5 @@
 #include <TeeGridBanner.h>
 #include <InputADC.h>
-#include <SPI.h>
 #include <SDCard.h>
 #include <RTClock.h>
 #include <DeviceID.h>
@@ -33,8 +32,6 @@ int8_t channels1 [] =  {A2, A3, A20, A22, -1, A20, A22, A12, A13};  // input pin
 #define PULSE_FREQUENCY 230 // Hertz
 int signalPins[] = {9, 8, 7, 6, 5, 4, 3, 2, -1}; // pins where to put out test signals
 
-#define SDCARD1_CS       10    // CS pin for second SD card on SPI bus, set to 255 if not used
-
 // ----------------------------------------------------------------------------
 
 #define SOFTWARE      "TeeGrid 8channel-logger v2.6"
@@ -45,8 +42,7 @@ InputADC aidata(AIBuffer, NAIBuffer, channels0, channels1);
 RTClock rtclock;
 DeviceID deviceid(DEVICEID);
 Blink blink(LED_BUILTIN);
-SDCard sdcard0("primary");
-SDCard sdcard1("secondary");
+SDCard sdcard0;
 
 Configurator config;
 Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, PULSE_FREQUENCY,
@@ -55,14 +51,13 @@ InputADCSettings aisettings(SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE);
 DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard0);
-SDCardMenu sdcard0_menu("Primary SD card", sdcard0, settings);
-SDCardMenu sdcard1_menu("Secondary SD card", sdcard1, settings);
+SDCardMenu sdcard0_menu(sdcard0, settings);
 #ifdef FIRMWARE_UPDATE
 FirmwareMenu firmware_menu(sdcard0);
 #endif
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, sdcard1);
+DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0);
 
-LoggerFileStorage files(aidata, sdcard0, sdcard1, rtclock, deviceid, blink);
+LoggerFileStorage files(aidata, sdcard0, rtclock, deviceid, blink);
 
 
 // ----------------------------------------------------------------------------
@@ -73,10 +68,7 @@ void setup() {
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
   rtclock.check();
-  pinMode(SDCARD1_CS, OUTPUT);
-  SPI.begin();
   sdcard0.begin();
-  sdcard1.begin(SDCARD1_CS, DEDICATED_SPI, 40, &SPI);
   files.check(true);
   rtclock.setFromFile(sdcard0);
   settings.disable("DisplayTime");

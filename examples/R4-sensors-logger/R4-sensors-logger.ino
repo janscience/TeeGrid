@@ -69,8 +69,8 @@ Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, 0.0,
 InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN);
 DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard0);
-SDCardMenu sdcard0_menu("Primary SD card", sdcard0, settings);
-SDCardMenu sdcard1_menu("Secondary SD card", sdcard1, settings);
+SDCardMenu sdcard0_menu(sdcard0, settings);
+SDCardMenu sdcard1_menu(sdcard1, settings);
 #ifdef FIRMWARE_UPDATE
 FirmwareMenu firmware_menu(sdcard0);
 #endif

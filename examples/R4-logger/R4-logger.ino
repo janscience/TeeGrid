@@ -31,9 +31,10 @@
 
 // ----------------------------------------------------------------------------
 
-#define LED_PIN        26    // R4.1
+#define LED_PIN        26    // R4.1       warning: this is the MOSI1 pin for thebackup SD card
 //#define LED_PIN        27    // R4.2
 
+//#define BACKUP_SDCARD 1       // define if you want to use a backup SD card
 //#define SDCARD1_CS     10    // CS pin for second SD card on SPI bus
 #define SDCARD1_CS     38    // CS pin for second SD card on SPI1 bus
 
@@ -59,8 +60,12 @@ R41CAN can;
 RTClock rtclock;
 DeviceID deviceid(DEVICEID);
 Blink blink(LED_PIN, true, LED_BUILTIN, false);
+#ifdef BACKUP_SDCARD
 SDCard sdcard0("primary");
 SDCard sdcard1("secondary");
+#else
+SDCard sdcard0;
+#endif
 
 Configurator config;
 Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, 0.0,
@@ -68,16 +73,25 @@ Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, 0.0,
 InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN);                  
 DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard0);
-SDCardMenu sdcard0_menu("Primary SD card", sdcard0, settings);
-SDCardMenu sdcard1_menu("Secondary SD card", sdcard1, settings);
+SDCardMenu sdcard0_menu(sdcard0, settings);
+#ifdef BACKUP_SDCARD
+SDCardMenu sdcard1_menu(sdcard1, settings);
+#endif
 #ifdef FIRMWARE_UPDATE
 FirmwareMenu firmware_menu(sdcard0);
 #endif
+#ifdef BACKUP_SDCARD
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, sdcard1);
+#else
+DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0);
+#endif
 HelpAction help_act(config, "Help");
 
+#ifdef BACKUP_SDCARD
 LoggerFileStorage files(aidata, sdcard0, sdcard1, rtclock, deviceid, blink);
-
+#else
+LoggerFileStorage files(aidata, sdcard0, rtclock, deviceid, blink);
+#endif
 
 // -----------------------------------------------------------------------------
 
@@ -88,12 +102,14 @@ void setup() {
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
   rtclock.check();
+  sdcard0.begin();
+#ifdef BACKUP_SDCARD
   pinMode(SDCARD1_CS, OUTPUT);
   //SPI.begin();
   SPI1.setMISO(39);    // Use alternate MISO pin for SPI1 bus
   SPI1.begin();
-  sdcard0.begin();
   sdcard1.begin(SDCARD1_CS, DEDICATED_SPI, 40, &SPI1);
+#endif
   files.check(true);
   rtclock.setFromFile(sdcard0);
   settings.disable("PulseFreq");
@@ -105,7 +121,9 @@ void setup() {
   if (Serial)
     config.configure(Serial, 10000);
   config.report();
+  files.endBackup(&SPI1);
   Serial.println();
+  deviceid.setID(settings.deviceID());
   aidata.setSwapLR();
   Wire.begin();
   Wire1.begin();

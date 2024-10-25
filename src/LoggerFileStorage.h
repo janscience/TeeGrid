@@ -18,6 +18,9 @@ class LoggerFileStorage {
   
 public:
 
+  LoggerFileStorage(Input &aiinput, SDCard &sdcard0,
+		    const RTClock &rtclock, const DeviceID &deviceid,
+		    Blink &blink);
   LoggerFileStorage(Input &aiinput, SDCard &sdcard0, SDCard &sdcard1,
 		    const RTClock &rtclock, const DeviceID &deviceid,
 		    Blink &blink);
@@ -26,6 +29,9 @@ public:
   // Halt if the main SD card can not be written.
   // If check_backup force checking backup SD card as well.
   bool check(bool check_backup, Stream &stream=Serial);
+
+  // If secondary SD card is not available, end its usage.
+  void endBackup(SPIClass *spi=NULL);
 
   // Report device identifier and current date and time.
   void report(Stream &stream=Serial) const;
@@ -68,8 +74,8 @@ protected:
   virtual bool synchronize() { return false; };
 
   Input &AIInput;
-  SDCard &SDCard0;
-  SDCard &SDCard1;
+  SDCard *SDCard0;
+  SDCard *SDCard1;
   SDWriter File0;
   SDWriter File1;
   const RTClock &Clock;
