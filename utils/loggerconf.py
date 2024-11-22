@@ -21,7 +21,7 @@ try:
     from PyQt5.QtCore import Signal
 except ImportError:
     from PyQt5.QtCore import pyqtSignal as Signal
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QDateTime
 from PyQt5.QtGui import QKeySequence, QFont
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
 from PyQt5.QtWidgets import QStackedWidget, QLabel
@@ -98,6 +98,7 @@ class ScanLogger(QLabel):
 class RTClock(QWidget):
 
     sigReadRequest = Signal(object, str, str)
+    sigWriteRequest = Signal(str, str, str)
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -107,6 +108,7 @@ class RTClock(QWidget):
         self.box.addWidget(QLabel('Logger time:', self))
         self.box.addWidget(self.time)
         self.box.addWidget(self.state)
+        self.is_set = 0
         self.start_get = ''
         self.end_get = ''
         self.start_set = ''
@@ -124,6 +126,7 @@ class RTClock(QWidget):
                 self.end_set = 'q\n'
 
     def start(self):
+        self.is_set = 0
         if len(self.start_get) > 0:
             self.timer.start(200)
 
@@ -131,7 +134,11 @@ class RTClock(QWidget):
         self.timer.stop()
 
     def get_time(self):
-        self.sigReadRequest.emit(self, self.start_get, self.end_get)
+        self.is_set += 1
+        if self.is_set % 60 == 10:
+            self.set_time()
+        else:
+            self.sigReadRequest.emit(self, self.start_get, self.end_get)
 
     def read(self, stream):
         for s in stream:
@@ -139,6 +146,10 @@ class RTClock(QWidget):
                 time = ':'.join(s.strip().split(':')[1:])
                 self.time.setText(time)
                 break
+
+    def set_time(self):
+        time = QDateTime.currentDateTime().toString(Qt.ISODate)
+        self.sigWriteRequest.emit(time, self.start_set, self.end_set)
                 
 
 class Logger(QWidget):
@@ -156,6 +167,7 @@ class Logger(QWidget):
         self.msg = QLabel(self)
         self.rtclock = RTClock(self)
         self.rtclock.sigReadRequest.connect(self.read_request)
+        self.rtclock.sigWriteRequest.connect(self.write_request)
         self.tabs = QTabWidget(self)
         self.tabs.setDocumentMode(True) # ?
         self.tabs.setMovable(False)
@@ -299,30 +311,7 @@ class Logger(QWidget):
                 if self.menu[self.menu_key][1]:
                     self.read_state += 1
             except StopIteration:
-                # init menu:
-                self.menu.pop('Help')
-                datetime = None
-                for mk in self.menu:
-                    menu = self.menu[mk]
-                    add_title = True
-                    if 'date & time' in mk.lower():
-                        datetime = mk
-                        self.rtclock.setup(menu[0], menu[2])
-                    elif menu[1]:
-                        for sk in menu[2]:
-                            if menu[2][sk][1]:
-                                if add_title:
-                                    self.tools_vbox.addWidget(QLabel(mk, self))
-                                    add_title = False
-                                self.tools_vbox.addWidget(QLabel(sk, self))
-                            else:
-                                if add_title:
-                                    self.conf_vbox.addWidget(QLabel(mk, self))
-                                    add_title = False
-                                self.conf_vbox.addWidget(QLabel(sk + ': ' + menu[2][sk][2], self))
-                if datetime is not None:
-                    self.menu.pop(datetime)
-                    self.rtclock.start()
+                self.init_menu()
                 self.input = []
                 self.read_state = 5
         elif self.read_state == 3:
@@ -341,6 +330,33 @@ class Logger(QWidget):
                 self.ser.write('q\n'.encode('latin1'))
             self.read_state = 2
 
+    def init_menu(self):
+        # init menu:
+        if 'Help' in self.menu:
+            self.menu.pop('Help')
+        datetime = None
+        for mk in self.menu:
+            menu = self.menu[mk]
+            add_title = True
+            if 'date & time' in mk.lower():
+                datetime = mk
+                self.rtclock.setup(menu[0], menu[2])
+            elif menu[1]:
+                for sk in menu[2]:
+                    if menu[2][sk][1]:
+                        if add_title:
+                            self.tools_vbox.addWidget(QLabel('<b>' + mk + '</b>', self))
+                            add_title = False
+                        self.tools_vbox.addWidget(QLabel(sk, self))
+                    else:
+                        if add_title:
+                            self.conf_vbox.addWidget(QLabel('<b>' + mk + '</b>', self))
+                            add_title = False
+                        self.conf_vbox.addWidget(QLabel(sk + ': ' + menu[2][sk][2], self))
+        if datetime is not None:
+            self.menu.pop(datetime)
+            self.rtclock.start()
+
     def read_request(self, target, start, end):
         self.input = []
         self.target = target
@@ -355,17 +371,41 @@ class Logger(QWidget):
             self.ser.write(start[:i + 1].encode('latin1'))
             self.read_state = 6
 
-    def parse_request(self):
+    def parse_read_request(self):
         if self.read_state == 6:
             self.input = []
             if self.request_start is not None and len(self.request_start) > 0:
                 self.ser.write(self.request_start.encode('latin1'))
+                self.request_start = None
             self.read_state += 1
         elif self.read_state == 7:
             if self.target is not None:
                 self.target.read(self.input)
+                self.target = None
             self.input = []
             self.ser.write(self.request_end.encode('latin1'))
+            self.request_end = None
+            self.read_state = 5
+
+    def write_request(self, msg, start, end):
+        self.input = []
+        self.target = msg
+        self.request_start = None 
+        self.request_end = end
+        self.ser.write(start.encode('latin1'))
+        self.read_state = 8
+
+    def parse_write_request(self):
+        if self.read_state == 8:
+            self.input = []
+            self.ser.write(self.target.encode('latin1'))
+            self.ser.write(b'\n')
+            self.target = None
+            self.read_state += 1
+        elif self.read_state == 9:
+            self.input = []
+            self.ser.write(self.request_end.encode('latin1'))
+            self.request_end = None
             self.read_state = 5
 
     def read(self):
@@ -393,7 +433,8 @@ class Logger(QWidget):
                 self.parse_logo()
                 self.parse_mainmenu()
                 self.parse_submenu()
-                self.parse_request()
+                self.parse_read_request()
+                self.parse_write_request()
         except (OSError, serial.serialutil.SerialException):
             self.read_timer.stop()
             self.rtclock.stop()
