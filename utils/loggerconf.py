@@ -25,7 +25,7 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QKeySequence, QFont
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
 from PyQt5.QtWidgets import QStackedWidget, QLabel
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
 from PyQt5.QtWidgets import QAction
 
 
@@ -95,6 +95,52 @@ class ScanLogger(QLabel):
                                      serial_numbers[0])
 
 
+class RTClock(QWidget):
+
+    sigReadRequest = Signal(object, str, str)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.box = QHBoxLayout(self)
+        self.time = QLabel(self)
+        self.state = QLabel(self)
+        self.box.addWidget(QLabel('Logger time:', self))
+        self.box.addWidget(self.time)
+        self.box.addWidget(self.state)
+        self.start_get = ''
+        self.end_get = ''
+        self.start_set = ''
+        self.end_set = ''
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.get_time)
+
+    def setup(self, key, menu):
+        for k in menu:
+            if 'print' in k.lower():
+                self.start_get = f'{key}\n{menu[k][0]}\n'
+                self.end_get = 'q\n'
+            elif 'set' in k.lower():
+                self.start_set = f'{key}\n{menu[k][0]}\n'
+                self.end_set = 'q\n'
+
+    def start(self):
+        if len(self.start_get) > 0:
+            self.timer.start(200)
+
+    def stop(self):
+        self.timer.stop()
+
+    def get_time(self):
+        self.sigReadRequest.emit(self, self.start_get, self.end_get)
+
+    def read(self, stream):
+        for s in stream:
+            if 'time' in s.lower():
+                time = ':'.join(s.strip().split(':')[1:])
+                self.time.setText(time)
+                break
+                
+
 class Logger(QWidget):
 
     sigLoggerDisconnected = Signal()
@@ -108,13 +154,17 @@ class Logger(QWidget):
         self.logo.setFont(QFont('monospace'))
         self.software = QLabel(self)
         self.msg = QLabel(self)
+        self.rtclock = RTClock(self)
+        self.rtclock.sigReadRequest.connect(self.read_request)
         self.tabs = QTabWidget(self)
         self.tabs.setDocumentMode(True) # ?
         self.tabs.setMovable(False)
         self.tabs.setTabBarAutoHide(False)
         self.tabs.setTabsClosable(False)
         self.conf = QWidget(self)
+        self.conf_vbox = QVBoxLayout(self.conf)
         self.tools = QWidget(self)
+        self.tools_vbox = QVBoxLayout(self.tools)
         self.tabs.addTab(self.conf, 'Configuration')
         self.tabs.addTab(self.tools, 'Tools')
         self.stack = QStackedWidget(self)
@@ -124,14 +174,21 @@ class Logger(QWidget):
         self.vbox.addWidget(self.title)
         self.vbox.addWidget(self.logo)
         self.vbox.addWidget(self.software)
+        self.vbox.addWidget(self.rtclock)
         self.vbox.addWidget(self.stack)
         
         self.ser = None
         self.read_timer = QTimer(self)
         self.read_timer.timeout.connect(self.read)
+        self.read_state = 0
         self.input = []
+        self.target = None
+        self.request_start = None
+        self.request_end = None
 
         self.menu = {}
+        self.menu_iter = iter([])
+        self.menu_key = None
 
     def activate(self, device, model, serial_number):
         self.title.setText(f'Teensy{model} with serial number {serial_number} on {device}')
@@ -143,7 +200,7 @@ class Logger(QWidget):
             self.ser.reset_output_buffer()
         except (OSError, serial.serialutil.SerialException):
             self.ser = None
-        self.input = ['']
+        self.input = []
         self.read_state = 0
         self.read_timer.start(10)
         
@@ -189,41 +246,127 @@ class Logger(QWidget):
                         s += '\n'
                     s += l
                 self.software.setText(s)
-                if title_end >= len(self.input[title_end]):
-                    self.input = ['']
-                else:
-                    self.input = self.input[title_end + 1:]
+                self.input = []
                 self.read_state += 1
 
-    def parse_menu(self):
-        if self.read_state == 1:
-            menu_start = None
-            menu_end = None
-            for k in range(len(self.input)):
-                if 'HALT' in self.input[k]:
-                    self.parse_halt(k)
-                    return
-                elif 'Menu:' in self.input[k]:
-                    menu_start = k
-                elif menu_start is not None and \
-                     'Select:' in self.input[k]:
-                    menu_end = k
-            if menu_start is not None and \
-               menu_end is not None:
-                self.menu = {}
-                for l in self.input[menu_start + 1:menu_end]:
-                    x = l.split()
-                    sub_menu = x[-1] == '...'
+    def parse_menu(self, title_str):
+        menu_start = None
+        menu_end = None
+        for k in range(len(self.input)):
+            if 'HALT' in self.input[k]:
+                self.parse_halt(k)
+                return
+            elif title_str + ':' in self.input[k]:
+                menu_start = k
+            elif menu_start is not None and \
+                 'Select' in self.input[k]:
+                menu_end = k
+        menu = {}
+        if menu_start is not None and \
+           menu_end is not None:
+            for l in self.input[menu_start + 1:menu_end]:
+                x = l.split()
+                num = x[0][:-1]
+                sub_menu = x[-1] == '...'
+                if sub_menu:
                     name = ' '.join(x[1:-1]) if sub_menu else ' '.join(x[1:])
-                    self.menu[name] = (x[0][:-1], sub_menu, {})
-                for k in self.menu:
-                    print(self.menu[k][0], k, self.menu[k][1])
-                if menu_end >= len(self.input[menu_end]):
-                    self.input = ['']
+                    menu[name] = (num, sub_menu, {})
                 else:
-                    self.input = self.input[menu_end + 1:]
+                    l = ' '.join(x[1:])
+                    if ':' in l:
+                        x = l.split(':')
+                        name = x[0].strip()
+                        value = x[1].strip()
+                        menu[name] = (num, sub_menu, value)
+                    else:
+                        menu[l] = (num, sub_menu, None)
+            self.input = []
+        return menu
+
+    def parse_mainmenu(self):
+        if self.read_state == 1:
+            self.menu = self.parse_menu('Menu')
+            if len(self.menu) > 0:
+                self.menu_iter = iter(self.menu.keys())
                 self.read_state += 1
                 self.stack.setCurrentWidget(self.tabs)
+
+    def parse_submenu(self):
+        if self.read_state == 2:
+            # get next menu entry:
+            try:
+                self.menu_key = next(self.menu_iter)
+                if self.menu[self.menu_key][1]:
+                    self.read_state += 1
+            except StopIteration:
+                # init menu:
+                self.menu.pop('Help')
+                datetime = None
+                for mk in self.menu:
+                    menu = self.menu[mk]
+                    add_title = True
+                    if 'date & time' in mk.lower():
+                        datetime = mk
+                        self.rtclock.setup(menu[0], menu[2])
+                    elif menu[1]:
+                        for sk in menu[2]:
+                            if menu[2][sk][1]:
+                                if add_title:
+                                    self.tools_vbox.addWidget(QLabel(mk, self))
+                                    add_title = False
+                                self.tools_vbox.addWidget(QLabel(sk, self))
+                            else:
+                                if add_title:
+                                    self.conf_vbox.addWidget(QLabel(mk, self))
+                                    add_title = False
+                                self.conf_vbox.addWidget(QLabel(sk + ': ' + menu[2][sk][2], self))
+                if datetime is not None:
+                    self.menu.pop(datetime)
+                    self.rtclock.start()
+                self.input = []
+                self.read_state = 5
+        elif self.read_state == 3:
+            # request submenu:
+            self.input = []
+            self.ser.write(self.menu[self.menu_key][0].encode('latin1'))
+            self.ser.write(b'\n')
+            self.read_state += 1
+        elif self.read_state == 4:
+            # parse submenu:
+            submenu = {}
+            if len(self.input) > 1 and 'Select' in self.input[-2]:
+                submenu = self.parse_menu(self.menu_key)
+            if len(submenu) > 0:
+                self.menu[self.menu_key][2].update(submenu)
+                self.ser.write('q\n'.encode('latin1'))
+            self.read_state = 2
+
+    def read_request(self, target, start, end):
+        self.input = []
+        self.target = target
+        self.request_end = end
+        i = start[:-1].rfind('\n')
+        if i < 0:
+            self.request_start = None 
+            self.ser.write(start.encode('latin1'))
+            self.read_state = 7
+        else:
+            self.request_start = start[i + 1:]
+            self.ser.write(start[:i + 1].encode('latin1'))
+            self.read_state = 6
+
+    def parse_request(self):
+        if self.read_state == 6:
+            self.input = []
+            if self.request_start is not None and len(self.request_start) > 0:
+                self.ser.write(self.request_start.encode('latin1'))
+            self.read_state += 1
+        elif self.read_state == 7:
+            if self.target is not None:
+                self.target.read(self.input)
+            self.input = []
+            self.ser.write(self.request_end.encode('latin1'))
+            self.read_state = 5
 
     def read(self):
         if self.ser is None:
@@ -241,14 +384,19 @@ class Logger(QWidget):
             if self.ser.in_waiting > 0:
                 x = self.ser.read(self.ser.in_waiting)
                 lines = x.decode('latin1').split('\n')
+                if len(self.input) == 0:
+                    self.input = ['']
                 for l in lines:
                     self.input[-1] += l.rstrip()
                     self.input.append('')
             else:
                 self.parse_logo()
-                self.parse_menu()
+                self.parse_mainmenu()
+                self.parse_submenu()
+                self.parse_request()
         except (OSError, serial.serialutil.SerialException):
             self.read_timer.stop()
+            self.rtclock.stop()
             self.ser.close()
             self.sigLoggerDisconnected.emit()
         
