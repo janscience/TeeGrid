@@ -262,6 +262,82 @@ class LoggerInfo(Interactor):
             self.box.addWidget(valuew,self.row, 1)
             self.row += 1
 
+
+class SDCardInfo(Interactor):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.box = QGridLayout(self)
+        title = QLabel('<b>SD card</b>', self)
+        self.box.addWidget(title, 0, 0, 1, 2)
+        self.sdcard_start_get = ''
+        self.sdcard_end_get = ''
+        self.root_start_get = ''
+        self.root_end_get = ''
+        self.recordings_start_get = ''
+        self.recordings_end_get = ''
+        self.section = None
+        self.row = 1
+
+    def setup(self, menu):
+        for mk in menu:
+            menu_item = menu[mk]
+            if 'sd card' in mk.lower():
+                key = menu_item[0]
+                submenu = menu_item[2]
+                for k in submenu:
+                    if 'sd card info' in k.lower():
+                        self.sdcard_start_get = f'{key}\n{submenu[k][0]}\n'
+                        self.sdcard_end_get = 'q\n'
+                        submenu.pop(k)
+                        break
+                for k in submenu:
+                    if 'list files in root' in k.lower():
+                        self.root_start_get = f'{key}\n{submenu[k][0]}\n'
+                        self.root_end_get = 'q\n'
+                        submenu.pop(k)
+                        break
+                for k in submenu:
+                    if 'list all recordings' in k.lower():
+                        self.recordings_start_get = f'{key}\n{submenu[k][0]}\n'
+                        self.recordings_end_get = 'q\n'
+                        submenu.pop(k)
+                        break
+                break
+
+    def start(self):
+        self.row = 1
+        self.section = 'sdcard'
+        self.sigReadRequest.emit(self, self.sdcard_start_get,
+                                 self.sdcard_end_get)
+        #self.section = 'root'
+        #self.sigReadRequest.emit(self, self.root_start_get,
+        #                         self.root_end_get)
+        #self.section = 'recordings'
+        #self.sigReadRequest.emit(self, self.recording_start_get,
+        #                         self.recording_end_get)
+
+    def read(self, stream):
+        r = 0
+        for s in stream:
+            if r > 0 and len(s.strip()) == 0:
+                break
+            if self.section == 'sdcard':
+                x = s.split(':')
+                if len(x) < 2 or len(x[1].strip()) == 0:
+                    continue
+                r += 1
+                label = x[0].strip()
+                if not label.lower() in ['serial number', 'type', 'file system', 'capacity', 'available']:
+                    continue
+                value = ':'.join(x[1:]).strip()
+                labelw = QLabel(label, self)
+                valuew = QLabel('<b>' + value + '</b>', self)
+                self.box.addWidget(labelw, self.row, 0)
+                self.box.addWidget(valuew,self.row, 1)
+                self.row += 1
+        self.section = None
+
                 
 class Logger(QWidget):
 
@@ -291,9 +367,12 @@ class Logger(QWidget):
         tabs.addTab(self.tools, 'Tools')
         self.loggerinfo = LoggerInfo(self)
         self.loggerinfo.sigReadRequest.connect(self.read_request)
+        self.sdcardinfo = SDCardInfo(self)
+        self.sdcardinfo.sigReadRequest.connect(self.read_request)
         iboxw = QWidget(self)
         ibox = QVBoxLayout(iboxw)
         ibox.addWidget(self.loggerinfo)
+        ibox.addWidget(self.sdcardinfo)
         self.boxw = QWidget(self)
         self.box = QHBoxLayout(self.boxw)
         self.box.addWidget(tabs)
@@ -457,6 +536,7 @@ class Logger(QWidget):
             self.menu.pop('Help')
         self.rtclock.setup(self.menu)
         self.loggerinfo.setup(self.menu)
+        self.sdcardinfo.setup(self.menu)
         for mk in self.menu:
             menu = self.menu[mk]
             add_title = True
@@ -473,6 +553,7 @@ class Logger(QWidget):
                             add_title = False
                         self.conf_vbox.addWidget(QLabel(sk + ': ' + menu[2][sk][2], self))
         self.loggerinfo.start()
+        self.sdcardinfo.start()
         self.rtclock.start()
             
     def parse_request_stack(self):
