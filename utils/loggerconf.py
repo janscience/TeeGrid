@@ -204,11 +204,19 @@ class LoggerInfo(Interactor):
         self.box = QGridLayout(self)
         title = QLabel('<b>Logger info</b>', self)
         self.box.addWidget(title, 0, 0, 1, 2)
+        self.device = None
+        self.model = None
+        self.serial_number = None
         self.controller_start_get = ''
         self.controller_end_get = ''
         self.psram_start_get = ''
         self.psram_end_get = ''
         self.row = 1
+
+    def set(self, device, model, serial_number):
+        self.device = device
+        self.model = model
+        self.serial_number = serial_number
 
     def setup(self, menu):
         for mk in menu:
@@ -232,6 +240,9 @@ class LoggerInfo(Interactor):
 
     def start(self):
         self.row = 1
+        self.box.addWidget(QLabel('device', self), self.row, 0)
+        self.box.addWidget(QLabel('<b>' + self.device + '</b>', self),self.row, 1)
+        self.row += 1
         self.sigReadRequest.emit(self, self.controller_start_get,
                                  self.controller_end_get)
         self.sigReadRequest.emit(self, self.psram_start_get,
@@ -256,10 +267,8 @@ class LoggerInfo(Interactor):
                     label = 'PSRAM size'
                 else:
                     continue
-            labelw = QLabel(label, self)
-            valuew = QLabel('<b>' + value + '</b>', self)
-            self.box.addWidget(labelw, self.row, 0)
-            self.box.addWidget(valuew,self.row, 1)
+            self.box.addWidget(QLabel(label, self), self.row, 0)
+            self.box.addWidget(QLabel('<b>' + value + '</b>', self),self.row, 1)
             self.row += 1
 
 
@@ -345,8 +354,6 @@ class Logger(QWidget):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.title = QLabel(self)
-        self.title.setText('Logger available')
         self.logo = QLabel(self)
         self.logo.setFont(QFont('monospace'))
         self.software = QLabel(self)
@@ -382,7 +389,6 @@ class Logger(QWidget):
         self.stack.addWidget(self.boxw)
         self.stack.setCurrentWidget(self.msg)
         vbox = QVBoxLayout(self)
-        vbox.addWidget(self.title)
         vbox.addWidget(self.logo)
         vbox.addWidget(self.software)
         vbox.addWidget(self.rtclock)
@@ -403,7 +409,8 @@ class Logger(QWidget):
         self.menu_key = None
 
     def activate(self, device, model, serial_number):
-        self.title.setText(f'Teensy{model} with serial number {serial_number} on {device}')
+        #self.title.setText(f'Teensy{model} with serial number {serial_number} on {device}')
+        self.loggerinfo.set(device, model, serial_number)
         self.msg.setText('Reading configuration ...')
         self.stack.setCurrentWidget(self.msg)
         try:
