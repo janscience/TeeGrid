@@ -411,13 +411,11 @@ class SDCardInfo(Interactor):
                     continue
                 r += 1
                 label = x[0].strip()
-                if not label.lower() in ['serial number', 'type', 'file system', 'capacity', 'available']:
-                    continue
                 value = ':'.join(x[1:]).strip()
                 if label.lower() == 'available':
                     available = value
                 items.append([label, value])
-            for keys in ['available', 'capacity', 'serial', 'system', 'type']:
+            for keys in ['available', 'capacity', 'serial', 'system']:
                 for i in range(len(items)):
                     if keys in items[i][0].lower():
                         self.add(items[i][0], items[i][1])
