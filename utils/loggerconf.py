@@ -84,7 +84,7 @@ class ScanLogger(QLabel):
         self.start()
 
     def start(self):
-        self.timer.start(200)
+        self.timer.start(50)
 
     def scan(self):
         devices, models, serial_numbers = discover_teensy_ports()
@@ -113,6 +113,8 @@ class RTClock(QWidget):
         self.end_get = ''
         self.start_set = ''
         self.end_set = ''
+        self.set_state = 0
+        self.prev_time = None
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.get_time)
 
@@ -128,28 +130,44 @@ class RTClock(QWidget):
     def start(self):
         self.is_set = 0
         if len(self.start_get) > 0:
-            self.timer.start(200)
+            self.timer.start(50)
 
     def stop(self):
         self.timer.stop()
 
     def get_time(self):
-        self.is_set += 1
-        if self.is_set % 60 == 10:
+        if self.set_state > 0:
             self.set_time()
-        else:
-            self.sigReadRequest.emit(self, self.start_get, self.end_get)
+        else:            
+            self.is_set += 1
+            if self.is_set == 10:
+                self.set_state = 1
+                self.set_time()
+            else:
+                self.sigReadRequest.emit(self, self.start_get, self.end_get)
 
     def read(self, stream):
         for s in stream:
             if 'time' in s.lower():
                 time = ':'.join(s.strip().split(':')[1:])
-                self.time.setText(time)
-                break
+                if len(time.strip()) == 19:
+                    self.time.setText(time)
+                    break
 
     def set_time(self):
-        time = QDateTime.currentDateTime().toString(Qt.ISODate)
-        self.sigWriteRequest.emit(time, self.start_set, self.end_set)
+        if self.set_state == 1:
+            self.timer.stop()
+            self.prev_time = QDateTime.currentDateTime().toString(Qt.ISODate)
+            self.set_state = 2
+            self.timer.start(1)
+        elif self.set_state == 2:
+            time = QDateTime.currentDateTime().toString(Qt.ISODate)
+            if time != self.prev_time:
+                self.timer.stop()
+                self.sigWriteRequest.emit(time, self.start_set, self.end_set)
+                self.set_state = 0
+                self.prev_time = None
+                self.timer.start(200)
                 
 
 class Logger(QWidget):
