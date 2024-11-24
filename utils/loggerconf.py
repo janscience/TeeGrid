@@ -245,7 +245,6 @@ class LoggerInfo(Interactor):
         self.device = None
         self.model = None
         self.serial_number = None
-        self.software = None
         self.controller_start_get = ''
         self.controller_end_get = ''
         self.psram_start_get = ''
@@ -256,9 +255,6 @@ class LoggerInfo(Interactor):
         self.device = device
         self.model = model
         self.serial_number = serial_number
-
-    def setSoftware(self, software):
-        self.software = software
 
     def setup(self, menu):
         self.rtclock.setup(menu)
@@ -275,13 +271,6 @@ class LoggerInfo(Interactor):
     def start(self):
         self.row = 1
         self.add('device', self.device)
-        if self.software is not None:
-            i = self.software.find(' by ')
-            if i < 0:
-                i = len(self.software)
-            self.add('software', self.software[:i])
-            if i < len(self.software):
-                self.add('author', self.software[i + 4:])
         self.sigReadRequest.emit(self, self.controller_start_get,
                                  self.controller_end_get, 'controller')
         self.sigReadRequest.emit(self, self.psram_start_get,
@@ -311,6 +300,45 @@ class LoggerInfo(Interactor):
             self.rtclock.start()
 
 
+class SoftwareInfo(QFrame):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        super().setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.box = QGridLayout(self)
+        title = QLabel('<b>Software</b>', self)
+        self.box.addWidget(title, 0, 0, 1, 2)
+        self.row = 1
+
+    def add(self, label, value):
+        self.box.addWidget(QLabel(label, self), self.row, 0)
+        self.box.addWidget(QLabel('<b>' + value + '</b>', self), self.row, 1)
+        self.row += 1
+
+    def set(self, stream):
+        n = 0
+        for s in stream:
+            s = s.strip()
+            if len(s) > 0:
+                if n == 0:
+                    i = s.find(' by ')
+                    if i < 0:
+                        i = len(s)
+                    j = s[:i].find(' v')
+                    if j < 0:
+                        j = i
+                    self.add('Software', s[:j])
+                    if j < i:
+                        self.add('Version', s[j + 2:i])
+                    if i < len(s):
+                        self.add('Author', s[i + 4:])
+                else:
+                    s = s.replace('based on ', '')
+                    s = s.replace('and ', '')
+                    self.add(f'Library {n}', s)
+                n += 1
+
+                
 class SDCardInfo(Interactor):
     
     def __init__(self, *args, **kwargs):
@@ -420,7 +448,6 @@ class Logger(QWidget):
         super().__init__(*args, **kwargs)
         self.logo = QLabel(self)
         self.logo.setFont(QFont('monospace'))
-        self.software = QLabel(self)
         self.msg = QLabel(self)
         self.conf = QWidget(self)
         self.conf_vbox = QVBoxLayout(self.conf)
@@ -437,11 +464,13 @@ class Logger(QWidget):
         self.loggerinfo.sigReadRequest.connect(self.read_request)
         self.loggerinfo.rtclock.sigReadRequest.connect(self.read_request)
         self.loggerinfo.rtclock.sigWriteRequest.connect(self.write_request)
+        self.softwareinfo = SoftwareInfo(self)
         self.sdcardinfo = SDCardInfo(self)
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
         iboxw = QWidget(self)
         ibox = QVBoxLayout(iboxw)
         ibox.addWidget(self.loggerinfo)
+        ibox.addWidget(self.softwareinfo)
         ibox.addWidget(self.sdcardinfo)
         self.boxw = QWidget(self)
         self.box = QHBoxLayout(self.boxw)
@@ -453,7 +482,6 @@ class Logger(QWidget):
         self.stack.setCurrentWidget(self.msg)
         vbox = QVBoxLayout(self)
         vbox.addWidget(self.logo)
-        vbox.addWidget(self.software)
         vbox.addWidget(self.stack)
         
         self.ser = None
@@ -508,7 +536,6 @@ class Logger(QWidget):
                     title_start = k
                 elif title_start is not None and \
                      ' by ' in self.input[k]:
-                    self.loggerinfo.setSoftware(self.input[k])
                     title_mid = k
                 elif title_start is not None and \
                      self.input[k][:20] == 20*'-':
@@ -523,12 +550,7 @@ class Logger(QWidget):
                         s += l
                     self.logo.setText(s)
                     title_start = title_mid - 1
-                s = ''
-                for l in self.input[title_start + 1:title_end]:
-                    if len(s) > 0:
-                        s += '\n'
-                    s += l
-                self.software.setText(s)
+                self.softwareinfo.set(self.input[title_start + 1:title_end])
                 self.input = []
                 self.read_state += 1
 
