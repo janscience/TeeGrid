@@ -204,8 +204,11 @@ class LoggerInfo(Interactor):
         self.box = QGridLayout(self)
         title = QLabel('<b>Logger info</b>', self)
         self.box.addWidget(title, 0, 0, 1, 2)
-        self.start_get = ''
-        self.end_get = ''
+        self.controller_start_get = ''
+        self.controller_end_get = ''
+        self.psram_start_get = ''
+        self.psram_end_get = ''
+        self.row = 1
 
     def setup(self, menu):
         for mk in menu:
@@ -215,28 +218,49 @@ class LoggerInfo(Interactor):
                 submenu = menu_item[2]
                 for k in submenu:
                     if 'teensy info' in k.lower():
-                        self.start_get = f'{key}\n{submenu[k][0]}\n'
-                        self.end_get = 'q\n'
+                        self.controller_start_get = f'{key}\n{submenu[k][0]}\n'
+                        self.controller_end_get = 'q\n'
+                        submenu.pop(k)
+                        break
+                for k in submenu:
+                    if 'psram memory info' in k.lower():
+                        self.psram_start_get = f'{key}\n{submenu[k][0]}\n'
+                        self.psram_end_get = 'q\n'
                         submenu.pop(k)
                         break
                 break
 
     def start(self):
-        self.sigReadRequest.emit(self, self.start_get, self.end_get)
+        self.row = 1
+        self.sigReadRequest.emit(self, self.controller_start_get,
+                                 self.controller_end_get)
+        self.sigReadRequest.emit(self, self.psram_start_get,
+                                 self.psram_end_get)
 
     def read(self, stream):
-        r = 1
+        r = 0
+        psram = False
         for s in stream:
+            if r > 0 and len(s.strip()) == 0:
+                break
+            if 'psram' in s.lower():
+                psram = True
             x = s.split(':')
             if len(x) < 2 or len(x[1].strip()) == 0:
                 continue
-            if r > 1 and len(s.strip()) == 0:
-                break
-            label = QLabel(x[0].strip(), self)
-            self.box.addWidget(label, r, 0)
-            value = QLabel('<b>' + ':'.join(x[1:]).strip() + '</b>', self)
-            self.box.addWidget(value, r, 1)
             r += 1
+            label = x[0].strip()
+            value = ':'.join(x[1:]).strip()
+            if psram:
+                if label.lower() == 'size':
+                    label = 'PSRAM size'
+                else:
+                    continue
+            labelw = QLabel(label, self)
+            valuew = QLabel('<b>' + value + '</b>', self)
+            self.box.addWidget(labelw, self.row, 0)
+            self.box.addWidget(valuew,self.row, 1)
+            self.row += 1
 
                 
 class Logger(QWidget):
