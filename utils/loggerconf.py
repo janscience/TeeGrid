@@ -18,6 +18,7 @@ except ImportError:
     
 import sys
 import queue
+from abc import ABC, abstractmethod
 try:
     from PyQt5.QtCore import Signal
 except ImportError:
@@ -96,10 +97,21 @@ class ScanLogger(QLabel):
                                      serial_numbers[0])
 
 
-class RTClock(QWidget):
+class InteractorMeta(type(ABC), type(QWidget)):
+    # this class is needed to make multiple inheritance with ABC possible...
+    pass
+
+class Interactor(ABC, QWidget, metaclass=InteractorMeta):
 
     sigReadRequest = Signal(object, str, str)
     sigWriteRequest = Signal(str, str, str)
+
+    @abstractmethod
+    def read(self, stream):
+        pass
+
+
+class RTClock(Interactor, QWidget):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -141,7 +153,7 @@ class RTClock(QWidget):
             self.set_time()
         else:            
             self.is_set += 1
-            if self.is_set == 10:
+            if self.is_set == 50:
                 self.set_state = 1
                 self.set_time()
             else:
@@ -160,7 +172,7 @@ class RTClock(QWidget):
             self.timer.stop()
             self.prev_time = QDateTime.currentDateTime().toString(Qt.ISODate)
             self.set_state = 2
-            self.timer.start(1)
+            self.timer.setInterval(1)
         elif self.set_state == 2:
             time = QDateTime.currentDateTime().toString(Qt.ISODate)
             if time != self.prev_time:
@@ -168,7 +180,7 @@ class RTClock(QWidget):
                 self.sigWriteRequest.emit(time, self.start_set, self.end_set)
                 self.set_state = 0
                 self.prev_time = None
-                self.timer.start(200)
+                self.timer.setInterval(50)
                 
 
 class Logger(QWidget):
