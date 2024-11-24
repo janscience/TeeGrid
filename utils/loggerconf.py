@@ -27,7 +27,7 @@ from PyQt5.QtCore import Qt, QTimer, QDateTime
 from PyQt5.QtGui import QKeySequence, QFont
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
 from PyQt5.QtWidgets import QStackedWidget, QLabel
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QGridLayout
 from PyQt5.QtWidgets import QAction
 
 
@@ -107,6 +107,14 @@ class Interactor(ABC, QWidget, metaclass=InteractorMeta):
     sigWriteRequest = Signal(str, str, str)
 
     @abstractmethod
+    def setup(self, menu):
+        pass
+
+    @abstractmethod
+    def start(self):
+        pass
+
+    @abstractmethod
     def read(self, stream):
         pass
 
@@ -130,15 +138,23 @@ class RTClock(Interactor):
         self.prev_time = None
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.get_time)
-
-    def setup(self, key, menu):
-        for k in menu:
-            if 'print' in k.lower():
-                self.start_get = f'{key}\n{menu[k][0]}\n'
-                self.end_get = 'q\n'
-            elif 'set' in k.lower():
-                self.start_set = f'{key}\n{menu[k][0]}\n'
-                self.end_set = 'q\n'
+    
+    def setup(self, menu):
+        for mk in menu:
+            menu_item = menu[mk]
+            if 'date & time' in mk.lower():
+                datetime = mk
+                key = menu_item[0]
+                submenu = menu_item[2]
+                for k in submenu:
+                    if 'print' in k.lower():
+                        self.start_get = f'{key}\n{submenu[k][0]}\n'
+                        self.end_get = 'q\n'
+                    elif 'set' in k.lower():
+                        self.start_set = f'{key}\n{submenu[k][0]}\n'
+                        self.end_set = 'q\n'
+                menu.pop(datetime)
+                break
 
     def start(self):
         self.is_set = 0
@@ -181,13 +197,54 @@ class RTClock(Interactor):
                 self.timer.setInterval(50)
                 
 
+class LoggerInfo(Interactor):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.box = QGridLayout(self)
+        title = QLabel('<b>Logger info</b>', self)
+        self.box.addWidget(title, 0, 0, 1, 2)
+        self.start_get = ''
+        self.end_get = ''
+
+    def setup(self, menu):
+        for mk in menu:
+            menu_item = menu[mk]
+            if 'diagnostic' in mk.lower():
+                key = menu_item[0]
+                submenu = menu_item[2]
+                for k in submenu:
+                    if 'teensy info' in k.lower():
+                        self.start_get = f'{key}\n{submenu[k][0]}\n'
+                        self.end_get = 'q\n'
+                        submenu.pop(k)
+                        break
+                break
+
+    def start(self):
+        self.sigReadRequest.emit(self, self.start_get, self.end_get)
+
+    def read(self, stream):
+        r = 1
+        for s in stream:
+            x = s.split(':')
+            if len(x) < 2 or len(x[1].strip()) == 0:
+                continue
+            if r > 1 and len(s.strip()) == 0:
+                break
+            label = QLabel(x[0].strip(), self)
+            self.box.addWidget(label, r, 0)
+            value = QLabel('<b>' + ':'.join(x[1:]).strip() + '</b>', self)
+            self.box.addWidget(value, r, 1)
+            r += 1
+
+                
 class Logger(QWidget):
 
     sigLoggerDisconnected = Signal()
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.vbox = QVBoxLayout(self)
         self.title = QLabel(self)
         self.title.setText('Logger available')
         self.logo = QLabel(self)
@@ -197,26 +254,36 @@ class Logger(QWidget):
         self.rtclock = RTClock(self)
         self.rtclock.sigReadRequest.connect(self.read_request)
         self.rtclock.sigWriteRequest.connect(self.write_request)
-        self.tabs = QTabWidget(self)
-        self.tabs.setDocumentMode(True) # ?
-        self.tabs.setMovable(False)
-        self.tabs.setTabBarAutoHide(False)
-        self.tabs.setTabsClosable(False)
         self.conf = QWidget(self)
         self.conf_vbox = QVBoxLayout(self.conf)
         self.tools = QWidget(self)
         self.tools_vbox = QVBoxLayout(self.tools)
-        self.tabs.addTab(self.conf, 'Configuration')
-        self.tabs.addTab(self.tools, 'Tools')
+        tabs = QTabWidget(self)
+        tabs.setDocumentMode(True) # ?
+        tabs.setMovable(False)
+        tabs.setTabBarAutoHide(False)
+        tabs.setTabsClosable(False)
+        tabs.addTab(self.conf, 'Configuration')
+        tabs.addTab(self.tools, 'Tools')
+        self.loggerinfo = LoggerInfo(self)
+        self.loggerinfo.sigReadRequest.connect(self.read_request)
+        iboxw = QWidget(self)
+        ibox = QVBoxLayout(iboxw)
+        ibox.addWidget(self.loggerinfo)
+        self.boxw = QWidget(self)
+        self.box = QHBoxLayout(self.boxw)
+        self.box.addWidget(tabs)
+        self.box.addWidget(iboxw)
         self.stack = QStackedWidget(self)
         self.stack.addWidget(self.msg)
-        self.stack.addWidget(self.tabs)
+        self.stack.addWidget(self.boxw)
         self.stack.setCurrentWidget(self.msg)
-        self.vbox.addWidget(self.title)
-        self.vbox.addWidget(self.logo)
-        self.vbox.addWidget(self.software)
-        self.vbox.addWidget(self.rtclock)
-        self.vbox.addWidget(self.stack)
+        vbox = QVBoxLayout(self)
+        vbox.addWidget(self.title)
+        vbox.addWidget(self.logo)
+        vbox.addWidget(self.software)
+        vbox.addWidget(self.rtclock)
+        vbox.addWidget(self.stack)
         
         self.ser = None
         self.read_timer = QTimer(self)
@@ -331,7 +398,7 @@ class Logger(QWidget):
             if len(self.menu) > 0:
                 self.menu_iter = iter(self.menu.keys())
                 self.read_state += 1
-                self.stack.setCurrentWidget(self.tabs)
+                self.stack.setCurrentWidget(self.boxw)
 
     def parse_submenu(self):
         if self.read_state == 2:
@@ -364,14 +431,12 @@ class Logger(QWidget):
         # init menu:
         if 'Help' in self.menu:
             self.menu.pop('Help')
-        datetime = None
+        self.rtclock.setup(self.menu)
+        self.loggerinfo.setup(self.menu)
         for mk in self.menu:
             menu = self.menu[mk]
             add_title = True
-            if 'date & time' in mk.lower():
-                datetime = mk
-                self.rtclock.setup(menu[0], menu[2])
-            elif menu[1]:
+            if menu[1]:
                 for sk in menu[2]:
                     if menu[2][sk][1]:
                         if add_title:
@@ -383,9 +448,8 @@ class Logger(QWidget):
                             self.conf_vbox.addWidget(QLabel('<b>' + mk + '</b>', self))
                             add_title = False
                         self.conf_vbox.addWidget(QLabel(sk + ': ' + menu[2][sk][2], self))
-        if datetime is not None:
-            self.menu.pop(datetime)
-            self.rtclock.start()
+        self.loggerinfo.start()
+        self.rtclock.start()
             
     def parse_request_stack(self):
         if self.read_state == 10:
