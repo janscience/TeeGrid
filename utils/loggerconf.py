@@ -110,6 +110,50 @@ class Interactor(ABC, QFrame, metaclass=InteractorMeta):
     def setup(self, menu):
         pass
 
+    def retrieve(self, key, menu):
+        
+        def find(keys, menu, ids):
+            found = False
+            for mk in menu:
+                if keys[0] in mk.lower():
+                    found = True
+                    menu_item = menu[mk]
+                    ids.append(menu_item[0])
+                    submenu = menu_item[2]
+                    if len(keys) > 1:
+                        if menu_item[1] and find(keys[1:], submenu, ids):
+                            if len(submenu) == 0:
+                                menu.pop(mk)
+                            return True
+                    else:
+                        menu.pop(mk)
+                        return True
+                    break
+            if not found:
+                for mk in menu:
+                    menu_item = menu[mk]
+                    ids.append(menu_item[0])
+                    submenu = menu_item[2]
+                    if menu_item[1] and find(keys, submenu, ids):
+                        if len(submenu) == 0:
+                            menu.pop(mk)
+                        return True
+                    ids.pop()
+            return False
+
+        keys = [k.strip() for k in key.split('>') if len(k.strip()) > 0]
+        ids = []
+        if find(keys, menu, ids):
+            start = ''
+            end = ''
+            for i in ids:
+                start += f'{i}\n'
+                end += 'q\n'
+            return start, end[:-2]
+        else:
+            print(key, 'not found')
+            return None, None
+
     @abstractmethod
     def start(self):
         pass
@@ -140,20 +184,10 @@ class RTClock(Interactor):
         self.timer.timeout.connect(self.get_time)
     
     def setup(self, menu):
-        for mk in menu:
-            menu_item = menu[mk]
-            if 'date & time' in mk.lower():
-                key = menu_item[0]
-                submenu = menu_item[2]
-                for k in submenu:
-                    if 'print' in k.lower():
-                        self.start_get = f'{key}\n{submenu[k][0]}\n'
-                        self.end_get = 'q\n'
-                    elif 'set' in k.lower():
-                        self.start_set = f'{key}\n{submenu[k][0]}\n'
-                        self.end_set = 'q\n'
-                menu.pop(mk)
-                break
+        self.start_get, self.end_get = \
+            self.retrieve('date & time>print', menu)
+        self.start_set, self.end_set = \
+            self.retrieve('date & time>set', menu)
 
     def start(self):
         self.is_set = 0
@@ -224,25 +258,11 @@ class LoggerInfo(Interactor):
 
     def setup(self, menu):
         self.rtclock.setup(menu)
-        for mk in menu:
-            menu_item = menu[mk]
-            if 'diagnostic' in mk.lower():
-                key = menu_item[0]
-                submenu = menu_item[2]
-                for k in submenu:
-                    if 'teensy info' in k.lower():
-                        self.controller_start_get = f'{key}\n{submenu[k][0]}\n'
-                        self.controller_end_get = 'q\n'
-                        submenu.pop(k)
-                        break
-                for k in submenu:
-                    if 'psram memory info' in k.lower():
-                        self.psram_start_get = f'{key}\n{submenu[k][0]}\n'
-                        self.psram_end_get = 'q\n'
-                        submenu.pop(k)
-                        break
-                break
-
+        self.controller_start_get, self.controller_end_get = \
+            self.retrieve('teensy info', menu)
+        self.psram_start_get, self.psram_end_get = \
+            self.retrieve('psram memory info', menu)
+        
     def start(self):
         self.row = 1
         self.box.addWidget(QLabel('device', self), self.row, 0)
@@ -298,30 +318,12 @@ class SDCardInfo(Interactor):
         self.row = 1
 
     def setup(self, menu):
-        for mk in menu:
-            menu_item = menu[mk]
-            if 'sd card' in mk.lower():
-                key = menu_item[0]
-                submenu = menu_item[2]
-                for k in submenu:
-                    if 'sd card info' in k.lower():
-                        self.sdcard_start_get = f'{key}\n{submenu[k][0]}\n'
-                        self.sdcard_end_get = 'q\n'
-                        submenu.pop(k)
-                        break
-                for k in submenu:
-                    if 'list files in root' in k.lower():
-                        self.root_start_get = f'{key}\n{submenu[k][0]}\n'
-                        self.root_end_get = 'q\n'
-                        submenu.pop(k)
-                        break
-                for k in submenu:
-                    if 'list all recordings' in k.lower():
-                        self.recordings_start_get = f'{key}\n{submenu[k][0]}\n'
-                        self.recordings_end_get = 'q\n'
-                        submenu.pop(k)
-                        break
-                break
+        self.sdcard_start_get, self.sdcard_end_get = \
+            self.retrieve('sd card>sd card info', menu)
+        self.root_start_get, self.root_end_get = \
+            self.retrieve('sd card>list files in root', menu)
+        self.recordings_start_get, self.recordings_end_get = \
+            self.retrieve('sd card>list all recordings', menu)
 
     def start(self):
         self.row = 1
