@@ -314,7 +314,9 @@ class SDCardInfo(Interactor):
         self.recordings_start_get = ''
         self.recordings_end_get = ''
         self.nrecordings = 0
+        self.srecordings = None
         self.nroot = 0
+        self.sroot = 0
         self.row = 1
 
     def setup(self, menu):
@@ -335,20 +337,23 @@ class SDCardInfo(Interactor):
                                  self.sdcard_end_get, 'sdcard')
 
     def read(self, stream, ident):
+
+        def num_files(stream):
+            for s in stream:
+                if 'does not exist' in s:
+                    return 0
+                if 'file' in s and 'found' in s and s[:2] != 'No':
+                    nf = int(s[:s.find(' file')])
+                    ns = None
+                    if '(' in s and 'MB)' in s:
+                        ns = s[s.find('(') + 1:s.find(')')]
+                    return nf, ns
+            return 0, None
+                
         if ident == 'recordings':
-            for s in stream:
-                if 'does not exist' in s:
-                    break
-                if 'file' in s and 'found' in s and s[:2] != 'No':
-                    self.nrecordings = int(s[:s.find(' file')])
-                    break
+            self.nrecordings, self.srecordings = num_files(stream)
         elif ident == 'root':
-            for s in stream:
-                if 'does not exist' in s:
-                    break
-                if 'file' in s and 'found' in s and s[:2] != 'No':
-                    self.nroot = int(s[:s.find(' file')])
-                    break
+            self.nroot, self.sroot = num_files(stream)
         elif ident == 'sdcard':
             r = 0
             items = []
@@ -384,18 +389,20 @@ class SDCardInfo(Interactor):
                                 self.box.addWidget(valuew, self.row, 1)
                                 self.row += 1
                             self.box.addWidget(QLabel('Recorded files', self), self.row, 0)
+                            value = '<b>none</b>'
                             if self.nrecordings > 0:
-                                valuew = QLabel(f'<b>{self.nrecordings}</b>', self)
-                            else:
-                                valuew = QLabel('<b>none</b>', self)
-                            self.box.addWidget(valuew, self.row, 1)
+                                value = f'<b>{self.nrecordings}</b>'
+                            if self.srecordings is not None:
+                                value += f' <b>({self.srecordings})</b>'
+                            self.box.addWidget(QLabel(value, self), self.row, 1)
                             self.row += 1
                             self.box.addWidget(QLabel('Root files', self), self.row, 0)
+                            value = '<b>none</b>'
                             if self.nroot > 0:
-                                valuew = QLabel(f'<b>{self.nroot}</b>', self)
-                            else:
-                                valuew = QLabel('<b>none</b>', self)
-                            self.box.addWidget(valuew, self.row, 1)
+                                value = f'<b>{self.nroot}</b>'
+                            if self.sroot is not None:
+                                value += f' <b>({self.sroot})</b>'
+                            self.box.addWidget(QLabel(value, self), self.row, 1)
                             self.row += 1
 
                 
