@@ -245,6 +245,7 @@ class LoggerInfo(Interactor):
         self.device = None
         self.model = None
         self.serial_number = None
+        self.software = None
         self.controller_start_get = ''
         self.controller_end_get = ''
         self.psram_start_get = ''
@@ -256,18 +257,31 @@ class LoggerInfo(Interactor):
         self.model = model
         self.serial_number = serial_number
 
+    def setSoftware(self, software):
+        self.software = software
+
     def setup(self, menu):
         self.rtclock.setup(menu)
         self.controller_start_get, self.controller_end_get = \
             self.retrieve('teensy info', menu)
         self.psram_start_get, self.psram_end_get = \
             self.retrieve('psram memory info', menu)
+
+    def add(self, label, value):
+        self.box.addWidget(QLabel(label, self), self.row, 0)
+        self.box.addWidget(QLabel('<b>' + value + '</b>', self), self.row, 1)
+        self.row += 1
         
     def start(self):
         self.row = 1
-        self.box.addWidget(QLabel('device', self), self.row, 0)
-        self.box.addWidget(QLabel('<b>' + self.device + '</b>', self),self.row, 1)
-        self.row += 1
+        self.add('device', self.device)
+        if self.software is not None:
+            i = self.software.find(' by ')
+            if i < 0:
+                i = len(self.software)
+            self.add('software', self.software[:i])
+            if i < len(self.software):
+                self.add('author', self.software[i + 4:])
         self.sigReadRequest.emit(self, self.controller_start_get,
                                  self.controller_end_get, 'controller')
         self.sigReadRequest.emit(self, self.psram_start_get,
@@ -289,9 +303,7 @@ class LoggerInfo(Interactor):
                     label = 'PSRAM size'
                 else:
                     continue
-            self.box.addWidget(QLabel(label, self), self.row, 0)
-            self.box.addWidget(QLabel('<b>' + value + '</b>', self),self.row, 1)
-            self.row += 1
+            self.add(label, value)
         if ident == 'psram':
             self.box.addWidget(QLabel('Time', self), self.row, 0)
             self.box.addWidget(self.rtclock, self.row, 1)
@@ -326,6 +338,11 @@ class SDCardInfo(Interactor):
             self.retrieve('sd card>list files in root', menu)
         self.recordings_start_get, self.recordings_end_get = \
             self.retrieve('sd card>list all recordings', menu)
+
+    def add(self, label, value):
+        self.box.addWidget(QLabel(label, self), self.row, 0)
+        self.box.addWidget(QLabel('<b>' + value + '</b>', self), self.row, 1)
+        self.row += 1
 
     def start(self):
         self.row = 1
@@ -375,35 +392,24 @@ class SDCardInfo(Interactor):
             for keys in ['available', 'capacity', 'serial', 'system', 'type']:
                 for i in range(len(items)):
                     if keys in items[i][0].lower():
-                        labelw = QLabel(items[i][0], self)
-                        valuew = QLabel('<b>' + items[i][1] + '</b>', self)
-                        self.box.addWidget(labelw, self.row, 0)
-                        self.box.addWidget(valuew, self.row, 1)
-                        self.row += 1
+                        self.add(items[i][0], items[i][1])
                         if keys == 'capacity':
                             if available is not None:
                                 a = float(available.replace(' GB', ''))
                                 c = float(items[i][1].replace(' GB', ''))
-                                valuew = QLabel(f'<b>{100 - 100*a/c:.0f} %</b>', self)
-                                self.box.addWidget(QLabel('Used', self), self.row, 0)
-                                self.box.addWidget(valuew, self.row, 1)
-                                self.row += 1
-                            self.box.addWidget(QLabel('Recorded files', self), self.row, 0)
-                            value = '<b>none</b>'
+                                self.add('Used', f'{100 - 100*a/c:.0f} %')
+                            value = 'none'
                             if self.nrecordings > 0:
-                                value = f'<b>{self.nrecordings}</b>'
+                                value = f'{self.nrecordings}'
                             if self.srecordings is not None:
-                                value += f' <b>({self.srecordings})</b>'
-                            self.box.addWidget(QLabel(value, self), self.row, 1)
-                            self.row += 1
-                            self.box.addWidget(QLabel('Root files', self), self.row, 0)
-                            value = '<b>none</b>'
+                                value += f' ({self.srecordings})'
+                            self.add('Recorded files', value)
+                            value = 'none'
                             if self.nroot > 0:
-                                value = f'<b>{self.nroot}</b>'
+                                value = f'{self.nroot}'
                             if self.sroot is not None:
-                                value += f' <b>({self.sroot})</b>'
-                            self.box.addWidget(QLabel(value, self), self.row, 1)
-                            self.row += 1
+                                value += f' ({self.sroot})'
+                            self.add('Root files', value)
 
                 
 class Logger(QWidget):
@@ -502,6 +508,7 @@ class Logger(QWidget):
                     title_start = k
                 elif title_start is not None and \
                      ' by ' in self.input[k]:
+                    self.loggerinfo.setSoftware(self.input[k])
                     title_mid = k
                 elif title_start is not None and \
                      self.input[k][:20] == 20*'-':
@@ -515,7 +522,7 @@ class Logger(QWidget):
                             s += '\n'
                         s += l
                     self.logo.setText(s)
-                    title_start = title_mid
+                    title_start = title_mid - 1
                 s = ''
                 for l in self.input[title_start + 1:title_end]:
                     if len(s) > 0:
