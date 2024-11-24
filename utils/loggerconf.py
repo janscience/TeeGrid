@@ -27,7 +27,7 @@ from PyQt5.QtCore import Qt, QTimer, QDateTime
 from PyQt5.QtGui import QKeySequence, QFont
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
 from PyQt5.QtWidgets import QStackedWidget, QLabel
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QGridLayout
+from PyQt5.QtWidgets import QWidget, QFrame, QHBoxLayout, QVBoxLayout, QGridLayout
 from PyQt5.QtWidgets import QAction
 
 
@@ -97,11 +97,11 @@ class ScanLogger(QLabel):
                                      serial_numbers[0])
 
 
-class InteractorMeta(type(ABC), type(QWidget)):
+class InteractorMeta(type(ABC), type(QFrame)):
     # this class is needed to make multiple inheritance with ABC possible...
     pass
 
-class Interactor(ABC, QWidget, metaclass=InteractorMeta):
+class Interactor(ABC, QFrame, metaclass=InteractorMeta):
 
     sigReadRequest = Signal(object, str, str)
     sigWriteRequest = Signal(str, str, str)
@@ -123,10 +123,10 @@ class RTClock(Interactor):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.box = QHBoxLayout(self)
         self.time = QLabel(self)
         self.state = QLabel(self)
-        self.box.addWidget(QLabel('Logger time:', self))
+        self.box = QHBoxLayout(self)
+        self.box.setContentsMargins(0, 0, 0, 0)
         self.box.addWidget(self.time)
         self.box.addWidget(self.state)
         self.is_set = 0
@@ -143,7 +143,6 @@ class RTClock(Interactor):
         for mk in menu:
             menu_item = menu[mk]
             if 'date & time' in mk.lower():
-                datetime = mk
                 key = menu_item[0]
                 submenu = menu_item[2]
                 for k in submenu:
@@ -153,7 +152,7 @@ class RTClock(Interactor):
                     elif 'set' in k.lower():
                         self.start_set = f'{key}\n{submenu[k][0]}\n'
                         self.end_set = 'q\n'
-                menu.pop(datetime)
+                menu.pop(mk)
                 break
 
     def start(self):
@@ -180,7 +179,7 @@ class RTClock(Interactor):
             if 'time' in s.lower():
                 time = ':'.join(s.strip().split(':')[1:])
                 if len(time.strip()) == 19:
-                    self.time.setText(time)
+                    self.time.setText('<b>' + time + '</b>')
                     break
 
     def set_time(self):
@@ -201,6 +200,8 @@ class LoggerInfo(Interactor):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        super().setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.rtclock = RTClock(self)
         self.box = QGridLayout(self)
         title = QLabel('<b>Logger info</b>', self)
         self.box.addWidget(title, 0, 0, 1, 2)
@@ -219,6 +220,7 @@ class LoggerInfo(Interactor):
         self.serial_number = serial_number
 
     def setup(self, menu):
+        self.rtclock.setup(menu)
         for mk in menu:
             menu_item = menu[mk]
             if 'diagnostic' in mk.lower():
@@ -270,12 +272,18 @@ class LoggerInfo(Interactor):
             self.box.addWidget(QLabel(label, self), self.row, 0)
             self.box.addWidget(QLabel('<b>' + value + '</b>', self),self.row, 1)
             self.row += 1
+        if psram:
+            self.box.addWidget(QLabel('Time', self), self.row, 0)
+            self.box.addWidget(self.rtclock, self.row, 1)
+            self.row += 1
+            self.rtclock.start()
 
 
 class SDCardInfo(Interactor):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        super().setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.box = QGridLayout(self)
         title = QLabel('<b>SD card</b>', self)
         self.box.addWidget(title, 0, 0, 1, 2)
@@ -358,9 +366,6 @@ class Logger(QWidget):
         self.logo.setFont(QFont('monospace'))
         self.software = QLabel(self)
         self.msg = QLabel(self)
-        self.rtclock = RTClock(self)
-        self.rtclock.sigReadRequest.connect(self.read_request)
-        self.rtclock.sigWriteRequest.connect(self.write_request)
         self.conf = QWidget(self)
         self.conf_vbox = QVBoxLayout(self.conf)
         self.tools = QWidget(self)
@@ -374,6 +379,8 @@ class Logger(QWidget):
         tabs.addTab(self.tools, 'Tools')
         self.loggerinfo = LoggerInfo(self)
         self.loggerinfo.sigReadRequest.connect(self.read_request)
+        self.loggerinfo.rtclock.sigReadRequest.connect(self.read_request)
+        self.loggerinfo.rtclock.sigWriteRequest.connect(self.write_request)
         self.sdcardinfo = SDCardInfo(self)
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
         iboxw = QWidget(self)
@@ -391,7 +398,6 @@ class Logger(QWidget):
         vbox = QVBoxLayout(self)
         vbox.addWidget(self.logo)
         vbox.addWidget(self.software)
-        vbox.addWidget(self.rtclock)
         vbox.addWidget(self.stack)
         
         self.ser = None
@@ -541,7 +547,6 @@ class Logger(QWidget):
         # init menu:
         if 'Help' in self.menu:
             self.menu.pop('Help')
-        self.rtclock.setup(self.menu)
         self.loggerinfo.setup(self.menu)
         self.sdcardinfo.setup(self.menu)
         for mk in self.menu:
@@ -559,9 +564,8 @@ class Logger(QWidget):
                             self.conf_vbox.addWidget(QLabel('<b>' + mk + '</b>', self))
                             add_title = False
                         self.conf_vbox.addWidget(QLabel(sk + ': ' + menu[2][sk][2], self))
-        self.loggerinfo.start()
         self.sdcardinfo.start()
-        self.rtclock.start()
+        self.loggerinfo.start()
             
     def parse_request_stack(self):
         if self.read_state == 10:
@@ -651,7 +655,7 @@ class Logger(QWidget):
                 self.parse_request_stack()
         except (OSError, serial.serialutil.SerialException):
             self.read_timer.stop()
-            self.rtclock.stop()
+            self.loggerinfo.rtclock.stop()
             self.ser.close()
             self.sigLoggerDisconnected.emit()
         
