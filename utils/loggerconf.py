@@ -103,7 +103,7 @@ class InteractorMeta(type(ABC), type(QFrame)):
 
 class Interactor(ABC, QFrame, metaclass=InteractorMeta):
 
-    sigReadRequest = Signal(object, str, str)
+    sigReadRequest = Signal(object, str, str, str)
     sigWriteRequest = Signal(str, str, str)
 
     @abstractmethod
@@ -115,7 +115,7 @@ class Interactor(ABC, QFrame, metaclass=InteractorMeta):
         pass
 
     @abstractmethod
-    def read(self, stream):
+    def read(self, stream, ident):
         pass
 
 
@@ -172,14 +172,17 @@ class RTClock(Interactor):
                 self.set_state = 1
                 self.set_time()
             else:
-                self.sigReadRequest.emit(self, self.start_get, self.end_get)
+                self.sigReadRequest.emit(self, self.start_get,
+                                         self.end_get, 'rtclock')
 
-    def read(self, stream):
+    def read(self, stream, ident):
+        if ident != 'rtclock':
+            return
         for s in stream:
             if 'time' in s.lower():
                 time = ':'.join(s.strip().split(':')[1:])
                 if len(time.strip()) == 19:
-                    self.time.setText('<b>' + time + '</b>')
+                    self.time.setText('<b>' + time.replace('T', '  ') + '</b>')
                     break
 
     def set_time(self):
@@ -203,7 +206,7 @@ class LoggerInfo(Interactor):
         super().setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.rtclock = RTClock(self)
         self.box = QGridLayout(self)
-        title = QLabel('<b>Logger info</b>', self)
+        title = QLabel('<b>Logger</b>', self)
         self.box.addWidget(title, 0, 0, 1, 2)
         self.device = None
         self.model = None
@@ -246,25 +249,22 @@ class LoggerInfo(Interactor):
         self.box.addWidget(QLabel('<b>' + self.device + '</b>', self),self.row, 1)
         self.row += 1
         self.sigReadRequest.emit(self, self.controller_start_get,
-                                 self.controller_end_get)
+                                 self.controller_end_get, 'controller')
         self.sigReadRequest.emit(self, self.psram_start_get,
-                                 self.psram_end_get)
+                                 self.psram_end_get, 'psram')
 
-    def read(self, stream):
+    def read(self, stream, ident):
         r = 0
-        psram = False
         for s in stream:
             if r > 0 and len(s.strip()) == 0:
                 break
-            if 'psram' in s.lower():
-                psram = True
             x = s.split(':')
             if len(x) < 2 or len(x[1].strip()) == 0:
                 continue
             r += 1
             label = x[0].strip()
             value = ':'.join(x[1:]).strip()
-            if psram:
+            if ident == 'psram':
                 if label.lower() == 'size':
                     label = 'PSRAM size'
                 else:
@@ -272,7 +272,7 @@ class LoggerInfo(Interactor):
             self.box.addWidget(QLabel(label, self), self.row, 0)
             self.box.addWidget(QLabel('<b>' + value + '</b>', self),self.row, 1)
             self.row += 1
-        if psram:
+        if ident == 'psram':
             self.box.addWidget(QLabel('Time', self), self.row, 0)
             self.box.addWidget(self.rtclock, self.row, 1)
             self.row += 1
@@ -293,7 +293,8 @@ class SDCardInfo(Interactor):
         self.root_end_get = ''
         self.recordings_start_get = ''
         self.recordings_end_get = ''
-        self.section = None
+        self.nrecordings = 0
+        self.nroot = 0
         self.row = 1
 
     def setup(self, menu):
@@ -324,22 +325,35 @@ class SDCardInfo(Interactor):
 
     def start(self):
         self.row = 1
-        self.section = 'sdcard'
+        self.sigReadRequest.emit(self, self.recordings_start_get,
+                                 self.recordings_end_get, 'recordings')
+        self.sigReadRequest.emit(self, self.root_start_get,
+                                 self.root_end_get, 'root')
         self.sigReadRequest.emit(self, self.sdcard_start_get,
-                                 self.sdcard_end_get)
-        #self.section = 'root'
-        #self.sigReadRequest.emit(self, self.root_start_get,
-        #                         self.root_end_get)
-        #self.section = 'recordings'
-        #self.sigReadRequest.emit(self, self.recording_start_get,
-        #                         self.recording_end_get)
+                                 self.sdcard_end_get, 'sdcard')
 
-    def read(self, stream):
-        r = 0
-        for s in stream:
-            if r > 0 and len(s.strip()) == 0:
-                break
-            if self.section == 'sdcard':
+    def read(self, stream, ident):
+        if ident == 'recordings':
+            for s in stream:
+                if 'does not exist' in s:
+                    break
+                if 'file' in s and 'found' in s and s[:2] != 'No':
+                    self.nrecordings = int(s[:s.find(' file')])
+                    break
+        elif ident == 'root':
+            for s in stream:
+                if 'does not exist' in s:
+                    break
+                if 'file' in s and 'found' in s and s[:2] != 'No':
+                    self.nroot = int(s[:s.find(' file')])
+                    break
+        elif ident == 'sdcard':
+            r = 0
+            items = []
+            available = None
+            for s in stream:
+                if r > 0 and len(s.strip()) == 0:
+                    break
                 x = s.split(':')
                 if len(x) < 2 or len(x[1].strip()) == 0:
                     continue
@@ -348,12 +362,39 @@ class SDCardInfo(Interactor):
                 if not label.lower() in ['serial number', 'type', 'file system', 'capacity', 'available']:
                     continue
                 value = ':'.join(x[1:]).strip()
-                labelw = QLabel(label, self)
-                valuew = QLabel('<b>' + value + '</b>', self)
-                self.box.addWidget(labelw, self.row, 0)
-                self.box.addWidget(valuew,self.row, 1)
-                self.row += 1
-        self.section = None
+                if label.lower() == 'available':
+                    available = value
+                items.append([label, value])
+            for keys in ['available', 'capacity', 'serial', 'system', 'type']:
+                for i in range(len(items)):
+                    if keys in items[i][0].lower():
+                        labelw = QLabel(items[i][0], self)
+                        valuew = QLabel('<b>' + items[i][1] + '</b>', self)
+                        self.box.addWidget(labelw, self.row, 0)
+                        self.box.addWidget(valuew, self.row, 1)
+                        self.row += 1
+                        if keys == 'capacity':
+                            if available is not None:
+                                a = float(available.replace(' GB', ''))
+                                c = float(items[i][1].replace(' GB', ''))
+                                valuew = QLabel(f'<b>{100 - 100*a/c:.0f} %</b>', self)
+                                self.box.addWidget(QLabel('Used', self), self.row, 0)
+                                self.box.addWidget(valuew, self.row, 1)
+                                self.row += 1
+                            self.box.addWidget(QLabel('Recorded files', self), self.row, 0)
+                            if self.nrecordings > 0:
+                                valuew = QLabel(f'<b>{self.nrecordings}</b>', self)
+                            else:
+                                valuew = QLabel('<b>none</b>', self)
+                            self.box.addWidget(valuew, self.row, 1)
+                            self.row += 1
+                            self.box.addWidget(QLabel('Root files', self), self.row, 0)
+                            if self.nroot > 0:
+                                valuew = QLabel(f'<b>{self.nroot}</b>', self)
+                            else:
+                                valuew = QLabel('<b>none</b>', self)
+                            self.box.addWidget(valuew, self.row, 1)
+                            self.row += 1
 
                 
 class Logger(QWidget):
@@ -408,6 +449,7 @@ class Logger(QWidget):
         self.request_stack = queue.Queue(0)
         self.request_start = None
         self.request_end = None
+        self.request_ident = None
         self.target = None
 
         self.menu = {}
@@ -576,14 +618,15 @@ class Logger(QWidget):
             self.target = request[0]
             self.request_start = request[1]
             self.request_end = request[2]
-            self.read_state = request[3]
+            self.request_ident = request[3]
+            self.read_state = request[4]
 
-    def read_request(self, target, start, end):
+    def read_request(self, target, start, end, ident=''):
         self.input = []
         i = start[:-1].rfind('\n')
         if i > 0:
             start = [start[:i + 1], start[i + 1:]]
-        self.request_stack.put([target, start, end, 20])
+        self.request_stack.put([target, start, end, ident, 20])
 
     def parse_read_request(self):
         if self.read_state == 20:
@@ -598,7 +641,7 @@ class Logger(QWidget):
             self.read_state += 1
         elif self.read_state == 22:
             if self.target is not None:
-                self.target.read(self.input)
+                self.target.read(self.input, self.request_ident)
                 self.target = None
             self.input = []
             self.ser.write(self.request_end.encode('latin1'))
@@ -606,7 +649,7 @@ class Logger(QWidget):
             self.read_state = 10
 
     def write_request(self, msg, start, end):
-        self.request_stack.put([msg, start, end, 30])
+        self.request_stack.put([msg, start, end, None, 30])
 
     def parse_write_request(self):
         if self.read_state == 30:
