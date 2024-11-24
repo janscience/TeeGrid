@@ -111,7 +111,7 @@ class Interactor(ABC, QWidget, metaclass=InteractorMeta):
         pass
 
 
-class RTClock(Interactor, QWidget):
+class RTClock(Interactor):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -169,14 +169,12 @@ class RTClock(Interactor, QWidget):
 
     def set_time(self):
         if self.set_state == 1:
-            self.timer.stop()
             self.prev_time = QDateTime.currentDateTime().toString(Qt.ISODate)
             self.set_state = 2
             self.timer.setInterval(1)
         elif self.set_state == 2:
             time = QDateTime.currentDateTime().toString(Qt.ISODate)
             if time != self.prev_time:
-                self.timer.stop()
                 self.sigWriteRequest.emit(time, self.start_set, self.end_set)
                 self.set_state = 0
                 self.prev_time = None
