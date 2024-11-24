@@ -17,6 +17,7 @@ except ImportError:
     has_usb = False
     
 import sys
+import queue
 try:
     from PyQt5.QtCore import Signal
 except ImportError:
@@ -212,9 +213,10 @@ class Logger(QWidget):
         self.read_timer.timeout.connect(self.read)
         self.read_state = 0
         self.input = []
-        self.target = None
+        self.request_stack = queue.Queue(0)
         self.request_start = None
         self.request_end = None
+        self.target = None
 
         self.menu = {}
         self.menu_iter = iter([])
@@ -331,7 +333,7 @@ class Logger(QWidget):
             except StopIteration:
                 self.init_menu()
                 self.input = []
-                self.read_state = 5
+                self.read_state = 10
         elif self.read_state == 3:
             # request submenu:
             self.input = []
@@ -374,57 +376,64 @@ class Logger(QWidget):
         if datetime is not None:
             self.menu.pop(datetime)
             self.rtclock.start()
+            
+    def parse_request_stack(self):
+        if self.read_state == 10:
+            if self.request_stack.empty():
+                return
+            self.input = []
+            request = self.request_stack.get()
+            self.target = request[0]
+            self.request_start = request[1]
+            self.request_end = request[2]
+            self.read_state = request[3]
 
     def read_request(self, target, start, end):
         self.input = []
-        self.target = target
-        self.request_end = end
         i = start[:-1].rfind('\n')
-        if i < 0:
-            self.request_start = None 
-            self.ser.write(start.encode('latin1'))
-            self.read_state = 7
-        else:
-            self.request_start = start[i + 1:]
-            self.ser.write(start[:i + 1].encode('latin1'))
-            self.read_state = 6
+        if i > 0:
+            start = [start[:i + 1], start[i + 1:]]
+        self.request_stack.put([target, start, end, 20])
 
     def parse_read_request(self):
-        if self.read_state == 6:
-            self.input = []
-            if self.request_start is not None and len(self.request_start) > 0:
-                self.ser.write(self.request_start.encode('latin1'))
-                self.request_start = None
+        if self.read_state == 20:
+            if isinstance(self.request_start, list):
+                self.ser.write(self.request_start[0].encode('latin1'))
+                self.request_start = self.request_start[1]
             self.read_state += 1
-        elif self.read_state == 7:
+        elif self.read_state == 21:
+            self.input = []
+            self.ser.write(self.request_start.encode('latin1'))
+            self.request_start = None
+            self.read_state += 1
+        elif self.read_state == 22:
             if self.target is not None:
                 self.target.read(self.input)
                 self.target = None
             self.input = []
             self.ser.write(self.request_end.encode('latin1'))
             self.request_end = None
-            self.read_state = 5
+            self.read_state = 10
 
     def write_request(self, msg, start, end):
-        self.input = []
-        self.target = msg
-        self.request_start = None 
-        self.request_end = end
-        self.ser.write(start.encode('latin1'))
-        self.read_state = 8
+        self.request_stack.put([msg, start, end, 30])
 
     def parse_write_request(self):
-        if self.read_state == 8:
+        if self.read_state == 30:
+            self.ser.write(self.request_start.encode('latin1'))
+            self.request_start = None
+            self.read_state += 1
+        elif self.read_state == 31:
             self.input = []
             self.ser.write(self.target.encode('latin1'))
             self.ser.write(b'\n')
             self.target = None
             self.read_state += 1
-        elif self.read_state == 9:
+        elif self.read_state == 32:
             self.input = []
             self.ser.write(self.request_end.encode('latin1'))
             self.request_end = None
-            self.read_state = 5
+            self.read_state = 10
 
     def read(self):
         if self.ser is None:
@@ -453,6 +462,7 @@ class Logger(QWidget):
                 self.parse_submenu()
                 self.parse_read_request()
                 self.parse_write_request()
+                self.parse_request_stack()
         except (OSError, serial.serialutil.SerialException):
             self.read_timer.stop()
             self.rtclock.stop()
