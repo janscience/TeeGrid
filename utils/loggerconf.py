@@ -511,6 +511,14 @@ class Logger(QWidget):
         self.input = []
         self.read_state = 0
         self.read_timer.start(10)
+
+    def stop(self):
+        self.read_timer.stop()
+        self.loggerinfo.rtclock.stop()
+        if self.ser is not None:
+            self.ser.close()
+        self.ser = None
+        self.sigLoggerDisconnected.emit()
         
     def parse_halt(self, k):
         s = 'Logger halted\n'
@@ -714,7 +722,7 @@ class Logger(QWidget):
             except (OSError, serial.serialutil.SerialException):
                 print('  FAILED')
                 self.ser = None
-                self.read_timer.stop()
+                self.stop()
                 return
         try:
             if self.ser.in_waiting > 0:
@@ -733,10 +741,7 @@ class Logger(QWidget):
                 self.parse_write_request()
                 self.parse_request_stack()
         except (OSError, serial.serialutil.SerialException):
-            self.read_timer.stop()
-            self.loggerinfo.rtclock.stop()
-            self.ser.close()
-            self.sigLoggerDisconnected.emit()
+            self.stop()
         
 
 class LoggerConf(QMainWindow):
@@ -745,23 +750,27 @@ class LoggerConf(QMainWindow):
         self.setWindowTitle(f'LoggerConf {__version__}')
         self.scanlogger = ScanLogger(self)
         self.scanlogger.sigLoggerFound.connect(self.activate)
-        self.logger = Logger(self)
-        self.logger.sigLoggerDisconnected.connect(self.disconnect)
         self.stack = QStackedWidget(self)
         self.stack.addWidget(self.scanlogger)
-        self.stack.addWidget(self.logger)
         self.stack.setCurrentWidget(self.scanlogger)
         self.setCentralWidget(self.stack)
         quit = QAction('&Quit', self)
         quit.setShortcuts(QKeySequence.Quit)
         quit.triggered.connect(QApplication.quit)
         self.addAction(quit)
+        self.logger = None
 
     def activate(self, device, model, serial_number):
+        self.logger = Logger(self)
+        self.logger.sigLoggerDisconnected.connect(self.disconnect)
         self.logger.activate(device, model, serial_number)
+        self.stack.addWidget(self.logger)
         self.stack.setCurrentWidget(self.logger)
 
     def disconnect(self):
+        self.stack.removeWidget(self.logger)
+        del self.logger
+        self.logger = None
         self.scanlogger.start()
         self.stack.setCurrentWidget(self.scanlogger)
 
