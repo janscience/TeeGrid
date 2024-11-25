@@ -174,10 +174,10 @@ class RTClock(Interactor):
         self.box.addWidget(self.time)
         self.box.addWidget(self.state)
         self.is_set = 0
-        self.start_get = ''
-        self.end_get = ''
-        self.start_set = ''
-        self.end_set = ''
+        self.start_get = None
+        self.end_get = None
+        self.start_set = None
+        self.end_set = None
         self.set_state = 0
         self.prev_time = None
         self.timer = QTimer(self)
@@ -191,7 +191,7 @@ class RTClock(Interactor):
 
     def start(self):
         self.is_set = 0
-        if len(self.start_get) > 0:
+        if self.start_get is not None:
             self.timer.start(50)
 
     def stop(self):
@@ -220,6 +220,10 @@ class RTClock(Interactor):
                     break
 
     def set_time(self):
+        if self.start_set is None:
+                self.set_state = 0
+                self.prev_time = None
+                return
         if self.set_state == 1:
             self.prev_time = QDateTime.currentDateTime().toString(Qt.ISODate)
             self.set_state = 2
@@ -245,10 +249,10 @@ class LoggerInfo(Interactor):
         self.device = None
         self.model = None
         self.serial_number = None
-        self.controller_start_get = ''
-        self.controller_end_get = ''
-        self.psram_start_get = ''
-        self.psram_end_get = ''
+        self.controller_start_get = None
+        self.controller_end_get = None
+        self.psram_start_get = None
+        self.psram_end_get = None
         self.row = 1
 
     def set(self, device, model, serial_number):
@@ -347,12 +351,12 @@ class SDCardInfo(Interactor):
         self.box = QGridLayout(self)
         title = QLabel('<b>SD card</b>', self)
         self.box.addWidget(title, 0, 0, 1, 2)
-        self.sdcard_start_get = ''
-        self.sdcard_end_get = ''
-        self.root_start_get = ''
-        self.root_end_get = ''
-        self.recordings_start_get = ''
-        self.recordings_end_get = ''
+        self.sdcard_start_get = None
+        self.sdcard_end_get = None
+        self.root_start_get = None
+        self.root_end_get = None
+        self.recordings_start_get = None
+        self.recordings_end_get = None
         self.nrecordings = 0
         self.srecordings = None
         self.nroot = 0
@@ -667,6 +671,8 @@ class Logger(QWidget):
 
     def read_request(self, target, start, end, ident=''):
         self.input = []
+        if start is None or end is None:
+            return
         i = start[:-1].rfind('\n')
         if i > 0:
             start = [start[:i + 1], start[i + 1:]]
@@ -693,6 +699,8 @@ class Logger(QWidget):
             self.read_state = 10
 
     def write_request(self, msg, start, end):
+        if start is None or end is None:
+            return
         self.request_stack.put([msg, start, end, None, 30])
 
     def parse_write_request(self):
