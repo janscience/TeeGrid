@@ -17,17 +17,17 @@ except ImportError:
     has_usb = False
     
 import sys
-import queue
 from abc import ABC, abstractmethod
 try:
     from PyQt5.QtCore import Signal
 except ImportError:
     from PyQt5.QtCore import pyqtSignal as Signal
 from PyQt5.QtCore import Qt, QTimer, QDateTime
-from PyQt5.QtGui import QKeySequence, QFont
+from PyQt5.QtGui import QKeySequence, QFont, QPalette, QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
-from PyQt5.QtWidgets import QStackedWidget, QLabel
-from PyQt5.QtWidgets import QWidget, QFrame, QHBoxLayout, QVBoxLayout, QGridLayout
+from PyQt5.QtWidgets import QStackedWidget, QLabel, QScrollArea
+from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout
+from PyQt5.QtWidgets import QWidget, QFrame, QPushButton
 from PyQt5.QtWidgets import QAction
 
 
@@ -96,12 +96,8 @@ class ScanLogger(QLabel):
                                      models[0],
                                      serial_numbers[0])
 
-
-class InteractorMeta(type(ABC), type(QFrame)):
-    # this class is needed to make multiple inheritance with ABC possible...
-    pass
-
-class Interactor(ABC, QFrame, metaclass=InteractorMeta):
+            
+class Interactor(ABC):
 
     sigReadRequest = Signal(object, str, str, str, str)
     sigWriteRequest = Signal(str, str, str)
@@ -155,18 +151,29 @@ class Interactor(ABC, QFrame, metaclass=InteractorMeta):
             return None, None
 
     @abstractmethod
-    def start(self):
-        pass
-
-    @abstractmethod
     def read(self, stream, ident):
         pass
 
+        
+class InteractorQWidget(type(Interactor), type(QWidget)):
+    # this class is needed for multiple inheritance of ABC ...
+    pass
 
-class RTClock(Interactor):
+        
+class InteractorQFrame(type(Interactor), type(QFrame)):
+    # this class is needed for multiple inheritance of ABC ...
+    pass
+
+        
+class InteractorQPushButton(type(Interactor), type(QPushButton)):
+    # this class is needed for multiple inheritance of ABC ...
+    pass
+
+
+class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
     
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(QWidget, self).__init__(*args, **kwargs)
         self.time = QLabel(self)
         self.state = QLabel(self)
         self.box = QHBoxLayout(self)
@@ -235,17 +242,71 @@ class RTClock(Interactor):
                 self.set_state = 0
                 self.prev_time = None
                 self.timer.setInterval(50)
-                
 
-class LoggerInfo(Interactor):
+                
+class ReportButton(Interactor, QPushButton, metaclass=InteractorQPushButton):
+    
+    def __init__(self, key, text, *args, **kwargs):
+        super(QPushButton, self).__init__(*args, **kwargs)
+        self.setText(text)
+        self.clicked.connect(self.run)
+        self.key = key
+        self.start = None
+        self.end = None
+
+    def setText(self, text):
+        super().setText(text)
+        bbox = self.fontMetrics().boundingRect(text)
+        self.setMaximumWidth(bbox.width() + 10)
+        self.setMaximumHeight(bbox.height() + 2)
+
+    def set_button_color(self, color):
+       pal = self.palette()
+       pal.setColor(QPalette.Button, QColor(color))
+       self.setAutoFillBackground(True)
+       self.setPalette(pal)
+       self.update()
+     
+    def setup(self, menu):
+        self.start, self.end = self.retrieve(self.key, menu)
+
+    def run(self):
+        self.sigReadRequest.emit(self, 'run', self.start,
+                                 self.end, 'select')
+
+                
+class PSRAMTest(ReportButton):
     
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        super().setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        super().__init__('psram memory test', 'Test', *args, **kwargs)
+        
+    def read(self, stream, ident):
+        while len(stream) > 0 and 'extmem memory test' not in stream[0].lower():
+            del stream[0]
+        for k in range(len(stream)):
+            if 'test ran' in stream[k].lower():
+                while len(stream) > k + 2:
+                    del stream[-1]
+                if k + 1 < len(stream):
+                    if 'all memory tests passed' in stream[k + 1].lower():
+                        self.setText('passed')
+                        self.set_button_color(Qt.green)
+                    else:
+                        self.setText('failed')
+                        self.set_button_color(Qt.red)
+                break
+
+        
+class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
+    
+    def __init__(self, *args, **kwargs):
+        super(QFrame, self).__init__(*args, **kwargs)
+        self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.rtclock = RTClock(self)
         self.box = QGridLayout(self)
         title = QLabel('<b>Logger</b>', self)
-        self.box.addWidget(title, 0, 0, 1, 2)
+        self.box.addWidget(title, 0, 0, 1, 3)
+        self.psramtest = PSRAMTest(self)
         self.device = None
         self.model = None
         self.serial_number = None
@@ -266,10 +327,17 @@ class LoggerInfo(Interactor):
             self.retrieve('teensy info', menu)
         self.psram_start_get, self.psram_end_get = \
             self.retrieve('psram memory info', menu)
+        self.psramtest.setup(menu)
 
-    def add(self, label, value):
+    def add(self, label, value, button=None):
         self.box.addWidget(QLabel(label, self), self.row, 0)
-        self.box.addWidget(QLabel('<b>' + value + '</b>', self), self.row, 1)
+        if button is None:
+            self.box.addWidget(QLabel('<b>' + value + '</b>', self),
+                               self.row, 1, 1, 2)
+        else:
+            self.box.addWidget(QLabel('<b>' + value + '</b>', self),
+                               self.row, 1)
+            self.box.addWidget(button, self.row, 2)
         self.row += 1
         
     def start(self):
@@ -293,13 +361,14 @@ class LoggerInfo(Interactor):
             value = ':'.join(x[1:]).strip()
             if ident == 'psram':
                 if label.lower() == 'size':
-                    label = 'PSRAM size'
+                    self.add('PSRAM size', value, self.psramtest)
                 else:
                     continue
-            self.add(label, value)
+            else:
+                self.add(label, value)
         if ident == 'psram':
             self.box.addWidget(QLabel('Time', self), self.row, 0)
-            self.box.addWidget(self.rtclock, self.row, 1)
+            self.box.addWidget(self.rtclock, self.row, 1, 1, 2)
             self.row += 1
             self.rtclock.start()
 
@@ -308,7 +377,7 @@ class SoftwareInfo(QFrame):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        super().setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.box = QGridLayout(self)
         title = QLabel('<b>Software</b>', self)
         self.box.addWidget(title, 0, 0, 1, 2)
@@ -343,11 +412,11 @@ class SoftwareInfo(QFrame):
                 n += 1
 
                 
-class SDCardInfo(Interactor):
+class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        super().setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        super(QFrame, self).__init__(*args, **kwargs)
+        self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.box = QGridLayout(self)
         title = QLabel('<b>SD card</b>', self)
         self.box.addWidget(title, 0, 0, 1, 2)
@@ -419,11 +488,11 @@ class SDCardInfo(Interactor):
                 if label.lower() == 'available':
                     available = value
                 items.append([label, value])
-            for keys in ['available', 'capacity', 'serial', 'system']:
+            for keys in ['capacity', 'available', 'serial', 'system']:
                 for i in range(len(items)):
                     if keys in items[i][0].lower():
                         self.add(items[i][0], items[i][1])
-                        if keys == 'capacity':
+                        if keys == 'available':
                             if available is not None:
                                 a = float(available.replace(' GB', ''))
                                 c = float(items[i][1].replace(' GB', ''))
@@ -441,7 +510,35 @@ class SDCardInfo(Interactor):
                                 value += f' ({self.sroot})'
                             self.add('Root files', value)
 
-                
+
+class Terminal(QWidget):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title = QLabel(self)
+        self.out = QLabel(self)
+        self.scroll = QScrollArea(self)
+        self.scroll.setWidget(self.out)
+        self.done = QPushButton(self)
+        self.done.setText('&Done')
+        vbox = QVBoxLayout(self)
+        vbox.addWidget(self.title)
+        vbox.addWidget(self.scroll)
+        vbox.addWidget(self.done)
+
+    def update(self, stream):
+        if len(stream) > 0:
+            self.title.setText(stream[0])
+        s = ''
+        for l in stream[1:]:
+            s += l + '\n'
+        self.done.setEnabled(False)
+        self.out.setText(s)
+        self.out.setMinimumSize(self.out.sizeHint())
+        vsb = self.scroll.verticalScrollBar()
+        vsb.setValue(vsb.maximum())
+
+        
 class Logger(QWidget):
 
     sigLoggerDisconnected = Signal()
@@ -464,6 +561,7 @@ class Logger(QWidget):
         tabs.addTab(self.tools, 'Tools')
         self.loggerinfo = LoggerInfo(self)
         self.loggerinfo.sigReadRequest.connect(self.read_request)
+        self.loggerinfo.psramtest.sigReadRequest.connect(self.read_request)
         self.loggerinfo.rtclock.sigReadRequest.connect(self.read_request)
         self.loggerinfo.rtclock.sigWriteRequest.connect(self.write_request)
         self.softwareinfo = SoftwareInfo(self)
@@ -478,20 +576,24 @@ class Logger(QWidget):
         self.box = QHBoxLayout(self.boxw)
         self.box.addWidget(tabs)
         self.box.addWidget(iboxw)
+        self.term = Terminal(self)
+        self.term.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
         self.stack = QStackedWidget(self)
         self.stack.addWidget(self.msg)
         self.stack.addWidget(self.boxw)
+        self.stack.addWidget(self.term)
         self.stack.setCurrentWidget(self.msg)
         vbox = QVBoxLayout(self)
         vbox.addWidget(self.logo)
         vbox.addWidget(self.stack)
-        
+
+        self.device = None
         self.ser = None
         self.read_timer = QTimer(self)
         self.read_timer.timeout.connect(self.read)
         self.read_state = 0
         self.input = []
-        self.request_stack = queue.Queue(0)
+        self.request_stack = []
         self.request_target = None
         self.request_ident = None
         self.request_start = None
@@ -504,6 +606,7 @@ class Logger(QWidget):
 
     def activate(self, device, model, serial_number):
         #self.title.setText(f'Teensy{model} with serial number {serial_number} on {device}')
+        self.device = device
         self.loggerinfo.set(device, model, serial_number)
         self.msg.setText('Reading configuration ...')
         self.stack.setCurrentWidget(self.msg)
@@ -605,7 +708,6 @@ class Logger(QWidget):
             if len(self.menu) > 0:
                 self.menu_iter = iter(self.menu.keys())
                 self.read_state += 1
-                self.stack.setCurrentWidget(self.boxw)
 
     def parse_submenu(self):
         if self.read_state == 2:
@@ -657,13 +759,14 @@ class Logger(QWidget):
                         self.conf_vbox.addWidget(QLabel(sk + ': ' + menu[2][sk][2], self))
         self.sdcardinfo.start()
         self.loggerinfo.start()
+        self.stack.setCurrentWidget(self.boxw)
             
     def parse_request_stack(self):
         if self.read_state == 10:
-            if self.request_stack.empty():
+            if len(self.request_stack) == 0:
                 return
             self.input = []
-            request = self.request_stack.get()
+            request = self.request_stack.pop(0)
             self.request_target = request[0]
             self.request_ident = request[1]
             self.request_start = request[2]
@@ -674,10 +777,14 @@ class Logger(QWidget):
     def read_request(self, target, ident, start, end, stop):
         if start is None or end is None:
             return
+        # put each request only once onto the stack:
+        for req in self.request_stack:
+            if req == [target, ident, start, end, stop, 20]:
+                return
         i = start[:-1].rfind('\n')
         if i > 0:
             start = [start[:i + 1], start[i + 1:]]
-        self.request_stack.put([target, ident, start, end, stop, 20])
+        self.request_stack.append([target, ident, start, end, stop, 20])
         if self.read_state == 10:
             self.parse_request_stack()
 
@@ -699,10 +806,21 @@ class Logger(QWidget):
                 self.request_stop in self.input[-1].lower()):
                 self.request_stop = None
                 self.read_state += 1
+            if self.request_ident == 'run':
+                if self.read_state == 23:
+                    for l in self.input:
+                        print(l)
+                if self.request_target is not None:
+                    self.request_target.read(self.input, self.request_ident)
+                self.term.update(self.input)
+                self.stack.setCurrentWidget(self.term)
         elif self.read_state == 23:
             if self.request_target is not None:
                 self.request_target.read(self.input, self.request_ident)
                 self.request_target = None
+            if self.request_ident == 'run':
+                self.term.update(self.input)
+                self.term.done.setEnabled(True)
             self.input = []
             self.ser.write(self.request_end.encode('latin1'))
             self.request_end = None
@@ -711,7 +829,7 @@ class Logger(QWidget):
     def write_request(self, msg, start, end):
         if start is None or end is None:
             return
-        self.request_stack.put([msg, None, start, end, None, 30])
+        self.request_stack.append([msg, None, start, end, None, 30])
         if self.read_state == 10:
             self.parse_request_stack()
 
@@ -734,7 +852,7 @@ class Logger(QWidget):
         if self.ser is None:
             try:
                 print('open serial')
-                self.ser = serial.Serial(device)
+                self.ser = serial.Serial(self.device)
                 self.ser.reset_input_buffer()
                 self.ser.reset_output_buffer()
             except (OSError, serial.serialutil.SerialException):
