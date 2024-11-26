@@ -17,6 +17,7 @@ except ImportError:
     has_usb = False
     
 import sys
+import numpy as np
 from abc import ABC, abstractmethod
 try:
     from PyQt5.QtCore import Signal
@@ -419,7 +420,6 @@ class ListFiles(ReportButton):
                          *args, **kwargs)
 
     def setup(self, start, end):
-        print('SETUP', start, end)
         self.start = start
         self.end = end
         
@@ -432,13 +432,47 @@ class ListFiles(ReportButton):
                     del stream[-1]
                 break
 
+                
+class Benchmark(ReportButton):
     
+    def __init__(self, *args, **kwargs):
+        super().__init__('sd card benchmark', 'Test',
+                         *args, **kwargs)
+        self.value = None
+
+    def set_value(self, value):
+        self.value = value
+        
+    def read(self, stream, ident):
+        while len(stream) > 0 and \
+              'benchmarking write and read speeds' not in stream[0].lower():
+            del stream[0]
+        start = None
+        speeds = []
+        for k in range(len(stream)):
+            if 'write speed and latency' in stream[k].lower():
+                start = k + 3
+            if start is not None and k >= start:
+                if len(stream[k].strip()) == 0:
+                    start = None
+                else:
+                    speeds.append(float(stream[k].split()[0]))
+            if 'done' in stream[k].lower():
+                while len(stream) > k + 1:
+                    del stream[-1]
+                if len(speeds) > 0:
+                    self.value.setText(f'<b>{np.mean(speeds):.2f}MB/s</b>')
+                break
+
+            
 class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     
     def __init__(self, *args, **kwargs):
         super(QFrame, self).__init__(*args, **kwargs)
         self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.root = ListFiles()
+        self.recordings = ListFiles()
+        self.bench = Benchmark()
         self.box = QGridLayout(self)
         title = QLabel('<b>SD card</b>', self)
         self.box.addWidget(title, 0, 0, 1, 2)
@@ -462,6 +496,9 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.recordings_start_get, self.recordings_end_get = \
             self.retrieve('sd card>list all recordings', menu)
         self.root.setup(self.root_start_get, self.root_end_get)
+        self.recordings.setup(self.recordings_start_get,
+                              self.recordings_end_get)
+        self.bench.setup(menu)
 
     def add(self, label, value, button=None):
         self.box.addWidget(QLabel(label, self), self.row, 0)
@@ -531,13 +568,15 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                                 value = f'{self.nrecordings}'
                             if self.srecordings is not None:
                                 value += f' ({self.srecordings})'
-                            self.add('Recorded files', value)
+                            self.add('Recorded files', value, self.recordings)
                             value = 'none'
                             if self.nroot > 0:
                                 value = f'{self.nroot}'
                             if self.sroot is not None:
                                 value += f' ({self.sroot})'
                             self.add('Root files', value, self.root)
+            self.add('Write speed', 'none', self.bench)
+            self.bench.set_value(self.box.itemAtPosition(self.row - 1, 1).widget())
 
 
 class Terminal(QWidget):
@@ -550,10 +589,17 @@ class Terminal(QWidget):
         self.scroll.setWidget(self.out)
         self.done = QPushButton(self)
         self.done.setText('&Done')
+        self.done.clicked.connect(self.clear)
         vbox = QVBoxLayout(self)
         vbox.addWidget(self.title)
         vbox.addWidget(self.scroll)
         vbox.addWidget(self.done)
+
+    def clear(self):
+        self.title.setText('')
+        self.out.setText('')
+        self.out.setMinimumSize(1, 1)
+        self.out.setMaximumSize(self.out.sizeHint())
 
     def update(self, stream):
         if len(stream) > 0:
@@ -596,7 +642,9 @@ class Logger(QWidget):
         self.softwareinfo = SoftwareInfo(self)
         self.sdcardinfo = SDCardInfo(self)
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
+        self.sdcardinfo.recordings.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.root.sigReadRequest.connect(self.read_request)
+        self.sdcardinfo.bench.sigReadRequest.connect(self.read_request)
         iboxw = QWidget(self)
         ibox = QVBoxLayout(iboxw)
         ibox.addWidget(self.loggerinfo)
