@@ -415,7 +415,7 @@ class SoftwareInfo(QFrame):
 class ListFiles(ReportButton):
     
     def __init__(self, *args, **kwargs):
-        super().__init__('sd card>list files in root', 'List',
+        super().__init__('', 'List',
                          *args, **kwargs)
 
     def setup(self, start, end):
