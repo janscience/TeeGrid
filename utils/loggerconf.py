@@ -412,11 +412,33 @@ class SoftwareInfo(QFrame):
                 n += 1
 
                 
+class ListFiles(ReportButton):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__('sd card>list files in root', 'List',
+                         *args, **kwargs)
+
+    def setup(self, start, end):
+        print('SETUP', start, end)
+        self.start = start
+        self.end = end
+        
+    def read(self, stream, ident):
+        while len(stream) > 0 and 'files in' not in stream[0].lower():
+            del stream[0]
+        for k in range(len(stream)):
+            if 'found' in stream[k].lower():
+                while len(stream) > k + 1:
+                    del stream[-1]
+                break
+
+    
 class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     
     def __init__(self, *args, **kwargs):
         super(QFrame, self).__init__(*args, **kwargs)
         self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.root = ListFiles()
         self.box = QGridLayout(self)
         title = QLabel('<b>SD card</b>', self)
         self.box.addWidget(title, 0, 0, 1, 2)
@@ -439,10 +461,17 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.retrieve('sd card>list files in root', menu)
         self.recordings_start_get, self.recordings_end_get = \
             self.retrieve('sd card>list all recordings', menu)
+        self.root.setup(self.root_start_get, self.root_end_get)
 
-    def add(self, label, value):
+    def add(self, label, value, button=None):
         self.box.addWidget(QLabel(label, self), self.row, 0)
-        self.box.addWidget(QLabel('<b>' + value + '</b>', self), self.row, 1)
+        if button is None:
+            self.box.addWidget(QLabel('<b>' + value + '</b>', self),
+                               self.row, 1, 1, 2)
+        else:
+            self.box.addWidget(QLabel('<b>' + value + '</b>', self),
+                               self.row, 1)
+            self.box.addWidget(button, self.row, 2)
         self.row += 1
 
     def start(self):
@@ -508,7 +537,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                                 value = f'{self.nroot}'
                             if self.sroot is not None:
                                 value += f' ({self.sroot})'
-                            self.add('Root files', value)
+                            self.add('Root files', value, self.root)
 
 
 class Terminal(QWidget):
@@ -567,6 +596,7 @@ class Logger(QWidget):
         self.softwareinfo = SoftwareInfo(self)
         self.sdcardinfo = SDCardInfo(self)
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
+        self.sdcardinfo.root.sigReadRequest.connect(self.read_request)
         iboxw = QWidget(self)
         ibox = QVBoxLayout(iboxw)
         ibox.addWidget(self.loggerinfo)
