@@ -525,7 +525,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         def num_files(stream):
             for s in stream:
                 if 'does not exist' in s:
-                    return 0
+                    return 0, None
                 if 'file' in s and 'found' in s and s[:2] != 'No':
                     nf = int(s[:s.find(' file')])
                     ns = None
