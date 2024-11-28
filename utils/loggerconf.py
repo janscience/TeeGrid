@@ -763,13 +763,20 @@ class Logger(QWidget):
 
     def parse_mainmenu(self):
         if self.read_state == 1:
+            self.ser.write(b'detailed: on\n')
+            self.read_state += 1
+        elif self.read_state == 2:
+            self.input = []
+            self.ser.write(b'print\n')
+            self.read_state += 1
+        elif self.read_state == 3:
             self.menu = self.parse_menu('Menu')
             if len(self.menu) > 0:
                 self.menu_iter = iter(self.menu.keys())
                 self.read_state += 1
 
     def parse_submenu(self):
-        if self.read_state == 2:
+        if self.read_state == 4:
             # get next menu entry:
             try:
                 self.menu_key = next(self.menu_iter)
@@ -779,13 +786,13 @@ class Logger(QWidget):
                 self.init_menu()
                 self.input = []
                 self.read_state = 10
-        elif self.read_state == 3:
+        elif self.read_state == 5:
             # request submenu:
             self.input = []
             self.ser.write(self.menu[self.menu_key][0].encode('latin1'))
             self.ser.write(b'\n')
             self.read_state += 1
-        elif self.read_state == 4:
+        elif self.read_state == 6:
             # parse submenu:
             submenu = {}
             if len(self.input) > 1 and 'Select' in self.input[-1]:
@@ -793,7 +800,7 @@ class Logger(QWidget):
             if len(submenu) > 0:
                 self.menu[self.menu_key][1].update(submenu)
                 self.ser.write('q\n'.encode('latin1'))
-                self.read_state = 2
+                self.read_state = 4
 
     def init_menu(self):
         # init menu:
