@@ -100,8 +100,8 @@ class ScanLogger(QLabel):
             
 class Interactor(ABC):
 
-    sigReadRequest = Signal(object, str, str, str, str)
-    sigWriteRequest = Signal(str, str, str)
+    sigReadRequest = Signal(object, str, list, str)
+    sigWriteRequest = Signal(str, list)
 
     @abstractmethod
     def setup(self, menu):
@@ -116,9 +116,10 @@ class Interactor(ABC):
                     found = True
                     menu_item = menu[mk]
                     ids.append(menu_item[0])
-                    submenu = menu_item[2]
+                    submenu = menu_item[1]
                     if len(keys) > 1:
-                        if menu_item[1] and find(keys[1:], submenu, ids):
+                        if isinstance(submenu, dict) and \
+                           find(keys[1:], submenu, ids):
                             if len(submenu) == 0:
                                 menu.pop(mk)
                             return True
@@ -130,8 +131,9 @@ class Interactor(ABC):
                 for mk in menu:
                     menu_item = menu[mk]
                     ids.append(menu_item[0])
-                    submenu = menu_item[2]
-                    if menu_item[1] and find(keys, submenu, ids):
+                    submenu = menu_item[1]
+                    if isinstance(submenu, dict) and \
+                       find(keys, submenu, ids):
                         if len(submenu) == 0:
                             menu.pop(mk)
                         return True
@@ -141,15 +143,10 @@ class Interactor(ABC):
         keys = [k.strip() for k in key.split('>') if len(k.strip()) > 0]
         ids = []
         if find(keys, menu, ids):
-            start = ''
-            end = ''
-            for i in ids:
-                start += f'{i}\n'
-                end += 'q\n'
-            return start, end[:-2]
+            return ids
         else:
             print(key, 'not found')
-            return None, None
+            return None
 
     @abstractmethod
     def read(self, stream, ident):
@@ -183,19 +180,15 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
         self.box.addWidget(self.state)
         self.is_set = 0
         self.start_get = None
-        self.end_get = None
         self.start_set = None
-        self.end_set = None
         self.set_state = 0
         self.prev_time = None
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.get_time)
     
     def setup(self, menu):
-        self.start_get, self.end_get = \
-            self.retrieve('date & time>print', menu)
-        self.start_set, self.end_set = \
-            self.retrieve('date & time>set', menu)
+        self.start_get = self.retrieve('date & time>print', menu)
+        self.start_set = self.retrieve('date & time>set', menu)
 
     def start(self):
         self.is_set = 0
@@ -214,8 +207,8 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
                 self.set_state = 1
                 self.set_time()
             else:
-                self.sigReadRequest.emit(self, 'rtclock', self.start_get,
-                                         self.end_get, 'select')
+                self.sigReadRequest.emit(self, 'rtclock',
+                                         self.start_get, 'select')
 
     def read(self, stream, ident):
         if ident != 'rtclock':
@@ -239,7 +232,7 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
         elif self.set_state == 2:
             time = QDateTime.currentDateTime().toString(Qt.ISODate)
             if time != self.prev_time:
-                self.sigWriteRequest.emit(time, self.start_set, self.end_set)
+                self.sigWriteRequest.emit(time, self.start_set)
                 self.set_state = 0
                 self.prev_time = None
                 self.timer.setInterval(50)
@@ -253,7 +246,6 @@ class ReportButton(Interactor, QPushButton, metaclass=InteractorQPushButton):
         self.clicked.connect(self.run)
         self.key = key
         self.start = None
-        self.end = None
 
     def setText(self, text):
         super().setText(text)
@@ -269,11 +261,10 @@ class ReportButton(Interactor, QPushButton, metaclass=InteractorQPushButton):
        self.update()
      
     def setup(self, menu):
-        self.start, self.end = self.retrieve(self.key, menu)
+        self.start = self.retrieve(self.key, menu)
 
     def run(self):
-        self.sigReadRequest.emit(self, 'run', self.start,
-                                 self.end, 'select')
+        self.sigReadRequest.emit(self, 'run', self.start, 'select')
 
                 
 class PSRAMTest(ReportButton):
@@ -312,9 +303,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.model = None
         self.serial_number = None
         self.controller_start_get = None
-        self.controller_end_get = None
         self.psram_start_get = None
-        self.psram_end_get = None
         self.row = 1
 
     def set(self, device, model, serial_number):
@@ -324,10 +313,8 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
 
     def setup(self, menu):
         self.rtclock.setup(menu)
-        self.controller_start_get, self.controller_end_get = \
-            self.retrieve('teensy info', menu)
-        self.psram_start_get, self.psram_end_get = \
-            self.retrieve('psram memory info', menu)
+        self.controller_start_get = self.retrieve('teensy info', menu)
+        self.psram_start_get = self.retrieve('psram memory info', menu)
         self.psramtest.setup(menu)
 
     def add(self, label, value, button=None):
@@ -344,10 +331,10 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     def start(self):
         self.row = 1
         self.add('device', self.device)
-        self.sigReadRequest.emit(self, 'controller', self.controller_start_get,
-                                 self.controller_end_get, 'select')
-        self.sigReadRequest.emit(self, 'psram', self.psram_start_get,
-                                 self.psram_end_get, 'select')
+        self.sigReadRequest.emit(self, 'controller',
+                                 self.controller_start_get, 'select')
+        self.sigReadRequest.emit(self, 'psram',
+                                 self.psram_start_get, 'select')
 
     def read(self, stream, ident):
         r = 0
@@ -419,9 +406,8 @@ class ListFiles(ReportButton):
         super().__init__('', 'List',
                          *args, **kwargs)
 
-    def setup(self, start, end):
+    def setup(self, start):
         self.start = start
-        self.end = end
         
     def read(self, stream, ident):
         while len(stream) > 0 and 'files in' not in stream[0].lower():
@@ -477,11 +463,8 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         title = QLabel('<b>SD card</b>', self)
         self.box.addWidget(title, 0, 0, 1, 2)
         self.sdcard_start_get = None
-        self.sdcard_end_get = None
         self.root_start_get = None
-        self.root_end_get = None
         self.recordings_start_get = None
-        self.recordings_end_get = None
         self.nrecordings = 0
         self.srecordings = None
         self.nroot = 0
@@ -489,15 +472,13 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.row = 1
 
     def setup(self, menu):
-        self.sdcard_start_get, self.sdcard_end_get = \
-            self.retrieve('sd card>sd card info', menu)
-        self.root_start_get, self.root_end_get = \
+        self.sdcard_start_get = self.retrieve('sd card>sd card info', menu)
+        self.root_start_get = \
             self.retrieve('sd card>list files in root', menu)
-        self.recordings_start_get, self.recordings_end_get = \
+        self.recordings_start_get = \
             self.retrieve('sd card>list all recordings', menu)
-        self.root.setup(self.root_start_get, self.root_end_get)
-        self.recordings.setup(self.recordings_start_get,
-                              self.recordings_end_get)
+        self.root.setup(self.root_start_get)
+        self.recordings.setup(self.recordings_start_get)
         self.bench.setup(menu)
 
     def add(self, label, value, button=None):
@@ -513,12 +494,12 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
 
     def start(self):
         self.row = 1
-        self.sigReadRequest.emit(self, 'recordings', self.recordings_start_get,
-                                 self.recordings_end_get, 'select')
-        self.sigReadRequest.emit(self, 'root', self.root_start_get,
-                                 self.root_end_get, 'select')
-        self.sigReadRequest.emit(self, 'sdcard', self.sdcard_start_get,
-                                 self.sdcard_end_get, 'select')
+        self.sigReadRequest.emit(self, 'recordings',
+                                 self.recordings_start_get, 'select')
+        self.sigReadRequest.emit(self, 'root',
+                                 self.root_start_get, 'select')
+        self.sigReadRequest.emit(self, 'sdcard',
+                                 self.sdcard_start_get, 'select')
 
     def read(self, stream, ident):
 
@@ -533,7 +514,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                         ns = s[s.find('(') + 1:s.find(')')]
                     return nf, ns
             return 0, None
-                
+
         if ident == 'recordings':
             self.nrecordings, self.srecordings = num_files(stream)
         elif ident == 'root':
@@ -624,7 +605,7 @@ class Logger(QWidget):
         self.logo.setFont(QFont('monospace'))
         self.msg = QLabel(self)
         self.conf = QWidget(self)
-        self.conf_vbox = QVBoxLayout(self.conf)
+        self.conf_grid = QGridLayout(self.conf)
         self.tools = QWidget(self)
         self.tools_vbox = QVBoxLayout(self.tools)
         tabs = QTabWidget(self)
@@ -758,26 +739,26 @@ class Logger(QWidget):
             elif menu_start is not None and \
                  'Select' in self.input[k]:
                 menu_end = k
+        if menu_start is None or menu_end is None:
+            return {}
         menu = {}
-        if menu_start is not None and \
-           menu_end is not None:
-            for l in self.input[menu_start + 1:menu_end]:
-                x = l.split()
-                num = x[0][:-1]
-                sub_menu = x[-1] == '...'
-                if sub_menu:
-                    name = ' '.join(x[1:-1]) if sub_menu else ' '.join(x[1:])
-                    menu[name] = (num, sub_menu, {})
+        for l in self.input[menu_start + 1:menu_end]:
+            x = l.split()
+            num = x[0][:-1]
+            sub_menu = (x[-1] == '...')
+            if sub_menu:
+                name = ' '.join(x[1:-1])
+                menu[name] = (num, {})
+            else:
+                l = ' '.join(x[1:])
+                if ':' in l:
+                    x = l.split(':')
+                    name = x[0].strip()
+                    value = x[1].strip()
+                    menu[name] = (num, value)
                 else:
-                    l = ' '.join(x[1:])
-                    if ':' in l:
-                        x = l.split(':')
-                        name = x[0].strip()
-                        value = x[1].strip()
-                        menu[name] = (num, sub_menu, value)
-                    else:
-                        menu[l] = (num, sub_menu, None)
-            self.input = []
+                    menu[l] = (num, None)
+        self.input = []
         return menu
 
     def parse_mainmenu(self):
@@ -792,7 +773,7 @@ class Logger(QWidget):
             # get next menu entry:
             try:
                 self.menu_key = next(self.menu_iter)
-                if self.menu[self.menu_key][1]:
+                if isinstance(self.menu[self.menu_key][1], dict):
                     self.read_state += 1
             except StopIteration:
                 self.init_menu()
@@ -810,9 +791,9 @@ class Logger(QWidget):
             if len(self.input) > 1 and 'Select' in self.input[-1]:
                 submenu = self.parse_menu(self.menu_key)
             if len(submenu) > 0:
-                self.menu[self.menu_key][2].update(submenu)
+                self.menu[self.menu_key][1].update(submenu)
                 self.ser.write('q\n'.encode('latin1'))
-            self.read_state = 2
+                self.read_state = 2
 
     def init_menu(self):
         # init menu:
@@ -820,21 +801,27 @@ class Logger(QWidget):
             self.menu.pop('Help')
         self.loggerinfo.setup(self.menu)
         self.sdcardinfo.setup(self.menu)
+        row = 0
         for mk in self.menu:
             menu = self.menu[mk]
             add_title = True
-            if menu[1]:
-                for sk in menu[2]:
-                    if menu[2][sk][1]:
+            if isinstance(menu[1], dict):
+                for sk in menu[1]:
+                    if menu[1][sk][1] is None:
                         if add_title:
                             self.tools_vbox.addWidget(QLabel('<b>' + mk + '</b>', self))
                             add_title = False
                         self.tools_vbox.addWidget(QLabel(sk, self))
-                    else:
+                    elif not isinstance(menu[1][sk][1], dict):
                         if add_title:
-                            self.conf_vbox.addWidget(QLabel('<b>' + mk + '</b>', self))
+                            self.conf_grid.addWidget(QLabel('<b>' + mk + '</b>', self), row, 0, 1, 2)
+                            row += 1
                             add_title = False
-                        self.conf_vbox.addWidget(QLabel(sk + ': ' + menu[2][sk][2], self))
+                        self.conf_grid.addWidget(QLabel(sk + ': ', self),
+                                                 row, 0)
+                        self.conf_grid.addWidget(QLabel(menu[1][sk][1], self),
+                                                 row, 1)
+                        row += 1
         self.sdcardinfo.start()
         self.loggerinfo.start()
         self.stack.setCurrentWidget(self.boxw)
@@ -852,32 +839,29 @@ class Logger(QWidget):
             self.request_stop = request[4]
             self.read_state = request[5]
 
-    def read_request(self, target, ident, start, end, stop):
-        if start is None or end is None:
+    def read_request(self, target, ident, start, stop):
+        if start is None:
             return
         # put each request only once onto the stack:
         for req in self.request_stack:
-            if req == [target, ident, start, end, stop, 20]:
+            if req[0] == target and req[1] == ident and req[-1] == 20:
                 return
-        i = start[:-1].rfind('\n')
-        if i > 0:
-            start = [start[:i + 1], start[i + 1:]]
-        self.request_stack.append([target, ident, start, end, stop, 20])
+        self.request_stack.append([target, ident, start,
+                                   len(start) - 1, stop, 20])
         if self.read_state == 10:
             self.parse_request_stack()
 
     def parse_read_request(self):
         if self.read_state == 20:
-            if isinstance(self.request_start, list):
+            if len(self.request_start) > 0:
+                self.input = []
                 self.ser.write(self.request_start[0].encode('latin1'))
-                self.request_start = self.request_start[1]
-            self.read_state += 1
+                self.ser.write(b'\n')
+                self.request_start.pop(0)
+            else:
+                self.request_start = None
+                self.read_state += 1
         elif self.read_state == 21:
-            self.input = []
-            self.ser.write(self.request_start.encode('latin1'))
-            self.request_start = None
-            self.read_state += 1
-        elif self.read_state == 22:
             if self.request_stop is None or \
                len(self.request_stop) == 0 or \
                (len(self.input) > 3 and \
@@ -885,46 +869,60 @@ class Logger(QWidget):
                 self.request_stop = None
                 self.read_state += 1
             if self.request_ident == 'run':
-                if self.read_state == 23:
+                if self.read_state == 22:
                     for l in self.input:
                         print(l)
                 if self.request_target is not None:
                     self.request_target.read(self.input, self.request_ident)
                 self.term.update(self.input)
                 self.stack.setCurrentWidget(self.term)
-        elif self.read_state == 23:
+        elif self.read_state == 22:
             if self.request_target is not None:
                 self.request_target.read(self.input, self.request_ident)
                 self.request_target = None
             if self.request_ident == 'run':
                 self.term.update(self.input)
                 self.term.done.setEnabled(True)
+            self.read_state += 1
+        elif self.read_state == 23:
             self.input = []
-            self.ser.write(self.request_end.encode('latin1'))
-            self.request_end = None
-            self.read_state = 10
+            if self.request_end > 0:
+                self.ser.write(b'q\n')
+                self.request_end -= 1
+            else:
+                self.request_end = None
+                self.read_state = 10
 
-    def write_request(self, msg, start, end):
-        if start is None or end is None:
+    def write_request(self, msg, start):
+        if start is None:
             return
-        self.request_stack.append([msg, None, start, end, None, 30])
+        self.request_stack.append([msg, None, start, len(start) - 1, None, 30])
         if self.read_state == 10:
             self.parse_request_stack()
 
     def parse_write_request(self):
         if self.read_state == 30:
-            self.ser.write(self.request_start.encode('latin1'))
-            self.request_start = None
-            self.read_state += 1
+            if len(self.request_start) > 0:
+                self.ser.write(self.request_start[0].encode('latin1'))
+                self.ser.write(b'\n')
+                self.request_start.pop(0)
+            else:
+                self.input = []
+                self.request_start = None
+                self.read_state += 1
         elif self.read_state == 31:
             self.ser.write(self.request_target.encode('latin1'))
             self.ser.write(b'\n')
             self.request_target = None
             self.read_state += 1
         elif self.read_state == 32:
-            self.ser.write(self.request_end.encode('latin1'))
-            self.request_end = None
-            self.read_state = 10
+            self.input = []
+            if self.request_end > 0:
+                self.ser.write(b'q\n')
+                self.request_end -= 1
+            else:
+                self.request_end = None
+                self.read_state = 10
 
     def read(self):
         if self.ser is None:
