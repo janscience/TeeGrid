@@ -135,8 +135,7 @@ void setup() {
   aidata.begin();
   if (!aidata.check()) {
     Serial.println("Fix ADC settings and check your hardware.");
-    Serial.println("HALT");
-    while (true) { yield(); };
+    halt();
   }
   aidata.start();
   aidata.report();

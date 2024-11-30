@@ -737,6 +737,7 @@ class Logger(QWidget):
         self.ser = None
         self.read_timer = QTimer(self)
         self.read_timer.timeout.connect(self.read)
+        self.read_count = 0
         self.read_state = 0
         self.read_func = None
         self.input = []
@@ -766,6 +767,7 @@ class Logger(QWidget):
         except (OSError, serial.serialutil.SerialException):
             self.ser = None
         self.input = []
+        self.read_count = 0
         self.read_state = 0
         self.read_func = self.parse_logo
         self.read_timer.start(2)
@@ -777,6 +779,9 @@ class Logger(QWidget):
             self.ser.close()
         self.ser = None
         self.sigLoggerDisconnected.emit()
+
+    def parse_idle(self):
+        print('IDLE')
         
     def parse_halt(self, k):
         s = 'Logger halted\n'
@@ -785,7 +790,7 @@ class Logger(QWidget):
             k -= 1
         self.msg.setText(s + self.input[k])
         self.stack.setCurrentWidget(self.msg)
-        self.read_state = 10000
+        self.read_func = self.parse_idle
 
     def parse_logo(self):
         title_start = None
@@ -816,14 +821,21 @@ class Logger(QWidget):
             self.softwareinfo.set(self.input[title_start + 1:title_end])
             self.input = self.input[title_end + 1:]
             self.read_func = self.configure_menu
+        elif self.read_count > 100:
+            self.read_count = 0
+            print('REQUEST REBOOT')
+            self.ser.write('reboot\n'.encode('latin1'))
+            self.ser.flush
+        else:
+            self.read_count += 1
 
     def configure_menu(self):
         if self.read_state == 0:
-            self.ser.write(b'detailed: on\n')
+            self.ser.write(b'detailed on\n')
             self.read_state += 1
         elif self.read_state == 1:
             self.input = []
-            self.ser.write(b'echo: off\n')
+            self.ser.write(b'echo off\n')
             self.read_state = 0
             self.read_func = self.parse_mainmenu
 
