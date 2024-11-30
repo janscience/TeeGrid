@@ -643,7 +643,7 @@ class Parameter(object):
     
     def __init__(self, value, num_value, out_unit, unit, type_str,
                  max_chars, ndec, min_val, max_val, special_val,
-                 selection):
+                 special_str, selection):
         self.value = value
         self.num_value = num_value
         self.out_unit = out_unit
@@ -654,6 +654,7 @@ class Parameter(object):
         self.min_val = min_val
         self.max_val = max_val
         self.special_val = special_val
+        self.special_str = special_str
         self.selection = selection
         self.edit_widget = None
         self.unit_widget = None
@@ -684,6 +685,10 @@ class Parameter(object):
                 self.edit_widget.setMaximum(int(self.max_val))
             else:
                 self.edit_widget.setMaximum(100000)
+            if self.special_val is not None and \
+               self.special_str is not None and \
+               self.special_val == self.edit_widget.minimum():
+                self.edit_widget.setSpecialValueText(self.special_str)
             self.edit_widget.setValue(self.num_value)
         elif self.type_str in ['integer', 'float']:
             self.edit_widget = QDoubleSpinBox(parent)
@@ -975,6 +980,7 @@ class Logger(QWidget):
             min_val = None
             max_val = None
             special_val = None
+            special_str = None
             if type_str.startswith('string'):
                 max_chars = int(type_str.split()[-1].strip())
                 type_str = 'string'
@@ -997,7 +1003,10 @@ class Logger(QWidget):
                 elif s.startswith('less than'):
                     max_val = s.split()[-1]
                 elif s.startswith('or'):
-                    special_val = s.split('"')[1]
+                    special = s.split('"')
+                    special_str = special[1]
+                    special = special[2]
+                    special_val = int(special[special.find('[') + 1:special.find(']')])
             selection = []
             for k, l in enumerate(self.input[list_start:list_end]):
                 sel = l[4:]
@@ -1017,6 +1026,7 @@ class Logger(QWidget):
                               min_val=min_val,
                               max_val=max_val,
                               special_val=special_val,
+                              special_str=special_str,
                               selection=selection)
             self.menu_item[2] = param
             self.ser.write(b'\n')
