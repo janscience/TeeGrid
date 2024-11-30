@@ -28,9 +28,9 @@ from PyQt5.QtGui import QKeySequence, QFont, QPalette, QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
 from PyQt5.QtWidgets import QStackedWidget, QLabel, QScrollArea
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout
-from PyQt5.QtWidgets import QWidget, QFrame, QPushButton
+from PyQt5.QtWidgets import QWidget, QFrame, QPushButton, QSizePolicy
 from PyQt5.QtWidgets import QAction
-from PyQt5.QtWidgets import QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox
+from PyQt5.QtWidgets import QCheckBox, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox
 
 
 __version__ = '1.0'
@@ -659,27 +659,53 @@ class Parameter(object):
         self.unit_widget = None
 
     def setup(self, parent):
-        if len(self.selection) > 0:
+        if self.type_str == 'boolean':
+            self.edit_widget = QCheckBox(parent)
+            checked = self.value.lower() in ['yes', 'on', 'true', 'ok', '1']
+            self.edit_widget.setChecked(checked)
+        elif len(self.selection) > 0:
             self.edit_widget = QComboBox(parent)
             for s in self.selection:
-                self.edit_widget.addItem(s[1])
-        elif self.type_str == 'float':
-            self.edit_widget = QDoubleSpinBox(parent)
-            self.edit_widget.setDecimals(self.ndec)
-            #self.edit_widget.setRange(self.min_val, self.max_val)
-            self.edit_widget.setValue(self.num_value)
+                si = s[1]
+                if self.out_unit and si.endswith(self.out_unit):
+                    si = si[:-len(self.out_unit)]
+                self.edit_widget.addItem(si)
             if self.out_unit:
                 self.unit_widget = QLabel(self.out_unit, parent)
-        elif self.type_str == 'integer':
+            si = self.value
+            if self.out_unit and si.endswith(self.out_unit):
+                si = si[:-len(self.out_unit)]
+            self.edit_widget.setCurrentText(si)
+        elif self.type_str == 'integer' and not self.unit:
             self.edit_widget = QSpinBox(parent)
-            #self.edit_widget.setRange(self.min_val, self.max_val)
+            if self.min_val is not None:
+                self.edit_widget.setMinimum(int(self.min_val))
+            if self.max_val is not None:
+                self.edit_widget.setMaximum(int(self.max_val))
+            else:
+                self.edit_widget.setMaximum(100000)
+            self.edit_widget.setValue(self.num_value)
+        elif self.type_str in ['integer', 'float']:
+            self.edit_widget = QDoubleSpinBox(parent)
+            self.edit_widget.setDecimals(self.ndec)
+            if self.min_val is not None:
+                minv = float(self.min_val[:-len(self.out_unit)])
+                self.edit_widget.setMinimum(minv)
+            if self.edit_widget.minimum() >= 0:
+                self.edit_widget.setStepType(QSpinBox.AdaptiveDecimalStepType)
+            if self.max_val is not None:
+                maxv = float(self.max_val[:-len(self.out_unit)])
+                self.edit_widget.setMaximum(maxv)
+            else:
+                self.edit_widget.setMaximum(1e9)
             self.edit_widget.setValue(self.num_value)
             if self.out_unit:
                 self.unit_widget = QLabel(self.out_unit, parent)
         elif self.type_str == 'string':
             self.edit_widget = QLineEdit(self.value, parent)
             self.edit_widget.setMaxLength(self.max_chars)
-            self.edit_widget.setMinimumSize(self.edit_widget.sizeHint())
+            fm = self.edit_widget.fontMetrics()
+            self.edit_widget.setMinimumWidth(32*fm.averageCharWidth())
 
         
 class Logger(QWidget):
@@ -1016,7 +1042,10 @@ class Logger(QWidget):
                         self.tools_vbox.addWidget(QLabel(sk, self))
                     elif menu[2][sk][1] == 'param':
                         if add_title:
-                            self.conf_grid.addWidget(QLabel('<b>' + mk + '</b>', self), row, 0, 1, 3)
+                            title = QLabel('<b>' + mk + '</b>', self)
+                            title.setSizePolicy(QSizePolicy.Policy.Preferred,
+                                                QSizePolicy.Policy.Fixed)
+                            self.conf_grid.addWidget(title, row, 0, 1, 3)
                             row += 1
                             add_title = False
                         self.conf_grid.addWidget(QLabel(sk + ': ', self),
