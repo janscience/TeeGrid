@@ -641,9 +641,10 @@ class Terminal(QWidget):
         
 class Parameter(object):
     
-    def __init__(self, value, num_value, out_unit, unit, type_str,
-                 max_chars, ndec, min_val, max_val, special_val,
-                 special_str, selection):
+    def __init__(self, value=None, num_value=None, out_unit=None,
+                 unit=None, type_str=None, max_chars=None, ndec=None,
+                 min_val=None, max_val=None, special_val=None,
+                 special_str=None, selection=None):
         self.value = value
         self.num_value = num_value
         self.out_unit = out_unit
@@ -659,6 +660,51 @@ class Parameter(object):
         self.edit_widget = None
         self.unit_widget = None
 
+    def set(self, s):
+        ss = s.split(',')
+        self.type_str = ss.pop(0)
+        self.max_chars = 0
+        self.min_val = None
+        self.max_val = None
+        self.special_val = None
+        self.special_str = None
+        if self.type_str.startswith('string'):
+            self.max_chars = int(self.type_str.split()[-1].strip())
+            self.type_str = 'string'
+        self.num_value = None
+        self.unit = None
+        self.out_unit = None
+        self.ndec = None
+        if self.type_str in ['float', 'integer']:
+            self.unit = ss.pop(0).strip()
+            self.num_value, self.out_unit, self.ndec = parse_number(self.value)
+        while len(ss) > 0:
+            s = ss.pop(0).strip()
+            if s.startswith('between'):
+                mm = s.split()
+                self.min_val = mm[1].strip()
+                self.max_val = mm[3].strip()
+            elif s.startswith('greater than'):
+                self.min_val = s.split()[-1]
+            elif s.startswith('less than'):
+                self.max_val = s.split()[-1]
+            elif s.startswith('or'):
+                special = s.split('"')
+                self.special_str = special[1]
+                special = special[2]
+                self.special_val = int(special[special.find('[') + 1:special.find(']')])
+
+    def set_selection(self, stream):
+        self.selection = []
+        for k, l in enumerate(stream):
+            sel = l[4:]
+            i = sel.find(') ')
+            if sel[:i].isdigit():
+                sel = (sel[:i], sel[i + 2:])
+            else:
+                sel = (k, sel)
+            self.selection.append(sel)
+        
     def setup(self, parent):
         if self.type_str == 'boolean':
             self.edit_widget = QCheckBox(parent)
@@ -854,7 +900,6 @@ class Logger(QWidget):
             self.read_func = self.configure_menu
         elif self.read_count > 100:
             self.read_count = 0
-            print('REQUEST REBOOT')
             self.ser.write('reboot\n'.encode('latin1'))
             self.ser.flush
         else:
@@ -922,6 +967,8 @@ class Logger(QWidget):
         if self.read_state == 0:
             # get next menu entry:
             try:
+                if len(self.menu_iter) == 0:
+                    exit()
                 self.menu_key, self.menu_item = next(self.menu_iter[-1])
                 if self.menu_item[1] == 'menu':
                     self.read_state = 10
@@ -974,60 +1021,9 @@ class Logger(QWidget):
                 return
             s = self.input[list_end]
             s = s[s.find('new value (') + 11:s.find('):')]
-            ss = s.split(',')
-            type_str = ss.pop(0)
-            max_chars = 0
-            min_val = None
-            max_val = None
-            special_val = None
-            special_str = None
-            if type_str.startswith('string'):
-                max_chars = int(type_str.split()[-1].strip())
-                type_str = 'string'
-            value = self.menu_item[2]
-            num_value = None
-            unit = None
-            out_unit = None
-            ndec = None
-            if type_str in ['float', 'integer']:
-                unit = ss.pop(0).strip()
-                num_value, out_unit, ndec = parse_number(value)
-            while len(ss) > 0:
-                s = ss.pop(0).strip()
-                if s.startswith('between'):
-                    mm = s.split()
-                    min_val = mm[1].strip()
-                    max_val = mm[3].strip()
-                elif s.startswith('greater than'):
-                    min_val = s.split()[-1]
-                elif s.startswith('less than'):
-                    max_val = s.split()[-1]
-                elif s.startswith('or'):
-                    special = s.split('"')
-                    special_str = special[1]
-                    special = special[2]
-                    special_val = int(special[special.find('[') + 1:special.find(']')])
-            selection = []
-            for k, l in enumerate(self.input[list_start:list_end]):
-                sel = l[4:]
-                i = sel.find(') ')
-                if sel[:i].isdigit():
-                    sel = (sel[:i], sel[i + 2:])
-                else:
-                    sel = (k, sel)
-                selection.append(sel)
-            param = Parameter(value=value,
-                              num_value=num_value,
-                              out_unit=out_unit,
-                              unit=unit,
-                              type_str=type_str,
-                              max_chars=max_chars,
-                              ndec=ndec,
-                              min_val=min_val,
-                              max_val=max_val,
-                              special_val=special_val,
-                              special_str=special_str,
-                              selection=selection)
+            param = Parameter(self.menu_item[2])
+            param.set(s)
+            param.set_selection(self.input[list_start:list_end])
             self.menu_item[2] = param
             self.ser.write(b'\n')
             self.read_state = 0
