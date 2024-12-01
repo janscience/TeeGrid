@@ -23,7 +23,7 @@ try:
     from PyQt5.QtCore import Signal
 except ImportError:
     from PyQt5.QtCore import pyqtSignal as Signal
-from PyQt5.QtCore import Qt, QTimer, QDateTime
+from PyQt5.QtCore import Qt, QObject, QTimer, QDateTime
 from PyQt5.QtGui import QKeySequence, QFont, QPalette, QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
 from PyQt5.QtWidgets import QStackedWidget, QLabel, QScrollArea
@@ -147,6 +147,7 @@ class Interactor(ABC):
 
     sigReadRequest = Signal(object, str, list, str)
     sigWriteRequest = Signal(str, list)
+    sigTransmitRequest = Signal(object, str, list, str)
 
     @abstractmethod
     def setup(self, menu):
@@ -193,8 +194,13 @@ class Interactor(ABC):
             return None
 
     @abstractmethod
-    def read(self, stream, ident):
+    def read(self, ident, stream):
         pass
+
+        
+class InteractorQObject(type(Interactor), type(QObject)):
+    # this class is needed for multiple inheritance of ABC ...
+    pass
 
         
 class InteractorQWidget(type(Interactor), type(QWidget)):
@@ -254,7 +260,7 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
                 self.sigReadRequest.emit(self, 'rtclock',
                                          self.start_get, 'select')
 
-    def read(self, stream, ident):
+    def read(self, ident, stream):
         if ident != 'rtclock':
             return
         for s in stream:
@@ -316,7 +322,7 @@ class PSRAMTest(ReportButton):
     def __init__(self, *args, **kwargs):
         super().__init__('psram memory test', 'Test', *args, **kwargs)
         
-    def read(self, stream, ident):
+    def read(self, ident, stream):
         while len(stream) > 0 and 'extmem memory test' not in stream[0].lower():
             del stream[0]
         for k in range(len(stream)):
@@ -380,7 +386,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.sigReadRequest.emit(self, 'psram',
                                  self.psram_start_get, 'select')
 
-    def read(self, stream, ident):
+    def read(self, ident, stream):
         r = 0
         for s in stream:
             if r > 0 and len(s.strip()) == 0:
@@ -453,7 +459,7 @@ class ListFiles(ReportButton):
     def setup(self, start):
         self.start = start
         
-    def read(self, stream, ident):
+    def read(self, ident, stream):
         while len(stream) > 0 and 'files in' not in stream[0].lower():
             del stream[0]
         for k in range(len(stream)):
@@ -473,7 +479,7 @@ class Benchmark(ReportButton):
     def set_value(self, value):
         self.value = value
         
-    def read(self, stream, ident):
+    def read(self, ident, stream):
         while len(stream) > 0 and \
               'benchmarking write and read speeds' not in stream[0].lower():
             del stream[0]
@@ -545,7 +551,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.sigReadRequest.emit(self, 'sdcard',
                                  self.sdcard_start_get, 'select')
 
-    def read(self, stream, ident):
+    def read(self, ident, stream):
 
         def num_files(stream):
             for s in stream:
@@ -639,12 +645,16 @@ class Terminal(QWidget):
         vsb.setValue(vsb.maximum())
 
         
-class Parameter(object):
+class Parameter(Interactor, QObject, metaclass=InteractorQObject):
     
-    def __init__(self, value=None, num_value=None, out_unit=None,
-                 unit=None, type_str=None, max_chars=None, ndec=None,
-                 min_val=None, max_val=None, special_val=None,
-                 special_str=None, selection=None):
+    def __init__(self, ids, name, value, num_value=None,
+                 out_unit=None, unit=None, type_str=None,
+                 max_chars=None, ndec=None, min_val=None,
+                 max_val=None, special_val=None, special_str=None,
+                 selection=None, *args, **kwargs):
+        super(QObject, self).__init__(*args, **kwargs)
+        self.ids = list(ids)
+        self.name = name
         self.value = value
         self.num_value = num_value
         self.out_unit = out_unit
@@ -710,6 +720,10 @@ class Parameter(object):
             self.edit_widget = QCheckBox(parent)
             checked = self.value.lower() in ['yes', 'on', 'true', 'ok', '1']
             self.edit_widget.setChecked(checked)
+            try:
+                self.edit_widget.checkStateChanged.connect(self.transmit_bool)
+            except AttributeError:
+                self.edit_widget.stateChanged.connect(self.transmit_bool)
         elif len(self.selection) > 0:
             self.edit_widget = QComboBox(parent)
             for s in self.selection:
@@ -723,6 +737,8 @@ class Parameter(object):
             if self.out_unit and si.endswith(self.out_unit):
                 si = si[:-len(self.out_unit)]
             self.edit_widget.setCurrentText(si)
+            self.edit_widget.setEditable(False)
+            self.edit_widget.currentTextChanged.connect(self.transmit_str)
         elif self.type_str == 'integer' and not self.unit:
             self.edit_widget = QSpinBox(parent)
             if self.min_val is not None:
@@ -736,6 +752,7 @@ class Parameter(object):
                self.special_val == self.edit_widget.minimum():
                 self.edit_widget.setSpecialValueText(self.special_str)
             self.edit_widget.setValue(self.num_value)
+            self.edit_widget.textChanged.connect(self.transmit_str)
         elif self.type_str in ['integer', 'float']:
             self.edit_widget = QDoubleSpinBox(parent)
             self.edit_widget.setDecimals(self.ndec)
@@ -750,6 +767,7 @@ class Parameter(object):
             else:
                 self.edit_widget.setMaximum(1e9)
             self.edit_widget.setValue(self.num_value)
+            self.edit_widget.textChanged.connect(self.transmit_str)
             if self.out_unit:
                 self.unit_widget = QLabel(self.out_unit, parent)
         elif self.type_str == 'string':
@@ -757,6 +775,20 @@ class Parameter(object):
             self.edit_widget.setMaxLength(self.max_chars)
             fm = self.edit_widget.fontMetrics()
             self.edit_widget.setMinimumWidth(32*fm.averageCharWidth())
+            self.edit_widget.textChanged.connect(self.transmit_str)
+
+    def transmit_bool(self, check_state):
+        print(check_state) # 0 or 2 for unchecked or checked
+
+    def transmit_str(self, text):
+        start = list(self.ids)
+        start.append(text)
+        self.sigTransmitRequest.emit(self, self.name, start, 'select')
+    
+    def read(self, ident, stream):
+        for l in stream:
+            if self.name in l:
+                print(ident, l)
 
         
 class Logger(QWidget):
@@ -827,6 +859,7 @@ class Logger(QWidget):
 
         self.menu = {}
         self.menu_iter = []
+        self.menu_ids = []
         self.menu_key = None
         self.menu_item = None
 
@@ -960,6 +993,7 @@ class Logger(QWidget):
             self.menu = self.parse_menu('Menu')
             if len(self.menu) > 0:
                 self.menu_iter = [iter(self.menu.items())]
+                self.menu_ids = [None]
                 self.read_state = 0
                 self.read_func = self.parse_submenus
                 
@@ -970,12 +1004,14 @@ class Logger(QWidget):
                 if len(self.menu_iter) == 0:
                     exit()
                 self.menu_key, self.menu_item = next(self.menu_iter[-1])
+                self.menu_ids[-1] = self.menu_item[0]
                 if self.menu_item[1] == 'menu':
                     self.read_state = 10
                 elif self.menu_item[1] == 'param':
                     self.read_state = 20
             except StopIteration:
                 self.menu_iter.pop()
+                self.menu_ids.pop()
                 if len(self.menu_iter) == 0:
                     self.init_menu()
                     self.input = []
@@ -996,6 +1032,7 @@ class Logger(QWidget):
             if len(submenu) > 0:
                 self.menu_item[2].update(submenu)
                 self.menu_iter.append(iter(self.menu_item[2].items()))
+                self.menu_ids.append(None)
                 self.read_state = 0
         elif self.read_state == 20:
             # request parameter:
@@ -1021,9 +1058,10 @@ class Logger(QWidget):
                 return
             s = self.input[list_end]
             s = s[s.find('new value (') + 11:s.find('):')]
-            param = Parameter(self.menu_item[2])
+            param = Parameter(self.menu_ids, self.menu_key, self.menu_item[2])
             param.set(s)
             param.set_selection(self.input[list_start:list_end])
+            param.sigTransmitRequest.connect(self.transmit_request)
             self.menu_item[2] = param
             self.ser.write(b'\n')
             self.read_state = 0
@@ -1085,17 +1123,23 @@ class Logger(QWidget):
         else:
             self.read_func = self.parse_write_request
 
-    def read_request(self, target, ident, start, stop):
+    def read_request(self, target, ident, start, stop, transmit=False):
         if start is None:
             return
         # put each request only once onto the stack:
         for req in self.request_stack:
             if req[0] == target and req[1] == ident and req[-1] == 20:
                 return
-        self.request_stack.append([target, ident, start,
-                                   len(start) - 1, stop, 'read'])
+        end = len(start) - 1
+        if transmit:
+            end -= 1
+        self.request_stack.append([target, ident, start, end,
+                                   stop, 'read'])
         if self.read_func == self.parse_request_stack:
             self.parse_request_stack()
+            
+    def transmit_request(self, target, ident, start, stop):
+        self.read_request(target, ident, start, stop, True)
 
     def parse_read_request(self):
         if self.read_state == 0:
@@ -1110,7 +1154,7 @@ class Logger(QWidget):
         elif self.read_state == 1:
             if self.request_stop is None or \
                len(self.request_stop) == 0 or \
-               (len(self.input) > 3 and \
+               (len(self.input) > 0 and \
                 self.request_stop in self.input[-1].lower()):
                 self.request_stop = None
                 self.read_state += 1
@@ -1119,12 +1163,12 @@ class Logger(QWidget):
                     for l in self.input:
                         print(l)
                 if self.request_target is not None:
-                    self.request_target.read(self.input, self.request_ident)
+                    self.request_target.read(self.request_ident, self.input)
                 self.term.update(self.input)
                 self.stack.setCurrentWidget(self.term)
         elif self.read_state == 2:
             if self.request_target is not None:
-                self.request_target.read(self.input, self.request_ident)
+                self.request_target.read(self.request_ident, self.input)
                 self.request_target = None
             if self.request_ident == 'run':
                 self.term.update(self.input)
