@@ -778,7 +778,9 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
             self.edit_widget.textChanged.connect(self.transmit_str)
 
     def transmit_bool(self, check_state):
-        print(check_state) # 0 or 2 for unchecked or checked
+        start = list(self.ids)
+        start.append("yes" if check_state > 0 else "no")
+        self.sigTransmitRequest.emit(self, self.name, start, 'select')
 
     def transmit_str(self, text):
         start = list(self.ids)
@@ -891,7 +893,8 @@ class Logger(QWidget):
         self.sigLoggerDisconnected.emit()
 
     def parse_idle(self):
-        print('IDLE')
+        pass
+        #print('IDLE')
         
     def parse_halt(self, k):
         s = 'Logger halted\n'
@@ -1063,7 +1066,7 @@ class Logger(QWidget):
             param.set_selection(self.input[list_start:list_end])
             param.sigTransmitRequest.connect(self.transmit_request)
             self.menu_item[2] = param
-            self.ser.write(b'\n')
+            self.ser.write(b'keepthevalue\n')
             self.read_state = 0
             
 

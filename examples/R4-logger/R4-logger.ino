@@ -143,9 +143,7 @@ void setup() {
   aidata.report();
   files.report();
   files.initialDelay(settings.initialDelay());
-  // TODO: experimental:
-  shutdown_usb();
-  //Serial.end();
+  shutdown_usb();   // saves power!
   char gs[16];
   pcm->gainStr(gs, PREGAIN);
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
