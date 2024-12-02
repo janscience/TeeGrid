@@ -51,12 +51,6 @@ LoggerFileStorage::LoggerFileStorage(Input &aiinput, SDCard &sdcard0,
 }
 
 
-void LoggerFileStorage::halt(Stream &stream) {
-  stream.println("HALT");
-  while (true) { yield(); };
-}
-
-
 bool LoggerFileStorage::check(bool check_backup, Stream &stream) {
   if (!SDCard0->check(1e9)) {
     SDCard0->end();

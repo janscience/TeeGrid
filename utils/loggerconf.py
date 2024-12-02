@@ -23,16 +23,61 @@ try:
     from PyQt5.QtCore import Signal
 except ImportError:
     from PyQt5.QtCore import pyqtSignal as Signal
-from PyQt5.QtCore import Qt, QTimer, QDateTime
+from PyQt5.QtCore import Qt, QObject, QTimer, QDateTime
 from PyQt5.QtGui import QKeySequence, QFont, QPalette, QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
 from PyQt5.QtWidgets import QStackedWidget, QLabel, QScrollArea
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout
-from PyQt5.QtWidgets import QWidget, QFrame, QPushButton
+from PyQt5.QtWidgets import QWidget, QFrame, QPushButton, QSizePolicy
 from PyQt5.QtWidgets import QAction
+from PyQt5.QtWidgets import QCheckBox, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox
 
 
 __version__ = '1.0'
+
+
+def parse_number(s):
+    """Parse string with number and unit.
+
+    From https://github.com/bendalab/audioio/blob/master/src/audioio/audiometadata.py
+    
+    Parameters
+    ----------
+    s: str, float, or int
+        String to be parsed. The initial part of the string is
+        expected to be a number, the part following the number is
+        interpreted as the unit. If float or int, then return this
+        as the value with empty unit.
+
+    Returns
+    -------
+    v: None, int, or float
+        Value of the string as float. Without decimal point, an int is returned.
+        If the string does not contain a number, None is returned.
+    u: str
+        Unit that follows the initial number.
+    n: int
+        Number of digits behind the decimal point.
+    """
+    n = len(s)
+    ip = n
+    have_point = False
+    for i in range(len(s)):
+        if s[i] == '.':
+            if have_point:
+                n = i
+                break
+            have_point = True
+            ip = i + 1
+        if not s[i] in '0123456789.+-':
+            n = i
+            break
+    if n == 0:
+        return None, s, 0
+    v = float(s[:n]) if have_point else int(s[:n])
+    u = s[n:].strip()
+    nd = n - ip if n >= ip else 0
+    return v, u, nd
 
     
 teensy_model = {   
@@ -102,6 +147,7 @@ class Interactor(ABC):
 
     sigReadRequest = Signal(object, str, list, str)
     sigWriteRequest = Signal(str, list)
+    sigTransmitRequest = Signal(object, str, list, str)
 
     @abstractmethod
     def setup(self, menu):
@@ -116,11 +162,10 @@ class Interactor(ABC):
                     found = True
                     menu_item = menu[mk]
                     ids.append(menu_item[0])
-                    submenu = menu_item[1]
                     if len(keys) > 1:
-                        if isinstance(submenu, dict) and \
-                           find(keys[1:], submenu, ids):
-                            if len(submenu) == 0:
+                        if menu_item[1] == 'menu' and \
+                           find(keys[1:], menu_item[2], ids):
+                            if len(menu_item[2]) == 0:
                                 menu.pop(mk)
                             return True
                     else:
@@ -132,9 +177,9 @@ class Interactor(ABC):
                     menu_item = menu[mk]
                     ids.append(menu_item[0])
                     submenu = menu_item[1]
-                    if isinstance(submenu, dict) and \
-                       find(keys, submenu, ids):
-                        if len(submenu) == 0:
+                    if menu_item[1] == 'menu' and \
+                       find(keys, menu_item[2], ids):
+                        if len(menu_item[2]) == 0:
                             menu.pop(mk)
                         return True
                     ids.pop()
@@ -149,8 +194,13 @@ class Interactor(ABC):
             return None
 
     @abstractmethod
-    def read(self, stream, ident):
+    def read(self, ident, stream):
         pass
+
+        
+class InteractorQObject(type(Interactor), type(QObject)):
+    # this class is needed for multiple inheritance of ABC ...
+    pass
 
         
 class InteractorQWidget(type(Interactor), type(QWidget)):
@@ -210,7 +260,7 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
                 self.sigReadRequest.emit(self, 'rtclock',
                                          self.start_get, 'select')
 
-    def read(self, stream, ident):
+    def read(self, ident, stream):
         if ident != 'rtclock':
             return
         for s in stream:
@@ -272,7 +322,7 @@ class PSRAMTest(ReportButton):
     def __init__(self, *args, **kwargs):
         super().__init__('psram memory test', 'Test', *args, **kwargs)
         
-    def read(self, stream, ident):
+    def read(self, ident, stream):
         while len(stream) > 0 and 'extmem memory test' not in stream[0].lower():
             del stream[0]
         for k in range(len(stream)):
@@ -336,7 +386,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.sigReadRequest.emit(self, 'psram',
                                  self.psram_start_get, 'select')
 
-    def read(self, stream, ident):
+    def read(self, ident, stream):
         r = 0
         for s in stream:
             if r > 0 and len(s.strip()) == 0:
@@ -409,7 +459,7 @@ class ListFiles(ReportButton):
     def setup(self, start):
         self.start = start
         
-    def read(self, stream, ident):
+    def read(self, ident, stream):
         while len(stream) > 0 and 'files in' not in stream[0].lower():
             del stream[0]
         for k in range(len(stream)):
@@ -429,7 +479,7 @@ class Benchmark(ReportButton):
     def set_value(self, value):
         self.value = value
         
-    def read(self, stream, ident):
+    def read(self, ident, stream):
         while len(stream) > 0 and \
               'benchmarking write and read speeds' not in stream[0].lower():
             del stream[0]
@@ -501,7 +551,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.sigReadRequest.emit(self, 'sdcard',
                                  self.sdcard_start_get, 'select')
 
-    def read(self, stream, ident):
+    def read(self, ident, stream):
 
         def num_files(stream):
             for s in stream:
@@ -595,6 +645,152 @@ class Terminal(QWidget):
         vsb.setValue(vsb.maximum())
 
         
+class Parameter(Interactor, QObject, metaclass=InteractorQObject):
+    
+    def __init__(self, ids, name, value, num_value=None,
+                 out_unit=None, unit=None, type_str=None,
+                 max_chars=None, ndec=None, min_val=None,
+                 max_val=None, special_val=None, special_str=None,
+                 selection=None, *args, **kwargs):
+        super(QObject, self).__init__(*args, **kwargs)
+        self.ids = list(ids)
+        self.name = name
+        self.value = value
+        self.num_value = num_value
+        self.out_unit = out_unit
+        self.unit = unit
+        self.type_str = type_str
+        self.max_chars = max_chars
+        self.ndec = ndec
+        self.min_val = min_val
+        self.max_val = max_val
+        self.special_val = special_val
+        self.special_str = special_str
+        self.selection = selection
+        self.edit_widget = None
+        self.unit_widget = None
+
+    def set(self, s):
+        ss = s.split(',')
+        self.type_str = ss.pop(0)
+        self.max_chars = 0
+        self.min_val = None
+        self.max_val = None
+        self.special_val = None
+        self.special_str = None
+        if self.type_str.startswith('string'):
+            self.max_chars = int(self.type_str.split()[-1].strip())
+            self.type_str = 'string'
+        self.num_value = None
+        self.unit = None
+        self.out_unit = None
+        self.ndec = None
+        if self.type_str in ['float', 'integer']:
+            self.unit = ss.pop(0).strip()
+            self.num_value, self.out_unit, self.ndec = parse_number(self.value)
+        while len(ss) > 0:
+            s = ss.pop(0).strip()
+            if s.startswith('between'):
+                mm = s.split()
+                self.min_val = mm[1].strip()
+                self.max_val = mm[3].strip()
+            elif s.startswith('greater than'):
+                self.min_val = s.split()[-1]
+            elif s.startswith('less than'):
+                self.max_val = s.split()[-1]
+            elif s.startswith('or'):
+                special = s.split('"')
+                self.special_str = special[1]
+                special = special[2]
+                self.special_val = int(special[special.find('[') + 1:special.find(']')])
+
+    def set_selection(self, stream):
+        self.selection = []
+        for k, l in enumerate(stream):
+            sel = l[4:]
+            i = sel.find(') ')
+            if sel[:i].isdigit():
+                sel = (sel[:i], sel[i + 2:])
+            else:
+                sel = (k, sel)
+            self.selection.append(sel)
+        
+    def setup(self, parent):
+        if self.type_str == 'boolean':
+            self.edit_widget = QCheckBox(parent)
+            checked = self.value.lower() in ['yes', 'on', 'true', 'ok', '1']
+            self.edit_widget.setChecked(checked)
+            try:
+                self.edit_widget.checkStateChanged.connect(self.transmit_bool)
+            except AttributeError:
+                self.edit_widget.stateChanged.connect(self.transmit_bool)
+        elif len(self.selection) > 0:
+            self.edit_widget = QComboBox(parent)
+            for s in self.selection:
+                si = s[1]
+                if self.out_unit and si.endswith(self.out_unit):
+                    si = si[:-len(self.out_unit)]
+                self.edit_widget.addItem(si)
+            if self.out_unit:
+                self.unit_widget = QLabel(self.out_unit, parent)
+            si = self.value
+            if self.out_unit and si.endswith(self.out_unit):
+                si = si[:-len(self.out_unit)]
+            self.edit_widget.setCurrentText(si)
+            self.edit_widget.setEditable(False)
+            self.edit_widget.currentTextChanged.connect(self.transmit_str)
+        elif self.type_str == 'integer' and not self.unit:
+            self.edit_widget = QSpinBox(parent)
+            if self.min_val is not None:
+                self.edit_widget.setMinimum(int(self.min_val))
+            if self.max_val is not None:
+                self.edit_widget.setMaximum(int(self.max_val))
+            else:
+                self.edit_widget.setMaximum(100000)
+            if self.special_val is not None and \
+               self.special_str is not None and \
+               self.special_val == self.edit_widget.minimum():
+                self.edit_widget.setSpecialValueText(self.special_str)
+            self.edit_widget.setValue(self.num_value)
+            self.edit_widget.textChanged.connect(self.transmit_str)
+        elif self.type_str in ['integer', 'float']:
+            self.edit_widget = QDoubleSpinBox(parent)
+            self.edit_widget.setDecimals(self.ndec)
+            if self.min_val is not None:
+                minv = float(self.min_val[:-len(self.out_unit)])
+                self.edit_widget.setMinimum(minv)
+            if self.edit_widget.minimum() >= 0:
+                self.edit_widget.setStepType(QSpinBox.AdaptiveDecimalStepType)
+            if self.max_val is not None:
+                maxv = float(self.max_val[:-len(self.out_unit)])
+                self.edit_widget.setMaximum(maxv)
+            else:
+                self.edit_widget.setMaximum(1e9)
+            self.edit_widget.setValue(self.num_value)
+            self.edit_widget.textChanged.connect(self.transmit_str)
+            if self.out_unit:
+                self.unit_widget = QLabel(self.out_unit, parent)
+        elif self.type_str == 'string':
+            self.edit_widget = QLineEdit(self.value, parent)
+            self.edit_widget.setMaxLength(self.max_chars)
+            fm = self.edit_widget.fontMetrics()
+            self.edit_widget.setMinimumWidth(32*fm.averageCharWidth())
+            self.edit_widget.textChanged.connect(self.transmit_str)
+
+    def transmit_bool(self, check_state):
+        print(check_state) # 0 or 2 for unchecked or checked
+
+    def transmit_str(self, text):
+        start = list(self.ids)
+        start.append(text)
+        self.sigTransmitRequest.emit(self, self.name, start, 'select')
+    
+    def read(self, ident, stream):
+        for l in stream:
+            if self.name in l:
+                print(ident, l)
+
+        
 class Logger(QWidget):
 
     sigLoggerDisconnected = Signal()
@@ -650,7 +846,9 @@ class Logger(QWidget):
         self.ser = None
         self.read_timer = QTimer(self)
         self.read_timer.timeout.connect(self.read)
+        self.read_count = 0
         self.read_state = 0
+        self.read_func = None
         self.input = []
         self.request_stack = []
         self.request_target = None
@@ -660,14 +858,17 @@ class Logger(QWidget):
         self.request_stop = None
 
         self.menu = {}
-        self.menu_iter = iter([])
+        self.menu_iter = []
+        self.menu_ids = []
         self.menu_key = None
+        self.menu_item = None
 
     def activate(self, device, model, serial_number):
         #self.title.setText(f'Teensy{model} with serial number {serial_number} on {device}')
         self.device = device
         self.loggerinfo.set(device, model, serial_number)
         self.msg.setText('Reading configuration ...')
+        self.msg.setAlignment(Qt.AlignCenter)
         self.stack.setCurrentWidget(self.msg)
         try:
             self.ser = serial.Serial(device)
@@ -676,7 +877,9 @@ class Logger(QWidget):
         except (OSError, serial.serialutil.SerialException):
             self.ser = None
         self.input = []
+        self.read_count = 0
         self.read_state = 0
+        self.read_func = self.parse_logo
         self.read_timer.start(2)
 
     def stop(self):
@@ -686,6 +889,9 @@ class Logger(QWidget):
             self.ser.close()
         self.ser = None
         self.sigLoggerDisconnected.emit()
+
+    def parse_idle(self):
+        print('IDLE')
         
     def parse_halt(self, k):
         s = 'Logger halted\n'
@@ -694,38 +900,53 @@ class Logger(QWidget):
             k -= 1
         self.msg.setText(s + self.input[k])
         self.stack.setCurrentWidget(self.msg)
-        self.read_state = 10000
+        self.read_func = self.parse_idle
 
     def parse_logo(self):
+        title_start = None
+        title_mid = None
+        title_end = None
+        for k in range(len(self.input)):
+            if 'HALT' in self.input[k]:
+                self.parse_halt(k)
+                return
+            elif self.input[k][:20] == 20*'=':
+                title_start = k
+            elif title_start is not None and \
+                 ' by ' in self.input[k]:
+                title_mid = k
+            elif title_start is not None and \
+                 self.input[k][:20] == 20*'-':
+                title_end = k
+        if title_start is not None and \
+           title_end is not None:
+            if title_mid is not None:
+                s = ''
+                for l in self.input[title_start + 1:title_mid]:
+                    if len(s) > 0:
+                        s += '\n'
+                    s += l
+                self.logo.setText(s)
+                title_start = title_mid - 1
+            self.softwareinfo.set(self.input[title_start + 1:title_end])
+            self.input = self.input[title_end + 1:]
+            self.read_func = self.configure_menu
+        elif self.read_count > 100:
+            self.read_count = 0
+            self.ser.write('reboot\n'.encode('latin1'))
+            self.ser.flush
+        else:
+            self.read_count += 1
+
+    def configure_menu(self):
         if self.read_state == 0:
-            title_start = None
-            title_mid = None
-            title_end = None
-            for k in range(len(self.input)):
-                if 'HALT' in self.input[k]:
-                    self.parse_halt(k)
-                    return
-                elif self.input[k][:20] == 20*'=':
-                    title_start = k
-                elif title_start is not None and \
-                     ' by ' in self.input[k]:
-                    title_mid = k
-                elif title_start is not None and \
-                     self.input[k][:20] == 20*'-':
-                    title_end = k
-            if title_start is not None and \
-               title_end is not None:
-                if title_mid is not None:
-                    s = ''
-                    for l in self.input[title_start + 1:title_mid]:
-                        if len(s) > 0:
-                            s += '\n'
-                        s += l
-                    self.logo.setText(s)
-                    title_start = title_mid - 1
-                self.softwareinfo.set(self.input[title_start + 1:title_end])
-                self.input = self.input[title_end + 1:]
-                self.read_state += 1
+            self.ser.write(b'detailed on\n')
+            self.read_state += 1
+        elif self.read_state == 1:
+            self.input = []
+            self.ser.write(b'echo off\n')
+            self.read_state = 0
+            self.read_func = self.parse_mainmenu
 
     def parse_menu(self, title_str):
         menu_start = None
@@ -745,66 +966,106 @@ class Logger(QWidget):
         for l in self.input[menu_start + 1:menu_end]:
             x = l.split()
             num = x[0][:-1]
-            sub_menu = (x[-1] == '...')
-            if sub_menu:
+            if x[-1] == '...':
+                # sub menu:
                 name = ' '.join(x[1:-1])
-                menu[name] = (num, {})
+                menu[name] = (num, 'menu', {})
             else:
                 l = ' '.join(x[1:])
                 if ':' in l:
+                    # parameter:
                     x = l.split(':')
                     name = x[0].strip()
                     value = x[1].strip()
-                    menu[name] = (num, value)
+                    menu[name] = [num, 'param', value]
                 else:
-                    menu[l] = (num, None)
+                    # action:
+                    menu[l] = (num, 'action')
         self.input = []
         return menu
 
     def parse_mainmenu(self):
-        if self.read_state == 1:
-            self.ser.write(b'detailed: on\n')
-            self.read_state += 1
-        elif self.read_state == 2:
-            self.input = []
-            self.ser.write(b'echo: off\n')
-            self.read_state += 1
-        elif self.read_state == 3:
+        if self.read_state == 0:
             self.input = []
             self.ser.write(b'print\n')
             self.read_state += 1
-        elif self.read_state == 4:
+        elif self.read_state == 1:
             self.menu = self.parse_menu('Menu')
             if len(self.menu) > 0:
-                self.menu_iter = iter(self.menu.keys())
-                self.read_state += 1
-
-    def parse_submenu(self):
-        if self.read_state == 5:
+                self.menu_iter = [iter(self.menu.items())]
+                self.menu_ids = [None]
+                self.read_state = 0
+                self.read_func = self.parse_submenus
+                
+    def parse_submenus(self):
+        if self.read_state == 0:
             # get next menu entry:
             try:
-                self.menu_key = next(self.menu_iter)
-                if isinstance(self.menu[self.menu_key][1], dict):
-                    self.read_state += 1
+                if len(self.menu_iter) == 0:
+                    exit()
+                self.menu_key, self.menu_item = next(self.menu_iter[-1])
+                self.menu_ids[-1] = self.menu_item[0]
+                if self.menu_item[1] == 'menu':
+                    self.read_state = 10
+                elif self.menu_item[1] == 'param':
+                    self.read_state = 20
             except StopIteration:
-                self.init_menu()
-                self.input = []
-                self.read_state = 10
-        elif self.read_state == 6:
+                self.menu_iter.pop()
+                self.menu_ids.pop()
+                if len(self.menu_iter) == 0:
+                    self.init_menu()
+                    self.input = []
+                    self.read_func = self.parse_request_stack
+                else:
+                    self.ser.write('q\n'.encode('latin1'))
+        elif self.read_state == 10:
             # request submenu:
             self.input = []
-            self.ser.write(self.menu[self.menu_key][0].encode('latin1'))
+            self.ser.write(self.menu_item[0].encode('latin1'))
             self.ser.write(b'\n')
             self.read_state += 1
-        elif self.read_state == 7:
+        elif self.read_state == 11:
             # parse submenu:
             submenu = {}
             if len(self.input) > 1 and 'Select' in self.input[-1]:
                 submenu = self.parse_menu(self.menu_key)
             if len(submenu) > 0:
-                self.menu[self.menu_key][1].update(submenu)
-                self.ser.write('q\n'.encode('latin1'))
-                self.read_state = 5
+                self.menu_item[2].update(submenu)
+                self.menu_iter.append(iter(self.menu_item[2].items()))
+                self.menu_ids.append(None)
+                self.read_state = 0
+        elif self.read_state == 20:
+            # request parameter:
+            self.input = []
+            self.ser.write(self.menu_item[0].encode('latin1'))
+            self.ser.write(b'\n')
+            self.read_state += 1
+        elif self.read_state == 21:
+            # parse parameter:
+            list_start = None
+            list_end = None
+            for k in range(len(self.input)):
+                if list_start is None and \
+                   self.input[k].lower().startswith(self.menu_key.lower()):
+                    list_start = k + 1
+                elif list_end is None and \
+                     self.input[k].lower().startswith('select new value'):
+                    list_end = k
+                elif list_end is None and \
+                     self.input[k].lower().startswith('enter new value'):
+                    list_end = k
+            if list_start is None or list_end is None:
+                return
+            s = self.input[list_end]
+            s = s[s.find('new value (') + 11:s.find('):')]
+            param = Parameter(self.menu_ids, self.menu_key, self.menu_item[2])
+            param.set(s)
+            param.set_selection(self.input[list_start:list_end])
+            param.sigTransmitRequest.connect(self.transmit_request)
+            self.menu_item[2] = param
+            self.ser.write(b'\n')
+            self.read_state = 0
+            
 
     def init_menu(self):
         # init menu:
@@ -816,54 +1077,72 @@ class Logger(QWidget):
         for mk in self.menu:
             menu = self.menu[mk]
             add_title = True
-            if isinstance(menu[1], dict):
-                for sk in menu[1]:
-                    if menu[1][sk][1] is None:
+            if menu[1] == 'menu':
+                for sk in menu[2]:
+                    if menu[2][sk][1] == 'action':
                         if add_title:
                             self.tools_vbox.addWidget(QLabel('<b>' + mk + '</b>', self))
                             add_title = False
                         self.tools_vbox.addWidget(QLabel(sk, self))
-                    elif not isinstance(menu[1][sk][1], dict):
+                    elif menu[2][sk][1] == 'param':
                         if add_title:
-                            self.conf_grid.addWidget(QLabel('<b>' + mk + '</b>', self), row, 0, 1, 2)
+                            title = QLabel('<b>' + mk + '</b>', self)
+                            title.setSizePolicy(QSizePolicy.Policy.Preferred,
+                                                QSizePolicy.Policy.Fixed)
+                            self.conf_grid.addWidget(title, row, 0, 1, 3)
                             row += 1
                             add_title = False
                         self.conf_grid.addWidget(QLabel(sk + ': ', self),
                                                  row, 0)
-                        self.conf_grid.addWidget(QLabel(menu[1][sk][1], self),
-                                                 row, 1)
+                        param = menu[2][sk][2]
+                        param.setup(self)
+                        if param.unit_widget is None:
+                            self.conf_grid.addWidget(param.edit_widget,
+                                                     row, 1, 1, 2)
+                        else:
+                            self.conf_grid.addWidget(param.edit_widget, row, 1)
+                            self.conf_grid.addWidget(param.unit_widget, row, 2)
                         row += 1
         self.sdcardinfo.start()
         self.loggerinfo.start()
         self.stack.setCurrentWidget(self.boxw)
             
     def parse_request_stack(self):
-        if self.read_state == 10:
-            if len(self.request_stack) == 0:
-                return
-            self.input = []
-            request = self.request_stack.pop(0)
-            self.request_target = request[0]
-            self.request_ident = request[1]
-            self.request_start = request[2]
-            self.request_end = request[3]
-            self.request_stop = request[4]
-            self.read_state = request[5]
+        if len(self.request_stack) == 0:
+            return
+        self.input = []
+        request = self.request_stack.pop(0)
+        self.request_target = request[0]
+        self.request_ident = request[1]
+        self.request_start = request[2]
+        self.request_end = request[3]
+        self.request_stop = request[4]
+        self.read_state = 0
+        if request[5] == 'read':
+            self.read_func = self.parse_read_request
+        else:
+            self.read_func = self.parse_write_request
 
-    def read_request(self, target, ident, start, stop):
+    def read_request(self, target, ident, start, stop, transmit=False):
         if start is None:
             return
         # put each request only once onto the stack:
         for req in self.request_stack:
             if req[0] == target and req[1] == ident and req[-1] == 20:
                 return
-        self.request_stack.append([target, ident, start,
-                                   len(start) - 1, stop, 20])
-        if self.read_state == 10:
+        end = len(start) - 1
+        if transmit:
+            end -= 1
+        self.request_stack.append([target, ident, start, end,
+                                   stop, 'read'])
+        if self.read_func == self.parse_request_stack:
             self.parse_request_stack()
+            
+    def transmit_request(self, target, ident, start, stop):
+        self.read_request(target, ident, start, stop, True)
 
     def parse_read_request(self):
-        if self.read_state == 20:
+        if self.read_state == 0:
             if len(self.request_start) > 0:
                 self.input = []
                 self.ser.write(self.request_start[0].encode('latin1'))
@@ -872,47 +1151,48 @@ class Logger(QWidget):
             else:
                 self.request_start = None
                 self.read_state += 1
-        elif self.read_state == 21:
+        elif self.read_state == 1:
             if self.request_stop is None or \
                len(self.request_stop) == 0 or \
-               (len(self.input) > 3 and \
+               (len(self.input) > 0 and \
                 self.request_stop in self.input[-1].lower()):
                 self.request_stop = None
                 self.read_state += 1
             if self.request_ident == 'run':
-                if self.read_state == 22:
+                if self.read_state == 2:
                     for l in self.input:
                         print(l)
                 if self.request_target is not None:
-                    self.request_target.read(self.input, self.request_ident)
+                    self.request_target.read(self.request_ident, self.input)
                 self.term.update(self.input)
                 self.stack.setCurrentWidget(self.term)
-        elif self.read_state == 22:
+        elif self.read_state == 2:
             if self.request_target is not None:
-                self.request_target.read(self.input, self.request_ident)
+                self.request_target.read(self.request_ident, self.input)
                 self.request_target = None
             if self.request_ident == 'run':
                 self.term.update(self.input)
                 self.term.done.setEnabled(True)
             self.read_state += 1
-        elif self.read_state == 23:
+        elif self.read_state == 3:
             self.input = []
             if self.request_end > 0:
                 self.ser.write(b'q\n')
                 self.request_end -= 1
             else:
                 self.request_end = None
-                self.read_state = 10
+                self.read_func = self.parse_request_stack
 
     def write_request(self, msg, start):
         if start is None:
             return
-        self.request_stack.append([msg, None, start, len(start) - 1, None, 30])
-        if self.read_state == 10:
+        self.request_stack.append([msg, None, start,
+                                   len(start) - 1, None, 'write'])
+        if self.read_func == self.parse_request_stack:
             self.parse_request_stack()
 
     def parse_write_request(self):
-        if self.read_state == 30:
+        if self.read_state == 0:
             if len(self.request_start) > 0:
                 self.ser.write(self.request_start[0].encode('latin1'))
                 self.ser.write(b'\n')
@@ -921,19 +1201,19 @@ class Logger(QWidget):
                 self.input = []
                 self.request_start = None
                 self.read_state += 1
-        elif self.read_state == 31:
+        elif self.read_state == 1:
             self.ser.write(self.request_target.encode('latin1'))
             self.ser.write(b'\n')
             self.request_target = None
             self.read_state += 1
-        elif self.read_state == 32:
+        elif self.read_state == 2:
             self.input = []
             if self.request_end > 0:
                 self.ser.write(b'q\n')
                 self.request_end -= 1
             else:
                 self.request_end = None
-                self.read_state = 10
+                self.read_func = self.parse_request_stack
 
     def read(self):
         if self.ser is None:
@@ -949,6 +1229,7 @@ class Logger(QWidget):
                 return
         try:
             if self.ser.in_waiting > 0:
+                # read in incoming data:
                 x = self.ser.read(self.ser.in_waiting)
                 lines = x.decode('latin1').split('\n')
                 if len(self.input) == 0:
@@ -957,12 +1238,8 @@ class Logger(QWidget):
                 for l in lines[1:]:
                     self.input.append(l.rstrip('\r'))
             else:
-                self.parse_logo()
-                self.parse_mainmenu()
-                self.parse_submenu()
-                self.parse_read_request()
-                self.parse_write_request()
-                self.parse_request_stack()
+                # execute requests:
+                self.read_func()
         except (OSError, serial.serialutil.SerialException):
             self.stop()
         
