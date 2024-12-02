@@ -104,6 +104,7 @@ void LoggerFileStorage::setup(SDWriter &sdfile, float filetime,
   sdfile.setWriteInterval(2*AIInput.DMABufferTime());
   sdfile.setMaxFileTime(filetime);
   sdfile.header().setSoftware(software);
+  sdfile.header().setCPUSpeed();
   if (gainstr != 0)
     sdfile.header().setGain(gainstr);
 }

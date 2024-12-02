@@ -12,6 +12,7 @@
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
 #include <ToolMenus.h>
+#include <PowerSave.h>
 #include <LoggerFileStorage.h>
 #include <R41CAN.h>
 
@@ -124,6 +125,7 @@ void setup() {
   Serial.println();
   deviceid.setID(settings.deviceID());
   aidata.setSwapLR();
+  setTeensySpeed(24);  // 24MHz is enough for logging
   Wire.begin();
   Wire1.begin();
   for (int k=0;k < NPCMS; k++) {
@@ -142,6 +144,9 @@ void setup() {
   aidata.report();
   files.report();
   files.initialDelay(settings.initialDelay());
+  // TODO: experimental:
+  shutdown_usb();
+  //Serial.end();
   char gs[16];
   pcm->gainStr(gs, PREGAIN);
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
