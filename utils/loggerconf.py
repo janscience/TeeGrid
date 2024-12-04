@@ -147,7 +147,7 @@ class Interactor(ABC):
 
     sigReadRequest = Signal(object, str, list, str)
     sigWriteRequest = Signal(str, list)
-    sigTransmitRequest = Signal(object, str, list, str)
+    sigTransmitRequest = Signal(object, str, list)
 
     @abstractmethod
     def setup(self, menu):
@@ -194,7 +194,7 @@ class Interactor(ABC):
             return None
 
     @abstractmethod
-    def read(self, ident, stream):
+    def read(self, ident, stream, success):
         pass
 
         
@@ -260,7 +260,7 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
                 self.sigReadRequest.emit(self, 'rtclock',
                                          self.start_get, 'select')
 
-    def read(self, ident, stream):
+    def read(self, ident, stream, success):
         if ident != 'rtclock':
             return
         for s in stream:
@@ -322,7 +322,7 @@ class PSRAMTest(ReportButton):
     def __init__(self, *args, **kwargs):
         super().__init__('psram memory test', 'Test', *args, **kwargs)
         
-    def read(self, ident, stream):
+    def read(self, ident, stream, success):
         while len(stream) > 0 and 'extmem memory test' not in stream[0].lower():
             del stream[0]
         for k in range(len(stream)):
@@ -386,7 +386,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.sigReadRequest.emit(self, 'psram',
                                  self.psram_start_get, 'select')
 
-    def read(self, ident, stream):
+    def read(self, ident, stream, success):
         r = 0
         for s in stream:
             if r > 0 and len(s.strip()) == 0:
@@ -459,7 +459,7 @@ class ListFiles(ReportButton):
     def setup(self, start):
         self.start = start
         
-    def read(self, ident, stream):
+    def read(self, ident, stream, success):
         while len(stream) > 0 and 'files in' not in stream[0].lower():
             del stream[0]
         for k in range(len(stream)):
@@ -479,7 +479,7 @@ class Benchmark(ReportButton):
     def set_value(self, value):
         self.value = value
         
-    def read(self, ident, stream):
+    def read(self, ident, stream, success):
         while len(stream) > 0 and \
               'benchmarking write and read speeds' not in stream[0].lower():
             del stream[0]
@@ -551,7 +551,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.sigReadRequest.emit(self, 'sdcard',
                                  self.sdcard_start_get, 'select')
 
-    def read(self, ident, stream):
+    def read(self, ident, stream, success):
 
         def num_files(stream):
             for s in stream:
@@ -780,17 +780,22 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
     def transmit_bool(self, check_state):
         start = list(self.ids)
         start.append("yes" if check_state > 0 else "no")
-        self.sigTransmitRequest.emit(self, self.name, start, 'select')
+        self.sigTransmitRequest.emit(self, self.name, start)
 
     def transmit_str(self, text):
         start = list(self.ids)
         start.append(text)
-        self.sigTransmitRequest.emit(self, self.name, start, 'select')
+        self.sigTransmitRequest.emit(self, self.name, start)
     
-    def read(self, ident, stream):
+    def read(self, ident, stream, success):
         for l in stream:
             if self.name in l:
-                print(ident, l)
+                print(ident, success, l)
+                #self.edit_widget.setStyleSheet('border: 0px solid red')
+            elif 'new value' in l:
+                print(ident, success, l)
+                #self.edit_widget.setStyleSheet('border: 2px solid red')
+                
 
         
 class Logger(QWidget):
@@ -853,11 +858,13 @@ class Logger(QWidget):
         self.read_func = None
         self.input = []
         self.request_stack = []
+        self.request_type = None
         self.request_target = None
         self.request_ident = None
         self.request_start = None
         self.request_end = None
         self.request_stop = None
+        self.request_stop_index = None
 
         self.menu = {}
         self.menu_iter = []
@@ -894,7 +901,6 @@ class Logger(QWidget):
 
     def parse_idle(self):
         pass
-        #print('IDLE')
         
     def parse_halt(self, k):
         s = 'Logger halted\n'
@@ -1120,29 +1126,34 @@ class Logger(QWidget):
         self.request_start = request[2]
         self.request_end = request[3]
         self.request_stop = request[4]
+        if not isinstance(self.request_stop, (list, tuple)):
+            self.request_stop = (self.request_stop, )
+        self.request_stop_index = None
+        self.request_type = request[5]
         self.read_state = 0
-        if request[5] == 'read':
+        if self.request_type in ['read', 'transmit']:
             self.read_func = self.parse_read_request
         else:
             self.read_func = self.parse_write_request
 
-    def read_request(self, target, ident, start, stop, transmit=False):
+    def read_request(self, target, ident, start, stop, act='read'):
         if start is None:
             return
         # put each request only once onto the stack:
         for req in self.request_stack:
-            if req[0] == target and req[1] == ident and req[-1] == 20:
+            if req[0] == target and req[1] == ident and req[-1] == act:
                 return
         end = len(start) - 1
-        if transmit:
+        if act == 'transmit':
             end -= 1
         self.request_stack.append([target, ident, start, end,
-                                   stop, 'read'])
+                                   stop, act])
         if self.read_func == self.parse_request_stack:
             self.parse_request_stack()
             
-    def transmit_request(self, target, ident, start, stop):
-        self.read_request(target, ident, start, stop, True)
+    def transmit_request(self, target, ident, start):
+        stop = ['select', 'new value']
+        self.read_request(target, ident, start, stop, 'transmit')
 
     def parse_read_request(self):
         if self.read_state == 0:
@@ -1156,26 +1167,32 @@ class Logger(QWidget):
                 self.read_state += 1
         elif self.read_state == 1:
             if self.request_stop is None or \
-               len(self.request_stop) == 0 or \
-               (len(self.input) > 0 and \
-                self.request_stop in self.input[-1].lower()):
-                self.request_stop = None
+               len(self.request_stop) == 0:
                 self.read_state += 1
+            elif len(self.input) > 0:
+                for k in range(len(self.request_stop)):
+                    if self.request_stop[k] in self.input[-1].lower():
+                        self.request_stop = None
+                        self.request_stop_index = k
+                        self.read_state += 1
+                        break
             if self.request_ident == 'run':
                 if self.read_state == 2:
                     for l in self.input:
                         print(l)
                 if self.request_target is not None:
-                    self.request_target.read(self.request_ident, self.input)
+                    self.request_target.read(self.request_ident, self.input, self.request_stop_index == 0)
                 self.term.update(self.input)
                 self.stack.setCurrentWidget(self.term)
         elif self.read_state == 2:
             if self.request_target is not None:
-                self.request_target.read(self.request_ident, self.input)
+                self.request_target.read(self.request_ident, self.input, self.request_stop_index == 0)
                 self.request_target = None
             if self.request_ident == 'run':
                 self.term.update(self.input)
                 self.term.done.setEnabled(True)
+            if self.request_type == 'transmit' and self.request_stop_index == 1:
+                self.ser.write(b'keepthevalue\n')
             self.read_state += 1
         elif self.read_state == 3:
             self.input = []
@@ -1184,6 +1201,7 @@ class Logger(QWidget):
                 self.request_end -= 1
             else:
                 self.request_end = None
+                self.request_type = None
                 self.read_func = self.parse_request_stack
 
     def write_request(self, msg, start):
@@ -1216,6 +1234,7 @@ class Logger(QWidget):
                 self.request_end -= 1
             else:
                 self.request_end = None
+                self.request_type = None
                 self.read_func = self.parse_request_stack
 
     def read(self):

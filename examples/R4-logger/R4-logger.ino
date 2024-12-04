@@ -125,7 +125,11 @@ void setup() {
   Serial.println();
   deviceid.setID(settings.deviceID());
   aidata.setSwapLR();
+#ifdef BACKUP_SDCARD
+  setTeensySpeed(150);
+#else
   setTeensySpeed(24);  // 24MHz is enough for logging
+#endif
   Wire.begin();
   Wire1.begin();
   for (int k=0;k < NPCMS; k++) {
