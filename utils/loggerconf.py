@@ -23,7 +23,7 @@ try:
     from PyQt5.QtCore import Signal
 except ImportError:
     from PyQt5.QtCore import pyqtSignal as Signal
-from PyQt5.QtCore import Qt, QObject, QTimer, QDateTime
+from PyQt5.QtCore import Qt, QObject, QTimer, QDateTime, QLocale
 from PyQt5.QtGui import QKeySequence, QFont, QPalette, QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
 from PyQt5.QtWidgets import QStackedWidget, QLabel, QScrollArea
@@ -784,6 +784,10 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
 
     def transmit_str(self, text):
         start = list(self.ids)
+        if self.type_str in ['integer', 'float']:
+            locale = QLocale()
+            text = text.replace(locale.groupSeparator(), '')
+            text = text.replace(locale.decimalPoint(), '.')
         start.append(text)
         self.sigTransmitRequest.emit(self, self.name, start)
     
