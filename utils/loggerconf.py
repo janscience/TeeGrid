@@ -801,6 +801,52 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                 #self.edit_widget.setStyleSheet('border: 2px solid red')
                 
 
+class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
+    
+    def __init__(self, *args, **kwargs):
+        super(QWidget, self).__init__(*args, **kwargs)
+        self.check_button = QPushButton('&check', self)
+        self.save_button = QPushButton('&save', self)
+        self.load_button = QPushButton('&load', self)
+        self.erase_button = QPushButton('&erase', self)
+        self.check_button.clicked.connect(self.check)
+        self.save_button.clicked.connect(self.save)
+        self.load_button.clicked.connect(self.load)
+        self.erase_button.clicked.connect(self.erase)
+        hbox = QHBoxLayout(self)
+        hbox.setContentsMargins(0, 0, 0, 0)
+        hbox.addWidget(self.check_button)
+        hbox.addWidget(self.save_button)
+        hbox.addWidget(self.load_button)
+        hbox.addWidget(self.erase_button)
+        self.start_check = None
+        self.start_load = None
+        self.start_save = None
+        self.start_erase = None
+    
+    def setup(self, menu):
+        self.start_check = self.retrieve('configuration>print', menu)
+        self.start_load = self.retrieve('configuration>load', menu)
+        self.start_save = self.retrieve('configuration>save', menu)
+        self.start_erase = self.retrieve('configuration>erase', menu)
+
+    def check(self):
+        self.sigReadRequest.emit(self, 'confcheck', self.start_check, 'select')
+
+    def save(self):
+        self.sigReadRequest.emit(self, 'confsave', self.start_save, 'select')
+
+    def load(self):
+        self.sigReadRequest.emit(self, 'confload', self.start_load, 'select')
+
+    def erase(self):
+        self.sigReadRequest.emit(self, 'conferase', self.start_erase, 'select')
+
+    def read(self, ident, stream, success):
+        if ident[:4] != 'conf':
+            return
+        print(ident, success, stream)
+
         
 class Logger(QWidget):
 
@@ -813,6 +859,8 @@ class Logger(QWidget):
         self.msg = QLabel(self)
         self.conf = QWidget(self)
         self.conf_grid = QGridLayout(self.conf)
+        self.configuration = ConfigActions(self)
+        self.configuration.sigReadRequest.connect(self.read_request)
         self.tools = QWidget(self)
         self.tools_vbox = QVBoxLayout(self.tools)
         tabs = QTabWidget(self)
@@ -1084,6 +1132,7 @@ class Logger(QWidget):
         # init menu:
         if 'Help' in self.menu:
             self.menu.pop('Help')
+        self.configuration.setup(self.menu)
         self.loggerinfo.setup(self.menu)
         self.sdcardinfo.setup(self.menu)
         row = 0
@@ -1116,6 +1165,7 @@ class Logger(QWidget):
                             self.conf_grid.addWidget(param.edit_widget, row, 1)
                             self.conf_grid.addWidget(param.unit_widget, row, 2)
                         row += 1
+        self.conf_grid.addWidget(self.configuration, row, 0, 1, 3)
         self.sdcardinfo.start()
         self.loggerinfo.start()
         self.stack.setCurrentWidget(self.boxw)
