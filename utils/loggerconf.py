@@ -153,6 +153,7 @@ class Interactor(ABC):
     sigReadRequest = Signal(object, str, list, str)
     sigWriteRequest = Signal(str, list)
     sigTransmitRequest = Signal(object, str, list)
+    sigDisplayTerminal = Signal(str, str)
 
     @abstractmethod
     def setup(self, menu):
@@ -649,6 +650,15 @@ class Terminal(QWidget):
         vsb = self.scroll.verticalScrollBar()
         vsb.setValue(vsb.maximum())
 
+    def display(self, title, text):
+        if title:
+            self.title.setText(title)
+        self.done.setEnabled(True)
+        self.out.setText(text)
+        self.out.setMinimumSize(self.out.sizeHint())
+        vsb = self.scroll.verticalScrollBar()
+        vsb.setValue(vsb.maximum())
+
         
 class Parameter(Interactor, QObject, metaclass=InteractorQObject):
     
@@ -848,9 +858,30 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.sigReadRequest.emit(self, 'conferase', self.start_erase, 'select')
 
     def read(self, ident, stream, success):
-        if ident[:4] != 'conf':
+        if not ident.startswith('conf'):
             return
         print(ident, success, stream)
+        while len(stream) > 0 and len(stream[0].strip()) == 0:
+            del stream[0]
+        for k in range(len(stream)):
+            if 'configuration' in stream[k].lower():
+                while len(stream) >= k:
+                    del stream[-1]
+                print(stream)
+                if ident == 'confcheck':
+                    text = '<style type="text/css"> td { padding: 0 15px; }</style>'
+                    text += '<table>'
+                    for s in stream:
+                        text += '<tr>'
+                        cs = s.split(':')
+                        if len(cs) > 1 and len(cs[1].strip()) > 0:
+                            text += f'<td></td><td>{cs[0].strip()}</td><td><b>{(":".join(cs[1:])).strip()}</b></td>'
+                        else:
+                            text += f'<td colspan=3><b>{cs[0].strip()}</b></td>'
+                        text += '</tr>'
+                    text += '</table>'
+                    self.sigDisplayTerminal.emit('Current configuration', text)
+                break
 
         
 class Logger(QWidget):
@@ -866,6 +897,7 @@ class Logger(QWidget):
         self.conf_grid = QGridLayout(self.conf)
         self.configuration = ConfigActions(self)
         self.configuration.sigReadRequest.connect(self.read_request)
+        self.configuration.sigDisplayTerminal.connect(self.display_terminal)
         self.tools = QWidget(self)
         self.tools_vbox = QVBoxLayout(self.tools)
         tabs = QTabWidget(self)
@@ -955,6 +987,10 @@ class Logger(QWidget):
             self.ser.close()
         self.ser = None
         self.sigLoggerDisconnected.emit()
+
+    def display_terminal(self, title, text):
+        self.term.display(title, text)
+        self.stack.setCurrentWidget(self.term)
 
     def parse_idle(self):
         pass
@@ -1235,7 +1271,7 @@ class Logger(QWidget):
                         self.request_stop_index = k
                         self.read_state += 1
                         break
-            if self.request_ident == 'run':
+            if self.request_ident[:3] == 'run':
                 if self.read_state == 2:
                     for l in self.input:
                         print(l)
@@ -1247,7 +1283,7 @@ class Logger(QWidget):
             if self.request_target is not None:
                 self.request_target.read(self.request_ident, self.input, self.request_stop_index == 0)
                 self.request_target = None
-            if self.request_ident == 'run':
+            if self.request_ident[:3] == 'run':
                 self.term.update(self.input)
                 self.term.done.setEnabled(True)
             if self.request_type == 'transmit' and self.request_stop_index == 1:
