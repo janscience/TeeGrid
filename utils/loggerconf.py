@@ -29,7 +29,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
 from PyQt5.QtWidgets import QStackedWidget, QLabel, QScrollArea
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout
 from PyQt5.QtWidgets import QWidget, QFrame, QPushButton, QSizePolicy
-from PyQt5.QtWidgets import QAction
+from PyQt5.QtWidgets import QAction, QShortcut
 from PyQt5.QtWidgets import QCheckBox, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox
 
 
@@ -329,22 +329,29 @@ class PSRAMTest(ReportButton):
         super().__init__('psram memory test', 'Test', *args, **kwargs)
         
     def read(self, ident, stream, success):
-        while len(stream) > 0 and 'extmem memory test' not in stream[0].lower():
-            del stream[0]
+        title = None
+        text = ''
+        test = None
         for k in range(len(stream)):
-            if 'test ran' in stream[k].lower():
-                while len(stream) > k + 2:
-                    del stream[-1]
-                if k + 1 < len(stream):
-                    if 'all memory tests passed' in stream[k + 1].lower():
+            if title is None:
+                if 'extmem memory test' in stream[k].lower():
+                    title = stream[k].strip()
+            else:
+                text += stream[k].rstrip()
+                text += '\n'
+                if 'test ran' in stream[k].lower():
+                    test = k + 1
+                elif test is not None and k == test:
+                    if 'all memory tests passed' in stream[k].lower():
                         self.setText('passed')
                         self.set_button_color(Qt.green)
                     else:
                         self.setText('failed')
                         self.set_button_color(Qt.red)
-                break
+                    break
+        self.sigDisplayTerminal.emit(title, text)
 
-        
+
 class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     
     def __init__(self, *args, **kwargs):
@@ -414,7 +421,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.box.addWidget(QLabel('Time', self), self.row, 0)
             self.box.addWidget(self.rtclock, self.row, 1, 1, 2)
             self.row += 1
-            self.rtclock.start()
+            #self.rtclock.start()
 
 
 class SoftwareInfo(QFrame):
@@ -459,20 +466,36 @@ class SoftwareInfo(QFrame):
 class ListFiles(ReportButton):
     
     def __init__(self, *args, **kwargs):
-        super().__init__('', 'List',
-                         *args, **kwargs)
+        super().__init__('', 'List', *args, **kwargs)
 
     def setup(self, start):
         self.start = start
         
     def read(self, ident, stream, success):
-        while len(stream) > 0 and 'files in' not in stream[0].lower():
-            del stream[0]
-        for k in range(len(stream)):
-            if 'found' in stream[k].lower():
-                while len(stream) > k + 1:
-                    del stream[-1]
-                break
+        title = None
+        text = '<style type="text/css"> th, td { padding: 0 15px; }</style>'
+        text += '<table>'
+        for s in stream:
+            if title is None:
+                if 'files in' in s.lower():
+                    title = s
+            else:
+                if ' name' in s.lower():
+                    text += f'<tr><th align="right">size (bytes)</th><th align="left">name</th></tr>'
+                elif 'found' in s.lower():
+                    text += f'<tr><td colspan=2>{s.strip()}</td></tr>'
+                    break
+                else:
+                    text += '<tr>'
+                    cs = s.split()
+                    if len(cs) > 1:
+                        text += f'<td align="right">{cs[0]}</td>'
+                        text += f'<td align="left">{(" ".join(cs[1:]))}</td>'
+                    else:
+                        text += f'<td></td><td align="left">{s.strip()}</td>'
+                    text += '</tr>'
+        text += '</table>'
+        self.sigDisplayTerminal.emit(title, text)
 
                 
 class Benchmark(ReportButton):
@@ -486,27 +509,31 @@ class Benchmark(ReportButton):
         self.value = value
         
     def read(self, ident, stream, success):
-        while len(stream) > 0 and \
-              'benchmarking write and read speeds' not in stream[0].lower():
-            del stream[0]
-        start = None
+        title = None
+        text = ''
         speeds = []
+        start = None
         for k in range(len(stream)):
-            if 'write speed and latency' in stream[k].lower():
-                start = k + 3
-            if start is not None and k >= start:
-                if len(stream[k].strip()) == 0:
-                    start = None
-                else:
-                    speeds.append(float(stream[k].split()[0]))
-            if 'done' in stream[k].lower():
-                while len(stream) > k + 1:
-                    del stream[-1]
-                if len(speeds) > 0:
-                    self.value.setText(f'<b>{np.mean(speeds):.2f}MB/s</b>')
-                break
+            if title is None:
+                if 'benchmarking write and read speeds' in stream[k].lower():
+                    title = stream[k].strip()
+            else:
+                text += stream[k].rstrip()
+                text += '\n'
+                if 'done' in stream[k].lower():
+                    break
+                if 'write speed and latency' in stream[k].lower():
+                    start = k + 3
+                if start is not None and k >= start:
+                    if len(stream[k].strip()) == 0:
+                        start = None
+                    else:
+                        speeds.append(float(stream[k].split()[0]))
+        if len(speeds) > 0:
+            self.value.setText(f'<b>{np.mean(speeds):.2f}MB/s</b>')
+        self.sigDisplayTerminal.emit(title, text)
 
-            
+        
 class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     
     def __init__(self, *args, **kwargs):
@@ -627,6 +654,10 @@ class Terminal(QWidget):
         self.done = QPushButton(self)
         self.done.setText('&Done')
         self.done.clicked.connect(self.clear)
+        done = QShortcut(QKeySequence.Cancel, self)
+        done.activated.connect(self.done.animateClick)
+        done = QShortcut(Qt.Key_Return, self)
+        done.activated.connect(self.done.animateClick)
         vbox = QVBoxLayout(self)
         vbox.addWidget(self.title)
         vbox.addWidget(self.scroll)
@@ -658,6 +689,50 @@ class Terminal(QWidget):
         self.out.setMinimumSize(self.out.sizeHint())
         vsb = self.scroll.verticalScrollBar()
         vsb.setValue(vsb.maximum())
+
+
+class YesNoQuestion(QWidget):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.msg = QLabel(self)
+        self.msg.setAlignment(Qt.AlignCenter)
+        self.yes = QPushButton(self)
+        self.yes.setText('&Yes')
+        self.yes.clicked.connect(self.accept)
+        key = QShortcut(Qt.Key_Return, self)
+        key.activated.connect(self.yes.animateClick)
+        self.no = QPushButton(self)
+        self.no.setText('&No')
+        self.no.clicked.connect(self.reject)
+        key = QShortcut(QKeySequence.Cancel, self)
+        key.activated.connect(self.no.animateClick)
+        buttons = QWidget(self)
+        hbox = QHBoxLayout(buttons)
+        hbox.addWidget(self.no)
+        hbox.addWidget(QLabel(self))
+        hbox.addWidget(self.yes)
+        vbox = QVBoxLayout(self)
+        vbox.addWidget(self.msg)
+        vbox.addWidget(buttons)
+
+    def clear(self):
+        self.msg.setText('')
+
+    def ask(self, stream):
+        text = []
+        for s in reversed(stream):
+            if len(s.strip()) == 0:
+                break
+            text.insert(0, s)
+        text[-1] = text[-1][:text[-1].lower().find(' [y/n] ')]
+        self.msg.setText('\n'.join(text))
+
+    def accept(self):
+        print('Yes')
+        
+    def reject(self):
+        print('No')
 
         
 class Parameter(Interactor, QObject, metaclass=InteractorQObject):
@@ -860,28 +935,25 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
     def read(self, ident, stream, success):
         if not ident.startswith('conf'):
             return
-        print(ident, success, stream)
         while len(stream) > 0 and len(stream[0].strip()) == 0:
             del stream[0]
-        for k in range(len(stream)):
-            if 'configuration' in stream[k].lower():
-                while len(stream) >= k:
-                    del stream[-1]
-                print(stream)
-                if ident == 'confcheck':
-                    text = '<style type="text/css"> td { padding: 0 15px; }</style>'
-                    text += '<table>'
-                    for s in stream:
-                        text += '<tr>'
-                        cs = s.split(':')
-                        if len(cs) > 1 and len(cs[1].strip()) > 0:
-                            text += f'<td></td><td>{cs[0].strip()}</td><td><b>{(":".join(cs[1:])).strip()}</b></td>'
-                        else:
-                            text += f'<td colspan=3><b>{cs[0].strip()}</b></td>'
-                        text += '</tr>'
-                    text += '</table>'
+        if ident == 'confcheck':
+            text = '<style type="text/css"> td { padding: 0 15px; }</style>'
+            text += '<table>'
+            for s in stream:
+                if 'configuration' in s.lower():
                     self.sigDisplayTerminal.emit('Current configuration', text)
-                break
+                    break
+                text += '<tr>'
+                cs = s.split(':')
+                if len(cs) > 1 and len(cs[1].strip()) > 0:
+                    text += f'<td></td><td>{cs[0].strip()}</td><td><b>{(":".join(cs[1:])).strip()}</b></td>'
+                else:
+                    text += f'<td colspan=3><b>{cs[0].strip()}</b></td>'
+                text += '</tr>'
+            text += '</table>'
+        else:
+            print(ident, success, stream)
 
         
 class Logger(QWidget):
@@ -910,14 +982,18 @@ class Logger(QWidget):
         self.loggerinfo = LoggerInfo(self)
         self.loggerinfo.sigReadRequest.connect(self.read_request)
         self.loggerinfo.psramtest.sigReadRequest.connect(self.read_request)
+        self.loggerinfo.psramtest.sigDisplayTerminal.connect(self.display_terminal)
         self.loggerinfo.rtclock.sigReadRequest.connect(self.read_request)
         self.loggerinfo.rtclock.sigWriteRequest.connect(self.write_request)
         self.softwareinfo = SoftwareInfo(self)
         self.sdcardinfo = SDCardInfo(self)
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.recordings.sigReadRequest.connect(self.read_request)
+        self.sdcardinfo.recordings.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.root.sigReadRequest.connect(self.read_request)
+        self.sdcardinfo.root.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.bench.sigReadRequest.connect(self.read_request)
+        self.sdcardinfo.bench.sigDisplayTerminal.connect(self.display_terminal)
         iboxw = QWidget(self)
         ibox = QVBoxLayout(iboxw)
         ibox.addWidget(self.loggerinfo)
@@ -929,10 +1005,12 @@ class Logger(QWidget):
         self.box.addWidget(iboxw)
         self.term = Terminal(self)
         self.term.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
+        self.question = YesNoQuestion(self)
         self.stack = QStackedWidget(self)
         self.stack.addWidget(self.msg)
         self.stack.addWidget(self.boxw)
         self.stack.addWidget(self.term)
+        self.stack.addWidget(self.question)
         self.stack.setCurrentWidget(self.msg)
         vbox = QVBoxLayout(self)
         vbox.addWidget(self.logo)
@@ -1261,7 +1339,12 @@ class Logger(QWidget):
                 self.request_start = None
                 self.read_state += 1
         elif self.read_state == 1:
-            if self.request_stop is None or \
+            if len(self.input) > 0 and \
+               self.input[-1].lower().endswith(' [y/n] '):
+                self.question.ask(self.input)
+                self.stack.setCurrentWidget(self.question)
+                self.input = []
+            elif self.request_stop is None or \
                len(self.request_stop) == 0:
                 self.read_state += 1
             elif len(self.input) > 0:
@@ -1272,20 +1355,12 @@ class Logger(QWidget):
                         self.read_state += 1
                         break
             if self.request_ident[:3] == 'run':
-                if self.read_state == 2:
-                    for l in self.input:
-                        print(l)
                 if self.request_target is not None:
                     self.request_target.read(self.request_ident, self.input, self.request_stop_index == 0)
-                self.term.update(self.input)
-                self.stack.setCurrentWidget(self.term)
         elif self.read_state == 2:
             if self.request_target is not None:
                 self.request_target.read(self.request_ident, self.input, self.request_stop_index == 0)
                 self.request_target = None
-            if self.request_ident[:3] == 'run':
-                self.term.update(self.input)
-                self.term.done.setEnabled(True)
             if self.request_type == 'transmit' and self.request_stop_index == 1:
                 self.ser.write(b'keepthevalue\n')
             self.read_state += 1
