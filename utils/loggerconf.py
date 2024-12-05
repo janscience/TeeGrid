@@ -79,25 +79,29 @@ def parse_number(s):
     nd = n - ip if n >= ip else 0
     return v, u, nd
 
-    
-teensy_model = {   
-    0x274: '30',
-    0x275: '31',
-    0x273: 'LC',
-    0x276: '35',
-    0x277: '36',
-    0x278: '40 beta',
-    0x279: '40',
-    0x280: '41',
-    0x281: 'MM'}
-"""Map bcdDevice of USB device to Teensy model version."""
-
 
 def get_teensy_model(vid, pid, serial_number):
+    
+    # map bcdDevice of USB device to Teensy model version:
+    teensy_model = {   
+        0x274: '30',
+        0x275: '31',
+        0x273: 'LC',
+        0x276: '35',
+        0x277: '36',
+        0x278: '40 beta',
+        0x279: '40',
+        0x280: '41',
+        0x281: 'MM'}
+
     if has_usb:
         dev = usb.core.find(idVendor=vid, idProduct=pid,
                             serial_number=serial_number)
-        return teensy_model[dev.bcdDevice]
+        if dev is None:
+            # this happens when we do not have permissions for the device!
+            return ''
+        else:
+            return teensy_model[dev.bcdDevice]
     else:
         return ''
 
@@ -113,6 +117,7 @@ def discover_teensy_ports():
         if port.manufacturer == 'Teensyduino':
             teensy_model = get_teensy_model(port.vid, port.pid,
                                             port.serial_number)
+            # we should also check for permissions!
             devices.append(port.device)
             serial_numbers.append(port.serial_number)
             models.append(teensy_model)
