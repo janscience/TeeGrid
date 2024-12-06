@@ -154,6 +154,7 @@ class Interactor(ABC):
     sigWriteRequest = Signal(str, list)
     sigTransmitRequest = Signal(object, str, list)
     sigDisplayTerminal = Signal(str, str)
+    sigDisplayMessage = Signal(object)
 
     @abstractmethod
     def setup(self, menu):
@@ -691,28 +692,61 @@ class Terminal(QWidget):
         vsb.setValue(vsb.maximum())
 
 
+class Message(QWidget):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.msg = QLabel(self)
+        self.msg.setAlignment(Qt.AlignCenter)
+        self.done = QPushButton('&Done', self)
+        self.done.clicked.connect(self.clear)
+        key = QShortcut(Qt.Key_Return, self)
+        key.activated.connect(self.done.animateClick)
+        buttons = QWidget(self)
+        hbox = QHBoxLayout(buttons)
+        hbox.addWidget(self.done)
+        vbox = QVBoxLayout(self)
+        vbox.addWidget(QLabel(self))
+        vbox.addWidget(self.msg)
+        vbox.addWidget(buttons)
+
+    def clear(self):
+        self.msg.setText('')
+
+    def display(self, stream):
+        if isinstance(stream, (tuple, list)):
+            text = ''
+            for s in stream:
+                text += s
+                text += '\n'
+            self.msg.setText(text)
+        else:
+            self.msg.setText(stream)
+
+
 class YesNoQuestion(QWidget):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.msg = QLabel(self)
         self.msg.setAlignment(Qt.AlignCenter)
-        self.yes = QPushButton(self)
-        self.yes.setText('&Yes')
-        self.yes.clicked.connect(self.accept)
+        self.yesb = QPushButton(self)
+        self.yesb.setText('&Yes')
+        self.yesb.clicked.connect(self.accept)
         key = QShortcut(Qt.Key_Return, self)
-        key.activated.connect(self.yes.animateClick)
-        self.no = QPushButton(self)
-        self.no.setText('&No')
-        self.no.clicked.connect(self.reject)
+        key.activated.connect(self.yesb.animateClick)
+        self.nob = QPushButton(self)
+        self.nob.setText('&No')
+        self.nob.clicked.connect(self.reject)
         key = QShortcut(QKeySequence.Cancel, self)
-        key.activated.connect(self.no.animateClick)
+        key.activated.connect(self.nob.animateClick)
         buttons = QWidget(self)
         hbox = QHBoxLayout(buttons)
-        hbox.addWidget(self.no)
+        hbox.addWidget(self.nob)
         hbox.addWidget(QLabel(self))
-        hbox.addWidget(self.yes)
+        hbox.addWidget(self.yesb)
         vbox = QVBoxLayout(self)
+        vbox.addWidget(QLabel(self))
         vbox.addWidget(self.msg)
         vbox.addWidget(buttons)
         self.yes = None
@@ -944,7 +978,7 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
             text = '<style type="text/css"> td { padding: 0 15px; }</style>'
             text += '<table>'
             for s in stream:
-                if 'configuration' in s.lower():
+                if 'configuration:' in s.lower():
                     self.sigDisplayTerminal.emit('Current configuration', text)
                     break
                 text += '<tr>'
@@ -956,7 +990,16 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
                 text += '</tr>'
             text += '</table>'
         else:
-            print(ident, success, stream)
+            while len(stream) > 0 and len(stream[0].strip()) == 0:
+                del stream[0]
+            text = ''
+            for s in stream:
+                if 'configuration:' in s.lower():
+                    break
+                text += s.rstrip()
+                text += '\n'
+            if len(text) > 0:
+                self.sigDisplayMessage.emit(text)
 
         
 class Logger(QWidget):
@@ -973,6 +1016,7 @@ class Logger(QWidget):
         self.configuration = ConfigActions(self)
         self.configuration.sigReadRequest.connect(self.read_request)
         self.configuration.sigDisplayTerminal.connect(self.display_terminal)
+        self.configuration.sigDisplayMessage.connect(self.display_message)
         self.tools = QWidget(self)
         self.tools_vbox = QVBoxLayout(self.tools)
         tabs = QTabWidget(self)
@@ -1009,11 +1053,16 @@ class Logger(QWidget):
         self.term = Terminal(self)
         self.term.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
         self.question = YesNoQuestion(self)
+        self.question.yesb.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
+        self.question.nob.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
+        self.message = Message(self)
+        self.message.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
         self.stack = QStackedWidget(self)
         self.stack.addWidget(self.msg)
         self.stack.addWidget(self.boxw)
         self.stack.addWidget(self.term)
         self.stack.addWidget(self.question)
+        self.stack.addWidget(self.message)
         self.stack.setCurrentWidget(self.msg)
         vbox = QVBoxLayout(self)
         vbox.addWidget(self.logo)
@@ -1072,6 +1121,10 @@ class Logger(QWidget):
     def display_terminal(self, title, text):
         self.term.display(title, text)
         self.stack.setCurrentWidget(self.term)
+
+    def display_message(self, text):
+        self.message.display(text)
+        self.stack.setCurrentWidget(self.message)
 
     def parse_idle(self):
         pass
