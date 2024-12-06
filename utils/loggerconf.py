@@ -421,7 +421,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.box.addWidget(QLabel('Time', self), self.row, 0)
             self.box.addWidget(self.rtclock, self.row, 1, 1, 2)
             self.row += 1
-            #self.rtclock.start()
+            self.rtclock.start()
 
 
 class SoftwareInfo(QFrame):
@@ -715,11 +715,14 @@ class YesNoQuestion(QWidget):
         vbox = QVBoxLayout(self)
         vbox.addWidget(self.msg)
         vbox.addWidget(buttons)
+        self.yes = None
 
     def clear(self):
+        self.yes = None
         self.msg.setText('')
 
     def ask(self, stream):
+        self.yes = None
         text = []
         for s in reversed(stream):
             if len(s.strip()) == 0:
@@ -729,10 +732,10 @@ class YesNoQuestion(QWidget):
         self.msg.setText('\n'.join(text))
 
     def accept(self):
-        print('Yes')
+        self.yes = True
         
     def reject(self):
-        print('No')
+        self.yes = False
 
         
 class Parameter(Interactor, QObject, metaclass=InteractorQObject):
@@ -1343,6 +1346,7 @@ class Logger(QWidget):
                self.input[-1].lower().endswith(' [y/n] '):
                 self.question.ask(self.input)
                 self.stack.setCurrentWidget(self.question)
+                self.read_state = 5
                 self.input = []
             elif self.request_stop is None or \
                len(self.request_stop) == 0:
@@ -1373,6 +1377,15 @@ class Logger(QWidget):
                 self.request_end = None
                 self.request_type = None
                 self.read_func = self.parse_request_stack
+        elif self.read_state == 5:
+            if self.question.yes is not None:
+                if self.question.yes:
+                    self.ser.write(b'y\n')
+                else:
+                    self.ser.write(b'n\n')
+                self.stack.setCurrentWidget(self.boxw)
+                self.question.clear()
+                self.read_state = 1
 
     def write_request(self, msg, start):
         if start is None:
