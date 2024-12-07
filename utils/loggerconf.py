@@ -465,6 +465,30 @@ class SoftwareInfo(QFrame):
                 n += 1
 
                 
+class CheckSDCard(ReportButton):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__('sd card check', 'Check',
+                         *args, **kwargs)
+        
+    def read(self, ident, stream, success):
+        while len(stream) > 0 and len(stream[0].strip()) == 0:
+            del stream[0]
+        present = False
+        text = ''
+        for s in stream:
+            if len(s.strip()) == 0:
+                break
+            text += s
+            text += '\n'
+            if 'present and writable' in s:
+                present = True
+                self.set_button_color(Qt.green)
+        if success and not present:
+            self.set_button_color(Qt.red)
+        self.sigDisplayTerminal.emit('Check SD card', text)
+
+                
 class FormatSDCard(ReportButton):
     
     def __init__(self, key, text, *args, **kwargs):
@@ -578,6 +602,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     def __init__(self, *args, **kwargs):
         super(QFrame, self).__init__(*args, **kwargs)
         self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.checksdcard = CheckSDCard()
         self.erasecard = FormatSDCard('sd card>erase and format', 'Erase')
         self.formatcard = FormatSDCard('sd card>format', 'Format')
         self.root = ListFiles()
@@ -586,7 +611,8 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.bench = Benchmark()
         self.box = QGridLayout(self)
         title = QLabel('<b>SD card</b>', self)
-        self.box.addWidget(title, 0, 0, 1, 4)
+        self.box.addWidget(title, 0, 0, 1, 2)
+        self.box.addWidget(self.checksdcard, 0, 2, Qt.AlignRight)
         self.sdcard_start_get = None
         self.root_start_get = None
         self.recordings_start_get = None
@@ -607,6 +633,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.root.setup(self.root_start_get)
         self.recordings.setup(self.recordings_start_get)
         self.eraserecordings.setup(erase_recordings_start)
+        self.checksdcard.setup(menu)
         self.bench.setup(menu)
         self.formatcard.setup(menu)
         self.erasecard.setup(menu)
@@ -1127,6 +1154,8 @@ class Logger(QWidget):
         self.softwareinfo = SoftwareInfo(self)
         self.sdcardinfo = SDCardInfo(self)
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
+        self.sdcardinfo.checksdcard.sigReadRequest.connect(self.read_request)
+        self.sdcardinfo.checksdcard.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.formatcard.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.formatcard.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.erasecard.sigReadRequest.connect(self.read_request)
