@@ -364,6 +364,9 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         title = QLabel('<b>Logger</b>', self)
         self.box.addWidget(title, 0, 0, 1, 3)
         self.psramtest = PSRAMTest(self)
+        self.psramtest.setToolTip('Test PSRAM memory (Ctrl+P)')
+        key = QShortcut("CTRL+P", self)
+        key.activated.connect(self.psramtest.animateClick)
         self.device = None
         self.model = None
         self.serial_number = None
@@ -414,7 +417,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             value = ':'.join(x[1:]).strip()
             if ident == 'psram':
                 if label.lower() == 'size':
-                    self.add('PSRAM size', value, self.psramtest)
+                    self.add('<u>P</u>SRAM size', value, self.psramtest)
                 else:
                     continue
             else:
@@ -602,17 +605,38 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     def __init__(self, *args, **kwargs):
         super(QFrame, self).__init__(*args, **kwargs)
         self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-        self.checksdcard = CheckSDCard()
+        self.checkcard = CheckSDCard()
+        self.checkcard.setToolTip('Check accessability of micro SD card (Ctrl+M)')
         self.erasecard = FormatSDCard('sd card>erase and format', 'Erase')
-        self.formatcard = FormatSDCard('sd card>format', 'Format')
+        self.erasecard.setToolTip('Flash erase and format SD card (Ctrl+A)')
+        self.formatcard = FormatSDCard('sd card>format', '&Format')
+        self.formatcard.setToolTip('Format SD card (Ctrl+F)')
         self.root = ListFiles()
+        self.root.setToolTip('List files in root directory (Ctrl+O)')
         self.recordings = ListFiles()
-        self.eraserecordings = ListFiles('Erase')
+        self.recordings.setToolTip('List all recordings (Ctrl+R)')
+        self.eraserecordings = ListFiles('&Delete')
+        self.eraserecordings.setToolTip('Delete all recordings (Ctrl+D)')
         self.bench = Benchmark()
+        self.bench.setToolTip('Write and read data rates of SD card (Ctrl+W)')
+        key = QShortcut("CTRL+M", self)
+        key.activated.connect(self.checkcard.animateClick)
+        key = QShortcut("CTRL+A", self)
+        key.activated.connect(self.erasecard.animateClick)
+        key = QShortcut("CTRL+F", self)
+        key.activated.connect(self.formatcard.animateClick)
+        key = QShortcut("CTRL+O", self)
+        key.activated.connect(self.root.animateClick)
+        key = QShortcut("CTRL+R", self)
+        key.activated.connect(self.recordings.animateClick)
+        key = QShortcut("CTRL+D", self)
+        key.activated.connect(self.eraserecordings.animateClick)
+        key = QShortcut("CTRL+W", self)
+        key.activated.connect(self.bench.animateClick)
         self.box = QGridLayout(self)
         title = QLabel('<b>SD card</b>', self)
         self.box.addWidget(title, 0, 0, 1, 2)
-        self.box.addWidget(self.checksdcard, 0, 2, Qt.AlignRight)
+        self.box.addWidget(self.checkcard, 0, 2, Qt.AlignRight)
         self.sdcard_start_get = None
         self.root_start_get = None
         self.recordings_start_get = None
@@ -633,7 +657,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.root.setup(self.root_start_get)
         self.recordings.setup(self.recordings_start_get)
         self.eraserecordings.setup(erase_recordings_start)
-        self.checksdcard.setup(menu)
+        self.checkcard.setup(menu)
         self.bench.setup(menu)
         self.formatcard.setup(menu)
         self.erasecard.setup(menu)
@@ -648,6 +672,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                                self.row, 1, Qt.AlignRight)
             if button1 is not None:
                 box = QHBoxLayout()
+                box.setContentsMargins(0, 0, 0, 0)
                 self.box.addLayout(box, self.row, 2)
                 box.addWidget(button1)
                 box.addWidget(button2)
@@ -704,7 +729,8 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                         if keys == 'capacity':
                             self.add(items[i][0], items[i][1], self.formatcard)
                         elif keys == 'available':
-                            self.add(items[i][0], items[i][1], self.erasecard)
+                            self.add('<u>A</u>' + items[i][0][1:],
+                                     items[i][1], self.erasecard)
                             if available is not None:
                                 a = float(available.replace(' GB', ''))
                                 c = float(items[i][1].replace(' GB', ''))
@@ -714,17 +740,17 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                                 value = f'{self.nrecordings}'
                             if self.srecordings is not None:
                                 value += f' ({self.srecordings})'
-                            self.add('Recorded files', value,
+                            self.add('<u>R</u>ecorded files', value,
                                      self.recordings, self.eraserecordings)
                             value = 'none'
                             if self.nroot > 0:
                                 value = f'{self.nroot}'
                             if self.sroot is not None:
                                 value += f' ({self.sroot})'
-                            self.add('Root files', value, self.root)
+                            self.add('R<u>o</u>ot files', value, self.root)
                         else:
                             self.add(items[i][0], items[i][1])
-            self.add('Write speed', 'none', self.bench)
+            self.add('<u>W</u>rite speed', 'none', self.bench)
             self.bench.set_value(self.box.itemAtPosition(self.row - 1, 1).widget())
 
 
@@ -1042,9 +1068,13 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
     def __init__(self, *args, **kwargs):
         super(QWidget, self).__init__(*args, **kwargs)
         self.check_button = QPushButton('&Check', self)
+        self.check_button.setToolTip('Check the configuration on the logger (Ctrl+C)')
         self.save_button = QPushButton('&Save', self)
+        self.save_button.setToolTip('Save the configuration to file on SD card (Ctrl+S)')
         self.load_button = QPushButton('&Load', self)
+        self.load_button.setToolTip('Load the configuration from file on SD card (Ctrl+L)')
         self.erase_button = QPushButton('&Erase', self)
+        self.erase_button.setToolTip('Erase configuration file on SD card (Ctrl+E)')
         self.check_button.clicked.connect(self.check)
         self.save_button.clicked.connect(self.save)
         self.load_button.clicked.connect(self.load)
@@ -1145,8 +1175,8 @@ class Logger(QWidget):
         self.softwareinfo = SoftwareInfo(self)
         self.sdcardinfo = SDCardInfo(self)
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
-        self.sdcardinfo.checksdcard.sigReadRequest.connect(self.read_request)
-        self.sdcardinfo.checksdcard.sigDisplayTerminal.connect(self.display_terminal)
+        self.sdcardinfo.checkcard.sigReadRequest.connect(self.read_request)
+        self.sdcardinfo.checkcard.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.formatcard.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.formatcard.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.erasecard.sigReadRequest.connect(self.read_request)
