@@ -513,7 +513,10 @@ class ListFiles(ReportButton):
         text += '<table>'
         for s in stream:
             if title is None:
-                if 'files in' in s.lower():
+                if 'does not exist' in s.lower():
+                    self.sigDisplayMessage.emit(s)
+                    return
+                if s.lower().strip().startswith('files in'):
                     title = s
             else:
                 if ' name' in s.lower():
@@ -610,15 +613,12 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             w.setText('<b>' + value + '</b>')
         else:
             self.box.addWidget(QLabel(label, self), self.row, 0)
-            nspan = 3
-            if button2 is not None:
-                nspan -= 1
-                self.box.addWidget(button2, self.row, 3, Qt.AlignRight)
-            elif button1 is not None:
-                nspan -= 1
-                self.box.addWidget(button1, self.row, 2)
             self.box.addWidget(QLabel('<b>' + value + '</b>', self),
-                               self.row, 1, 1, nspan, Qt.AlignRight)
+                               self.row, 1, Qt.AlignRight)
+            if button2 is not None:
+                self.box.addWidget(button2, self.row, 3, Qt.AlignRight)
+            if button1 is not None:
+                self.box.addWidget(button1, self.row, 2, Qt.AlignRight)
         self.row += 1
 
     def start(self):
@@ -791,10 +791,18 @@ class YesNoQuestion(QWidget):
         self.yesb.clicked.connect(self.accept)
         key = QShortcut(Qt.Key_Return, self)
         key.activated.connect(self.yesb.animateClick)
+        key = QShortcut(Qt.Key_Y, self)
+        key.activated.connect(self.yesb.animateClick)
+        key = QShortcut('CTRL+Y', self)
+        key.activated.connect(self.yesb.animateClick)
         self.nob = QPushButton(self)
         self.nob.setText('&No')
         self.nob.clicked.connect(self.reject)
         key = QShortcut(QKeySequence.Cancel, self)
+        key.activated.connect(self.nob.animateClick)
+        key = QShortcut(Qt.Key_N, self)
+        key.activated.connect(self.nob.animateClick)
+        key = QShortcut('CTRL+N', self)
         key.activated.connect(self.nob.animateClick)
         buttons = QWidget(self)
         hbox = QHBoxLayout(buttons)
@@ -886,6 +894,9 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                 self.special_str = special[1]
                 special = special[2]
                 self.special_val = int(special[special.find('[') + 1:special.find(']')])
+        if self.type_str in ['float', 'integer'] and self.num_value is None:
+            if self.value == self.special_str:
+                self.num_value = self.special_val
 
     def set_selection(self, stream):
         self.selection = []
@@ -908,11 +919,18 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
             except AttributeError:
                 self.edit_widget.stateChanged.connect(self.transmit_bool)
         elif len(self.selection) > 0:
+            locale = QLocale()
             self.edit_widget = QComboBox(parent)
             for s in self.selection:
                 si = s[1]
                 if self.out_unit and si.endswith(self.out_unit):
                     si = si[:-len(self.out_unit)]
+                if self.type_str in ['integer', 'float'] and '.' in si:
+                    while si[-1] == '0':
+                        si = si[:-1]
+                    if si[-1] == '.':
+                        si = si[:-1]
+                    si = si.replace('.', locale.decimalPoint())
                 self.edit_widget.addItem(si)
             if self.out_unit:
                 self.unit_widget = QLabel(self.out_unit, parent)
@@ -988,14 +1006,22 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
     
     def __init__(self, *args, **kwargs):
         super(QWidget, self).__init__(*args, **kwargs)
-        self.check_button = QPushButton('&check', self)
-        self.save_button = QPushButton('&save', self)
-        self.load_button = QPushButton('&load', self)
-        self.erase_button = QPushButton('&erase', self)
+        self.check_button = QPushButton('&Check', self)
+        self.save_button = QPushButton('&Save', self)
+        self.load_button = QPushButton('&Load', self)
+        self.erase_button = QPushButton('&Erase', self)
         self.check_button.clicked.connect(self.check)
         self.save_button.clicked.connect(self.save)
         self.load_button.clicked.connect(self.load)
         self.erase_button.clicked.connect(self.erase)
+        key = QShortcut('CTRL+C', self)
+        key.activated.connect(self.check)
+        key = QShortcut('CTRL+S', self)
+        key.activated.connect(self.save)
+        key = QShortcut('CTRL+L', self)
+        key.activated.connect(self.load)
+        key = QShortcut('CTRL+E', self)
+        key.activated.connect(self.erase)
         hbox = QHBoxLayout(self)
         hbox.setContentsMargins(0, 0, 0, 0)
         hbox.addWidget(self.check_button)
@@ -1099,8 +1125,10 @@ class Logger(QWidget):
         self.sdcardinfo.erasecard.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.recordings.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.recordings.sigDisplayTerminal.connect(self.display_terminal)
+        self.sdcardinfo.recordings.sigDisplayMessage.connect(self.display_message)
         self.sdcardinfo.root.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.root.sigDisplayTerminal.connect(self.display_terminal)
+        self.sdcardinfo.root.sigDisplayMessage.connect(self.display_message)
         self.sdcardinfo.bench.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.bench.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.formatcard.sigUpdateSDCard.connect(self.sdcardinfo.start)
@@ -1235,17 +1263,18 @@ class Logger(QWidget):
         elif self.read_count > 100:
             self.read_count = 0
             self.ser.write('reboot\n'.encode('latin1'))
-            self.ser.flush
+            self.ser.flush()
         else:
             self.read_count += 1
 
     def configure_menu(self):
         if self.read_state == 0:
             self.ser.write(b'detailed on\n')
+            self.ser.flush()
             self.read_state += 1
         elif self.read_state == 1:
-            self.input = []
             self.ser.write(b'echo off\n')
+            self.ser.flush()
             self.read_state = 0
             self.read_func = self.parse_mainmenu
 
@@ -1287,8 +1316,9 @@ class Logger(QWidget):
 
     def parse_mainmenu(self):
         if self.read_state == 0:
-            self.input = []
+            self.clear_input()
             self.ser.write(b'print\n')
+            self.ser.flush()
             self.read_state += 1
         elif self.read_state == 1:
             self.menu = self.parse_menu('Menu')
@@ -1315,15 +1345,17 @@ class Logger(QWidget):
                 self.menu_ids.pop()
                 if len(self.menu_iter) == 0:
                     self.init_menu()
-                    self.input = []
+                    self.clear_input()
                     self.read_func = self.parse_request_stack
                 else:
                     self.ser.write('q\n'.encode('latin1'))
+                    self.ser.flush()
         elif self.read_state == 10:
             # request submenu:
-            self.input = []
+            self.clear_input()
             self.ser.write(self.menu_item[0].encode('latin1'))
             self.ser.write(b'\n')
+            self.ser.flush()
             self.read_state += 1
         elif self.read_state == 11:
             # parse submenu:
@@ -1337,9 +1369,10 @@ class Logger(QWidget):
                 self.read_state = 0
         elif self.read_state == 20:
             # request parameter:
-            self.input = []
+            self.clear_input()
             self.ser.write(self.menu_item[0].encode('latin1'))
             self.ser.write(b'\n')
+            self.ser.flush()
             self.read_state += 1
         elif self.read_state == 21:
             # parse parameter:
@@ -1365,6 +1398,7 @@ class Logger(QWidget):
             param.sigTransmitRequest.connect(self.transmit_request)
             self.menu_item[2] = param
             self.ser.write(b'keepthevalue\n')
+            self.ser.flush()
             self.read_state = 0
             
 
@@ -1398,12 +1432,13 @@ class Logger(QWidget):
                                                  row, 0)
                         param = menu[2][sk][2]
                         param.setup(self)
-                        if param.unit_widget is None:
+                        if param.type_str in ['integer', 'float']:
+                            self.conf_grid.addWidget(param.edit_widget, row, 1)
+                            if param.unit_widget is not None:
+                                self.conf_grid.addWidget(param.unit_widget, row, 2)
+                        else:
                             self.conf_grid.addWidget(param.edit_widget,
                                                      row, 1, 1, 2)
-                        else:
-                            self.conf_grid.addWidget(param.edit_widget, row, 1)
-                            self.conf_grid.addWidget(param.unit_widget, row, 2)
                         row += 1
         self.conf_grid.addWidget(self.configuration, row, 0, 1, 3)
         self.sdcardinfo.start()
@@ -1413,7 +1448,7 @@ class Logger(QWidget):
     def parse_request_stack(self):
         if len(self.request_stack) == 0:
             return
-        self.input = []
+        self.clear_input()
         request = self.request_stack.pop(0)
         self.request_target = request[0]
         self.request_ident = request[1]
@@ -1452,9 +1487,10 @@ class Logger(QWidget):
     def parse_read_request(self):
         if self.read_state == 0:
             if len(self.request_start) > 0:
-                self.input = []
+                self.clear_input()
                 self.ser.write(self.request_start[0].encode('latin1'))
                 self.ser.write(b'\n')
+                self.ser.flush()
                 self.request_start.pop(0)
             else:
                 self.request_start = None
@@ -1464,8 +1500,8 @@ class Logger(QWidget):
                self.input[-1].lower().endswith(' [y/n] '):
                 self.question.ask(self.input)
                 self.stack.setCurrentWidget(self.question)
-                self.read_state = 5
                 self.input = []
+                self.read_state = 5
             elif self.request_stop is None or \
                len(self.request_stop) == 0:
                 self.read_state += 1
@@ -1478,18 +1514,24 @@ class Logger(QWidget):
                         break
             if self.request_ident[:3] == 'run':
                 if self.request_target is not None:
-                    self.request_target.read(self.request_ident, self.input, self.request_stop_index == 0)
+                    self.request_target.read(self.request_ident,
+                                             self.input,
+                                             self.request_stop_index == 0)
         elif self.read_state == 2:
             if self.request_target is not None:
-                self.request_target.read(self.request_ident, self.input, self.request_stop_index == 0)
+                self.request_target.read(self.request_ident,
+                                         self.input,
+                                         self.request_stop_index == 0)
                 self.request_target = None
             if self.request_type == 'transmit' and self.request_stop_index == 1:
                 self.ser.write(b'keepthevalue\n')
+                self.ser.flush()
             self.read_state += 1
         elif self.read_state == 3:
-            self.input = []
+            self.clear_input()
             if self.request_end > 0:
                 self.ser.write(b'q\n')
+                self.ser.flush()
                 self.request_end -= 1
             else:
                 self.request_end = None
@@ -1497,10 +1539,12 @@ class Logger(QWidget):
                 self.read_func = self.parse_request_stack
         elif self.read_state == 5:
             if self.question.yes is not None:
+                self.clear_input()
                 if self.question.yes:
                     self.ser.write(b'y\n')
                 else:
                     self.ser.write(b'n\n')
+                self.ser.flush()
                 self.stack.setCurrentWidget(self.boxw)
                 self.question.clear()
                 self.read_state = 1
@@ -1515,23 +1559,27 @@ class Logger(QWidget):
 
     def parse_write_request(self):
         if self.read_state == 0:
+            self.clear_input()
             if len(self.request_start) > 0:
                 self.ser.write(self.request_start[0].encode('latin1'))
                 self.ser.write(b'\n')
+                self.ser.flush()
                 self.request_start.pop(0)
             else:
-                self.input = []
                 self.request_start = None
                 self.read_state += 1
         elif self.read_state == 1:
+            self.clear_input()
             self.ser.write(self.request_target.encode('latin1'))
             self.ser.write(b'\n')
+            self.ser.flush()
             self.request_target = None
             self.read_state += 1
         elif self.read_state == 2:
-            self.input = []
+            self.clear_input()
             if self.request_end > 0:
                 self.ser.write(b'q\n')
+                self.ser.flush()
                 self.request_end -= 1
             else:
                 self.request_end = None
@@ -1565,6 +1613,10 @@ class Logger(QWidget):
                 self.read_func()
         except (OSError, serial.serialutil.SerialException):
             self.stop()
+            
+    def clear_input(self):
+        self.ser.reset_input_buffer()
+        self.input = []
         
 
 class LoggerConf(QMainWindow):
