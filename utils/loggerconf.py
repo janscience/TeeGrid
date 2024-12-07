@@ -1136,8 +1136,6 @@ class Logger(QWidget):
         self.configuration.sigReadRequest.connect(self.read_request)
         self.configuration.sigDisplayTerminal.connect(self.display_terminal)
         self.configuration.sigDisplayMessage.connect(self.display_message)
-        self.tools = QWidget(self)
-        self.tools_vbox = QVBoxLayout(self.tools)
         self.loggerinfo = LoggerInfo(self)
         self.loggerinfo.sigReadRequest.connect(self.read_request)
         self.loggerinfo.psramtest.sigReadRequest.connect(self.read_request)
@@ -1442,18 +1440,14 @@ class Logger(QWidget):
         self.configuration.setup(self.menu)
         self.loggerinfo.setup(self.menu)
         self.sdcardinfo.setup(self.menu)
+        missing_tools = False
         row = 0
         for mk in self.menu:
             menu = self.menu[mk]
             add_title = True
             if menu[1] == 'menu':
                 for sk in menu[2]:
-                    if menu[2][sk][1] == 'action':
-                        if add_title:
-                            self.tools_vbox.addWidget(QLabel('<b>' + mk + '</b>', self))
-                            add_title = False
-                        self.tools_vbox.addWidget(QLabel(sk, self))
-                    elif menu[2][sk][1] == 'param':
+                    if menu[2][sk][1] == 'param':
                         if add_title:
                             title = QLabel('<b>' + mk + '</b>', self)
                             title.setSizePolicy(QSizePolicy.Policy.Preferred,
@@ -1473,6 +1467,14 @@ class Logger(QWidget):
                             self.conf_grid.addWidget(param.edit_widget,
                                                      row, 1, 1, 2)
                         row += 1
+                    elif menu[2][sk][1] == 'action':
+                        if not missing_tools:
+                            print('WARNING! the following tool actions are not supported:')
+                            missing_tools = True
+                        if add_title:
+                            print(f'{mk}:')
+                            add_title = False
+                        print(f'  {sk}')
         self.conf_grid.addWidget(self.configuration, row, 0, 1, 3)
         self.sdcardinfo.start()
         self.loggerinfo.start()
