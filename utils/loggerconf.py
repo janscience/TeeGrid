@@ -501,8 +501,8 @@ class FormatSDCard(ReportButton):
                 
 class ListFiles(ReportButton):
     
-    def __init__(self, *args, **kwargs):
-        super().__init__('', 'List', *args, **kwargs)
+    def __init__(self, name='List', *args, **kwargs):
+        super().__init__('', name, *args, **kwargs)
 
     def setup(self, start):
         self.start = start
@@ -582,6 +582,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.formatcard = FormatSDCard('sd card>format', 'Format')
         self.root = ListFiles()
         self.recordings = ListFiles()
+        self.eraserecordings = ListFiles('Erase')
         self.bench = Benchmark()
         self.box = QGridLayout(self)
         title = QLabel('<b>SD card</b>', self)
@@ -601,8 +602,11 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.retrieve('sd card>list files in root', menu)
         self.recordings_start_get = \
             self.retrieve('sd card>list all recordings', menu)
+        erase_recordings_start = \
+            self.retrieve('sd card>erase all recordings', menu)
         self.root.setup(self.root_start_get)
         self.recordings.setup(self.recordings_start_get)
+        self.eraserecordings.setup(erase_recordings_start)
         self.bench.setup(menu)
         self.formatcard.setup(menu)
         self.erasecard.setup(menu)
@@ -615,10 +619,13 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.box.addWidget(QLabel(label, self), self.row, 0)
             self.box.addWidget(QLabel('<b>' + value + '</b>', self),
                                self.row, 1, Qt.AlignRight)
-            if button2 is not None:
-                self.box.addWidget(button2, self.row, 3, Qt.AlignRight)
             if button1 is not None:
-                self.box.addWidget(button1, self.row, 2, Qt.AlignRight)
+                box = QHBoxLayout()
+                self.box.addLayout(box, self.row, 2)
+                box.addWidget(button1)
+                box.addWidget(button2)
+            elif button2 is not None:
+                self.box.addWidget(button2, self.row, 2, Qt.AlignRight)
         self.row += 1
 
     def start(self):
@@ -680,7 +687,8 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                                 value = f'{self.nrecordings}'
                             if self.srecordings is not None:
                                 value += f' ({self.srecordings})'
-                            self.add('Recorded files', value, self.recordings)
+                            self.add('Recorded files', value,
+                                     self.recordings, self.eraserecordings)
                             value = 'none'
                             if self.nroot > 0:
                                 value = f'{self.nroot}'
@@ -1126,6 +1134,9 @@ class Logger(QWidget):
         self.sdcardinfo.recordings.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.recordings.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.recordings.sigDisplayMessage.connect(self.display_message)
+        self.sdcardinfo.eraserecordings.sigReadRequest.connect(self.read_request)
+        self.sdcardinfo.eraserecordings.sigDisplayTerminal.connect(self.display_terminal)
+        self.sdcardinfo.eraserecordings.sigDisplayMessage.connect(self.display_message)
         self.sdcardinfo.root.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.root.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.root.sigDisplayMessage.connect(self.display_message)
