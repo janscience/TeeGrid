@@ -153,8 +153,9 @@ class Interactor(ABC):
     sigReadRequest = Signal(object, str, list, str)
     sigWriteRequest = Signal(str, list)
     sigTransmitRequest = Signal(object, str, list)
-    sigDisplayTerminal = Signal(str, str)
+    sigDisplayTerminal = Signal(str, object)
     sigDisplayMessage = Signal(object)
+    sigUpdateSDCard = Signal()
 
     @abstractmethod
     def setup(self, menu):
@@ -464,6 +465,40 @@ class SoftwareInfo(QFrame):
                 n += 1
 
                 
+class FormatSDCard(ReportButton):
+    
+    def __init__(self, key, text, *args, **kwargs):
+        super().__init__(key, text, *args, **kwargs)
+        
+    def read(self, ident, stream, success):
+        while len(stream) > 0 and len(stream[0].strip()) == 0:
+            del stream[0]
+        for k in range(len(stream)):
+            if stream[k].lower().startswith('read file'):
+                i = stream[k].lower().find('on sd card ...')
+                if i > 0 and i + 14 < len(stream[k]):
+                    stream.insert(k + 1, stream[k][i + 14:])
+                    stream.insert(k + 1, '')
+                    stream[k] = stream[k][:i + 14]
+            elif stream[k].lower().startswith('done.') and len(stream[k]) > 5:
+                stream.insert(k + 1, stream[k][5:])
+                stream.insert(k + 1, '')
+                stream[k] = stream[k][:5]
+            elif stream[k].rstrip().lower().endswith('sd card:'):
+                while len(stream) > 0 and len(stream) >= k:
+                    del stream[-1]
+                break
+        if len(stream) == 0:
+            return
+        if 'erase' in self.text().lower():
+            title = 'Erase and format SD card'
+        else:
+            title = 'Format SD card'
+        self.sigDisplayTerminal.emit(title, stream)
+        if success:
+            self.sigUpdateSDCard.emit()
+
+                
 class ListFiles(ReportButton):
     
     def __init__(self, *args, **kwargs):
@@ -540,12 +575,14 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     def __init__(self, *args, **kwargs):
         super(QFrame, self).__init__(*args, **kwargs)
         self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.erasecard = FormatSDCard('sd card>erase and format', 'Erase')
+        self.formatcard = FormatSDCard('sd card>format', 'Format')
         self.root = ListFiles()
         self.recordings = ListFiles()
         self.bench = Benchmark()
         self.box = QGridLayout(self)
         title = QLabel('<b>SD card</b>', self)
-        self.box.addWidget(title, 0, 0, 1, 2)
+        self.box.addWidget(title, 0, 0, 1, 4)
         self.sdcard_start_get = None
         self.root_start_get = None
         self.recordings_start_get = None
@@ -564,16 +601,24 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.root.setup(self.root_start_get)
         self.recordings.setup(self.recordings_start_get)
         self.bench.setup(menu)
+        self.formatcard.setup(menu)
+        self.erasecard.setup(menu)
 
-    def add(self, label, value, button=None):
-        self.box.addWidget(QLabel(label, self), self.row, 0)
-        if button is None:
-            self.box.addWidget(QLabel('<b>' + value + '</b>', self),
-                               self.row, 1, 1, 2)
+    def add(self, label, value, button2=None, button1=None):
+        if self.box.itemAtPosition(self.row, 0) is not None:
+            w = self.box.itemAtPosition(self.row, 1).widget()
+            w.setText('<b>' + value + '</b>')
         else:
+            self.box.addWidget(QLabel(label, self), self.row, 0)
+            nspan = 3
+            if button2 is not None:
+                nspan -= 1
+                self.box.addWidget(button2, self.row, 3, Qt.AlignRight)
+            elif button1 is not None:
+                nspan -= 1
+                self.box.addWidget(button1, self.row, 2)
             self.box.addWidget(QLabel('<b>' + value + '</b>', self),
-                               self.row, 1)
-            self.box.addWidget(button, self.row, 2)
+                               self.row, 1, 1, nspan, Qt.AlignRight)
         self.row += 1
 
     def start(self):
@@ -622,8 +667,10 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             for keys in ['capacity', 'available', 'serial', 'system']:
                 for i in range(len(items)):
                     if keys in items[i][0].lower():
-                        self.add(items[i][0], items[i][1])
-                        if keys == 'available':
+                        if keys == 'capacity':
+                            self.add(items[i][0], items[i][1], self.formatcard)
+                        elif keys == 'available':
+                            self.add(items[i][0], items[i][1], self.erasecard)
                             if available is not None:
                                 a = float(available.replace(' GB', ''))
                                 c = float(items[i][1].replace(' GB', ''))
@@ -640,6 +687,8 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                             if self.sroot is not None:
                                 value += f' ({self.sroot})'
                             self.add('Root files', value, self.root)
+                        else:
+                            self.add(items[i][0], items[i][1])
             self.add('Write speed', 'none', self.bench)
             self.bench.set_value(self.box.itemAtPosition(self.row - 1, 1).widget())
 
@@ -682,11 +731,18 @@ class Terminal(QWidget):
         vsb = self.scroll.verticalScrollBar()
         vsb.setValue(vsb.maximum())
 
-    def display(self, title, text):
+    def display(self, title, stream):
         if title:
             self.title.setText(title)
         self.done.setEnabled(True)
-        self.out.setText(text)
+        if isinstance(stream, (tuple, list)):
+            text = ''
+            for s in stream:
+                text += s
+                text += '\n'
+            self.out.setText(text)
+        else:
+            self.out.setText(stream)
         self.out.setMinimumSize(self.out.sizeHint())
         vsb = self.scroll.verticalScrollBar()
         vsb.setValue(vsb.maximum())
@@ -1000,6 +1056,8 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
                 text += '\n'
             if len(text) > 0:
                 self.sigDisplayMessage.emit(text)
+            if success and (ident == 'confsave' or ident == 'conferase'):
+                self.sigUpdateSDCard.emit()
 
         
 class Logger(QWidget):
@@ -1035,12 +1093,19 @@ class Logger(QWidget):
         self.softwareinfo = SoftwareInfo(self)
         self.sdcardinfo = SDCardInfo(self)
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
+        self.sdcardinfo.formatcard.sigReadRequest.connect(self.read_request)
+        self.sdcardinfo.formatcard.sigDisplayTerminal.connect(self.display_terminal)
+        self.sdcardinfo.erasecard.sigReadRequest.connect(self.read_request)
+        self.sdcardinfo.erasecard.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.recordings.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.recordings.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.root.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.root.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.bench.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.bench.sigDisplayTerminal.connect(self.display_terminal)
+        self.sdcardinfo.formatcard.sigUpdateSDCard.connect(self.sdcardinfo.start)
+        self.sdcardinfo.erasecard.sigUpdateSDCard.connect(self.sdcardinfo.start)
+        self.configuration.sigUpdateSDCard.connect(self.sdcardinfo.start)
         iboxw = QWidget(self)
         ibox = QVBoxLayout(iboxw)
         ibox.addWidget(self.loggerinfo)
