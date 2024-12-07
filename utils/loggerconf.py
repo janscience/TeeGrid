@@ -25,7 +25,7 @@ except ImportError:
     from PyQt5.QtCore import pyqtSignal as Signal
 from PyQt5.QtCore import Qt, QObject, QTimer, QDateTime, QLocale
 from PyQt5.QtGui import QKeySequence, QFont, QPalette, QColor
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtWidgets import QStackedWidget, QLabel, QScrollArea
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout
 from PyQt5.QtWidgets import QWidget, QFrame, QPushButton, QSizePolicy
@@ -1138,13 +1138,6 @@ class Logger(QWidget):
         self.configuration.sigDisplayMessage.connect(self.display_message)
         self.tools = QWidget(self)
         self.tools_vbox = QVBoxLayout(self.tools)
-        tabs = QTabWidget(self)
-        tabs.setDocumentMode(True) # ?
-        tabs.setMovable(False)
-        tabs.setTabBarAutoHide(False)
-        tabs.setTabsClosable(False)
-        tabs.addTab(self.conf, 'Configuration')
-        tabs.addTab(self.tools, 'Tools')
         self.loggerinfo = LoggerInfo(self)
         self.loggerinfo.sigReadRequest.connect(self.read_request)
         self.loggerinfo.psramtest.sigReadRequest.connect(self.read_request)
@@ -1181,7 +1174,7 @@ class Logger(QWidget):
         ibox.addWidget(self.sdcardinfo)
         self.boxw = QWidget(self)
         self.box = QHBoxLayout(self.boxw)
-        self.box.addWidget(tabs)
+        self.box.addWidget(self.conf)
         self.box.addWidget(iboxw)
         self.term = Terminal(self)
         self.term.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
