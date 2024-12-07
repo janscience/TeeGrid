@@ -764,11 +764,14 @@ class Terminal(QWidget):
         self.scroll.setWidget(self.out)
         self.done = QPushButton(self)
         self.done.setText('&Done')
+        self.done.setToolTip('Close the terminal (Return, Escape, Space)')
         self.done.clicked.connect(self.clear)
-        done = QShortcut(QKeySequence.Cancel, self)
-        done.activated.connect(self.done.animateClick)
-        done = QShortcut(Qt.Key_Return, self)
-        done.activated.connect(self.done.animateClick)
+        key = QShortcut(QKeySequence.Cancel, self)
+        key.activated.connect(self.done.animateClick)
+        key = QShortcut(Qt.Key_Space, self)
+        key.activated.connect(self.done.animateClick)
+        key = QShortcut(Qt.Key_Return, self)
+        key.activated.connect(self.done.animateClick)
         vbox = QVBoxLayout(self)
         vbox.addWidget(self.title)
         vbox.addWidget(self.scroll)
@@ -816,9 +819,14 @@ class Message(QWidget):
         self.msg = QLabel(self)
         self.msg.setAlignment(Qt.AlignCenter)
         self.done = QPushButton('&Done', self)
+        self.done.setToolTip('Close the message window (Return, Escape, Space)')
         self.done.clicked.connect(self.clear)
+        key = QShortcut(QKeySequence.Cancel, self)
+        key.activated.connect(self.done.animateClick)
         key = QShortcut(Qt.Key_Return, self)
         key.activated.connect(self.done.animateClick)
+        done = QShortcut(Qt.Key_Space, self)
+        done.activated.connect(self.done.animateClick)
         buttons = QWidget(self)
         hbox = QHBoxLayout(buttons)
         hbox.addWidget(self.done)
@@ -849,6 +857,7 @@ class YesNoQuestion(QWidget):
         self.msg.setAlignment(Qt.AlignCenter)
         self.yesb = QPushButton(self)
         self.yesb.setText('&Yes')
+        self.yesb.setToolTip('Accept (Return, Y, Ctrl+Y)')
         self.yesb.clicked.connect(self.accept)
         key = QShortcut(Qt.Key_Return, self)
         key.activated.connect(self.yesb.animateClick)
@@ -858,6 +867,7 @@ class YesNoQuestion(QWidget):
         key.activated.connect(self.yesb.animateClick)
         self.nob = QPushButton(self)
         self.nob.setText('&No')
+        self.yesb.setToolTip('Reject (Escape, N, Ctrl+N)')
         self.nob.clicked.connect(self.reject)
         key = QShortcut(QKeySequence.Cancel, self)
         key.activated.connect(self.nob.animateClick)
@@ -921,6 +931,7 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
         self.selection = selection
         self.edit_widget = None
         self.unit_widget = None
+        self.state_widget = None
 
     def set(self, s):
         ss = s.split(',')
@@ -1038,6 +1049,10 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
             fm = self.edit_widget.fontMetrics()
             self.edit_widget.setMinimumWidth(32*fm.averageCharWidth())
             self.edit_widget.textChanged.connect(self.transmit_str)
+        self.state_widget = QCheckBox(parent)
+        self.state_widget.setChecked(True)
+        self.state_widget.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.state_widget.setFocusPolicy(Qt.NoFocus)
 
     def transmit_bool(self, check_state):
         start = list(self.ids)
@@ -1052,13 +1067,51 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
             text = text.replace(locale.decimalPoint(), '.')
         start.append(text)
         self.sigTransmitRequest.emit(self, self.name, start)
+
+    def verify(self, text):
+        matches = True
+        if self.type_str == 'boolean':
+            checked = text.lower() in ['yes', 'on', 'true', 'ok', '1']
+            matches = checked == self.edit_widget.isChecked()
+        elif len(self.selection) > 0:
+            if self.type_str in ['integer', 'float']:
+                value, unit, _ = parse_number(text)
+                locale = QLocale()
+                s = self.edit_widget.currentText()
+                s = s.replace(locale.groupSeparator(), '')
+                s = s.replace(locale.decimalPoint(), '.')
+                matches = abs(value - float(s)) < 1e-6
+                if not matches:
+                    print('value mismatch', text, self.unit_widget.currentText())
+                if self.unit_widget is not None and unit != self.unit_widget.text():
+                    matches = False
+                    print('unit mismatch', text, unit, self.unit_widget.text())
+            else:
+                matches = self.edit_widget.currentText() == text
+        elif self.type_str in ['integer', 'float']:
+            value, unit, _ = parse_number(text)
+            if value is None and text == self.special_str:
+                value = self.special_val
+            if self.edit_widget.value() != value:
+                matches = False
+                print('value mismatch', text, value, self.edit_widget.value())
+            if self.unit_widget is not None and unit != self.unit_widget.text():
+                matches = False
+                print('unit mismatch', text, unit, self.unit_widget.text())
+        elif self.type_str == 'string':
+            matches = (self.edit_widget.text() == text)
+        self.state_widget.setChecked(matches)
     
     def read(self, ident, stream, success):
         for l in stream:
             if self.name in l:
                 print(ident, success, l)
-                #self.edit_widget.setStyleSheet('border: 0px solid red')
+                ss = l.split(':')
+                if len(ss) > 1:
+                    text = ':'.join(ss[1:]).strip()
+                    self.verify(text)
             elif 'new value' in l:
+                self.state_widget.setChecked(False)
                 print(ident, success, l)
                 #self.edit_widget.setStyleSheet('border: 2px solid red')
                 
@@ -1147,8 +1200,11 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
                 text += '\n'
             if len(text) > 0:
                 self.sigDisplayMessage.emit(text)
-            if success and (ident == 'confsave' or ident == 'conferase'):
-                self.sigUpdateSDCard.emit()
+            if success:
+                if ident == 'confload':
+                    print('TODO: transfer values to dialog')
+                elif ident == 'confsave' or ident == 'conferase':
+                    self.sigUpdateSDCard.emit()
 
         
 class Logger(QWidget):
@@ -1496,6 +1552,8 @@ class Logger(QWidget):
                         else:
                             self.conf_grid.addWidget(param.edit_widget,
                                                      row, 1, 1, 2)
+                        self.conf_grid.addWidget(param.state_widget,
+                                                 row, 3)
                         row += 1
                     elif menu[2][sk][1] == 'action':
                         if not missing_tools:
