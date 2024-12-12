@@ -1146,26 +1146,26 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
     
     def __init__(self, *args, **kwargs):
         super(QWidget, self).__init__(*args, **kwargs)
-        self.check_button = QPushButton('&Check', self)
-        self.check_button.setToolTip('Check the configuration on the logger (Ctrl+C)')
         self.save_button = QPushButton('&Save', self)
         self.save_button.setToolTip('Save the configuration to file on SD card (Ctrl+S)')
         self.load_button = QPushButton('&Load', self)
         self.load_button.setToolTip('Load the configuration from file on SD card (Ctrl+L)')
         self.erase_button = QPushButton('&Erase', self)
         self.erase_button.setToolTip('Erase configuration file on SD card (Ctrl+E)')
-        self.check_button.clicked.connect(self.check)
+        self.check_button = QPushButton('&Check', self)
+        self.check_button.setToolTip('Check the configuration on the logger (Ctrl+C)')
         self.save_button.clicked.connect(self.save)
         self.load_button.clicked.connect(self.load)
         self.erase_button.clicked.connect(self.erase)
-        key = QShortcut('CTRL+C', self)
-        key.activated.connect(self.check)
+        self.check_button.clicked.connect(self.check)
         key = QShortcut('CTRL+S', self)
         key.activated.connect(self.save)
         key = QShortcut('CTRL+L', self)
         key.activated.connect(self.load)
         key = QShortcut('CTRL+E', self)
         key.activated.connect(self.erase)
+        key = QShortcut('CTRL+C', self)
+        key.activated.connect(self.check)
         hbox = QHBoxLayout(self)
         hbox.setContentsMargins(0, 0, 0, 0)
         hbox.addWidget(self.save_button)
@@ -1614,6 +1614,7 @@ class Logger(QWidget):
         self.loggerinfo.setup(self.menu)
         self.sdcardinfo.setup(self.menu)
         missing_tools = False
+        first_param = True
         row = 0
         for mk in self.menu:
             menu = self.menu[mk]
@@ -1641,6 +1642,9 @@ class Logger(QWidget):
                                                      row, 1, 1, 2)
                         self.conf_grid.addWidget(param.state_widget,
                                                  row, 3)
+                        if first_param:
+                            param.edit_widget.setFocus(Qt.MouseFocusReason)
+                            first_param = False
                         row += 1
                     elif menu[2][sk][1] == 'action':
                         if not missing_tools:
