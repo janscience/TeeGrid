@@ -1200,9 +1200,9 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
                 if 'not found' in stream[0]:
                     self.sigDisplayMessage.emit(stream[0].strip())
                     return
+                if 'configuration:' in stream[0].lower():
+                    return
                 title = stream[0].strip()
-            print(stream)
-            exit()
             text = '<style type="text/css"> td { padding: 0 15px; }</style>'
             text += '<table>'
             for s in stream[1:]:
