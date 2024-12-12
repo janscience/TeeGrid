@@ -184,7 +184,6 @@ class Interactor(ABC):
                 for mk in menu:
                     menu_item = menu[mk]
                     ids.append(menu_item[0])
-                    submenu = menu_item[1]
                     if menu_item[1] == 'menu' and \
                        find(keys, menu_item[2], ids):
                         if len(menu_item[2]) == 0:
@@ -937,7 +936,7 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
         self.unit_widget = None
         self.state_widget = None
 
-    def set(self, s):
+    def initialize(self, s):
         ss = s.split(',')
         self.type_str = ss.pop(0)
         self.max_chars = 0
@@ -997,8 +996,11 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
         elif len(self.selection) > 0:
             locale = QLocale()
             self.edit_widget = QComboBox(parent)
+            idx = None
             for s in self.selection:
                 si = s[1]
+                if si == self.value:
+                    idx = s[0]
                 if self.out_unit and si.endswith(self.out_unit):
                     si = si[:-len(self.out_unit)]
                 if self.type_str in ['integer', 'float'] and '.' in si:
@@ -1010,10 +1012,7 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                 self.edit_widget.addItem(si)
             if self.out_unit:
                 self.unit_widget = QLabel(self.out_unit, parent)
-            si = self.value
-            if self.out_unit and si.endswith(self.out_unit):
-                si = si[:-len(self.out_unit)]
-            self.edit_widget.setCurrentText(si)
+            self.edit_widget.setCurrentIndex(idx)
             self.edit_widget.setEditable(False)
             self.edit_widget.currentTextChanged.connect(self.transmit_str)
         elif self.type_str == 'integer' and not self.unit:
@@ -1086,7 +1085,7 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                 s = s.replace(locale.decimalPoint(), '.')
                 matches = abs(value - float(s)) < 1e-6
                 if not matches:
-                    print('value mismatch', text, self.unit_widget.currentText())
+                    print('value mismatch', text, self.edit_widget.currentText())
                 if self.unit_widget is not None and unit != self.unit_widget.text():
                     matches = False
                     print('unit mismatch', text, unit, self.unit_widget.text())
@@ -1105,22 +1104,45 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
         elif self.type_str == 'string':
             matches = (self.edit_widget.text() == text)
         self.state_widget.setChecked(matches)
+
+    def set_value(self, text):
+        if self.type_str == 'boolean':
+            checked = text.lower() in ['yes', 'on', 'true', 'ok', '1']
+            self.edit_widget.setChecked(checked)
+        elif len(self.selection) > 0:
+            if self.type_str in ['integer', 'float']:
+                value, unit, _ = parse_number(text)
+                for s in self.selection:
+                    svalue, sunit, _ = parse_number(s[1])
+                    if abs(value - svalue) < 1e-8 and unit == sunit:
+                        self.edit_widget.setCurrentIndex(s[0])
+                        break
+            else:
+                self.edit_widget.setCurrentText(text)
+        elif self.type_str in ['integer', 'float']:
+            value, unit, _ = parse_number(text)
+            if value is None and text == self.special_str:
+                value = self.special_val
+            self.edit_widget.setValue(value)
+        elif self.type_str == 'string':
+            self.edit_widget.setText(text)
+        self.verify(text)
     
     def read(self, ident, stream, success):
         for l in stream:
             if self.name in l:
-                print(ident, success, l)
                 ss = l.split(':')
                 if len(ss) > 1:
                     text = ':'.join(ss[1:]).strip()
                     self.verify(text)
             elif 'new value' in l:
                 self.state_widget.setChecked(False)
-                print(ident, success, l)
-                #self.edit_widget.setStyleSheet('border: 2px solid red')
                 
 
 class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
+
+    sigVerifyParameter = Signal(str, str)
+    sigSetParameter = Signal(str, str)
     
     def __init__(self, *args, **kwargs):
         super(QWidget, self).__init__(*args, **kwargs)
@@ -1146,10 +1168,10 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         key.activated.connect(self.erase)
         hbox = QHBoxLayout(self)
         hbox.setContentsMargins(0, 0, 0, 0)
-        hbox.addWidget(self.check_button)
         hbox.addWidget(self.save_button)
         hbox.addWidget(self.load_button)
         hbox.addWidget(self.erase_button)
+        hbox.addWidget(self.check_button)
         self.start_check = None
         self.start_load = None
         self.start_save = None
@@ -1179,6 +1201,7 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         while len(stream) > 0 and len(stream[0].strip()) == 0:
             del stream[0]
         if ident == 'confcheck':
+            top_key = None
             text = '<style type="text/css"> td { padding: 0 15px; }</style>'
             text += '<table>'
             for s in stream:
@@ -1188,9 +1211,14 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
                 text += '<tr>'
                 cs = s.split(':')
                 if len(cs) > 1 and len(cs[1].strip()) > 0:
-                    text += f'<td></td><td>{cs[0].strip()}</td><td><b>{(":".join(cs[1:])).strip()}</b></td>'
+                    key = cs[0].strip()
+                    value = (":".join(cs[1:])).strip()
+                    keys = f'{top_key}>{key}' if top_key else key
+                    self.sigVerifyParameter.emit(keys, value) 
+                    text += f'<td></td><td>{key}</td><td><b>{value}</b></td>'
                 else:
-                    text += f'<td colspan=3><b>{cs[0].strip()}</b></td>'
+                    top_key = cs[0].strip()
+                    text += f'<td colspan=3><b>{top_key}</b></td>'
                 text += '</tr>'
             text += '</table>'
         elif ident == 'confload':
@@ -1208,11 +1236,13 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
             for s in stream[1:]:
                 if len(s.strip()) == 0 or 'configuration:' in s.lower():
                     break
-                ss = s.split(' to ')
-                text += f'<tr><td>{ss[0].strip()}</td><td>to</td><td><b>{ss[1].strip()}</b></td></tr>'
+                cs = s.split(' to ')
+                key = cs[0].strip()[4:]
+                value = cs[1].strip()
+                self.sigSetParameter.emit(key, value) 
+                text += f'<tr><td>set {key}</td><td>to</td><td><b>{value}</b></td></tr>'
             text += '</table>'
             self.sigDisplayTerminal.emit(title, text)
-            print('TODO: transfer values to dialog')
         else:
             text = ''
             for s in stream:
@@ -1243,6 +1273,8 @@ class Logger(QWidget):
         self.configuration.sigReadRequest.connect(self.read_request)
         self.configuration.sigDisplayTerminal.connect(self.display_terminal)
         self.configuration.sigDisplayMessage.connect(self.display_message)
+        self.configuration.sigVerifyParameter.connect(self.verify_parameter)
+        self.configuration.sigSetParameter.connect(self.set_parameter)
         self.question = YesNoQuestion(self)
         self.question.yesb.clicked.connect(lambda x: self.cstack.setCurrentWidget(self.message))
         self.question.nob.clicked.connect(lambda x: self.cstack.setCurrentWidget(self.message))
@@ -1347,6 +1379,49 @@ class Logger(QWidget):
     def display_message(self, text):
         self.message.display(text)
         self.cstack.setCurrentWidget(self.message)
+        
+    def find_parameter(self, keys, menu):
+        found = False
+        for mk in menu:
+            if keys[0] == mk:
+                found = True
+                menu_item = menu[mk]
+                if len(keys) > 1:
+                    if menu_item[1] == 'menu':
+                        p = self.find_parameter(keys[1:], menu_item[2])
+                        if p is not None:
+                            return p
+                        else:
+                            found = False
+                elif menu_item[1] == 'param':
+                    return menu_item[2]
+                else:
+                    return None
+                break
+        if not found:
+            for mk in menu:
+                menu_item = menu[mk]
+                if menu_item[1] == 'menu':
+                    p = self.find_parameter(keys, menu_item[2])
+                    if p is not None:
+                        return p
+        return None
+
+    def verify_parameter(self, key, value):
+        keys = [k.strip() for k in key.split('>') if len(k.strip()) > 0]
+        p = self.find_parameter(keys, self.menu)
+        if p is None:
+            print('WARNING in verify():', key, 'not found')
+        else:
+            p.verify(value)
+
+    def set_parameter(self, key, value):
+        keys = [k.strip() for k in key.split('>') if len(k.strip()) > 0]
+        p = self.find_parameter(keys, self.menu)
+        if p is None:
+            print('WARNING in verify():', key, 'not found')
+        else:
+            p.set_value(value)
 
     def parse_idle(self):
         pass
@@ -1522,7 +1597,7 @@ class Logger(QWidget):
             s = self.input[list_end]
             s = s[s.find('new value (') + 11:s.find('):')]
             param = Parameter(self.menu_ids, self.menu_key, self.menu_item[2])
-            param.set(s)
+            param.initialize(s)
             param.set_selection(self.input[list_start:list_end])
             param.sigTransmitRequest.connect(self.transmit_request)
             self.menu_item[2] = param
