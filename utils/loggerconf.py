@@ -27,7 +27,7 @@ from PyQt5.QtCore import Qt, QObject, QTimer, QDateTime, QLocale
 from PyQt5.QtGui import QKeySequence, QFont, QPalette, QColor
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtWidgets import QStackedWidget, QLabel, QScrollArea
-from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout
+from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QSpacerItem
 from PyQt5.QtWidgets import QWidget, QFrame, QPushButton, QSizePolicy
 from PyQt5.QtWidgets import QAction, QShortcut
 from PyQt5.QtWidgets import QCheckBox, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox
@@ -902,6 +902,7 @@ class YesNoQuestion(QWidget):
             text.insert(0, s)
         text[-1] = text[-1][:text[-1].lower().find(' [y/n] ')]
         self.msg.setText('\n'.join(text))
+        self.setFocus(Qt.MouseFocusReason)
 
     def accept(self):
         self.yes = True
@@ -935,6 +936,7 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
         self.edit_widget = None
         self.unit_widget = None
         self.state_widget = None
+        self.matches = False
 
     def initialize(self, s):
         ss = s.split(',')
@@ -1072,10 +1074,10 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
         self.sigTransmitRequest.emit(self, self.name, start)
 
     def verify(self, text):
-        matches = True
+        self.matches = True
         if self.type_str == 'boolean':
             checked = text.lower() in ['yes', 'on', 'true', 'ok', '1']
-            matches = checked == self.edit_widget.isChecked()
+            self.matches = checked == self.edit_widget.isChecked()
         elif len(self.selection) > 0:
             if self.type_str in ['integer', 'float']:
                 value, unit, _ = parse_number(text)
@@ -1083,27 +1085,27 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                 s = self.edit_widget.currentText()
                 s = s.replace(locale.groupSeparator(), '')
                 s = s.replace(locale.decimalPoint(), '.')
-                matches = abs(value - float(s)) < 1e-6
-                if not matches:
+                self.matches = abs(value - float(s)) < 1e-6
+                if not self.matches:
                     print('value mismatch', text, self.edit_widget.currentText())
                 if self.unit_widget is not None and unit != self.unit_widget.text():
-                    matches = False
+                    self.matches = False
                     print('unit mismatch', text, unit, self.unit_widget.text())
             else:
-                matches = self.edit_widget.currentText() == text
+                self.matches = self.edit_widget.currentText() == text
         elif self.type_str in ['integer', 'float']:
             value, unit, _ = parse_number(text)
             if value is None and text == self.special_str:
                 value = self.special_val
             if self.edit_widget.value() != value:
-                matches = False
+                self.matches = False
                 print('value mismatch', text, value, self.edit_widget.value())
             if self.unit_widget is not None and unit != self.unit_widget.text():
-                matches = False
+                self.matches = False
                 print('unit mismatch', text, unit, self.unit_widget.text())
         elif self.type_str == 'string':
-            matches = (self.edit_widget.text() == text)
-        self.state_widget.setChecked(matches)
+            self.matches = (self.edit_widget.text() == text)
+        self.state_widget.setChecked(self.matches)
 
     def set_value(self, text):
         if self.type_str == 'boolean':
@@ -1176,6 +1178,7 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.start_load = None
         self.start_save = None
         self.start_erase = None
+        self.matches = False
     
     def setup(self, menu):
         self.start_check = self.retrieve('configuration>print', menu)
@@ -1206,7 +1209,7 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
             text += '<table>'
             for s in stream:
                 if 'configuration:' in s.lower():
-                    self.sigDisplayTerminal.emit('Current configuration', text)
+                    self.sigDisplayTerminal.emit('Current configuration on the logger', text)
                     break
                 text += '<tr>'
                 cs = s.split(':')
@@ -1214,11 +1217,15 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
                     key = cs[0].strip()
                     value = (":".join(cs[1:])).strip()
                     keys = f'{top_key}>{key}' if top_key else key
-                    self.sigVerifyParameter.emit(keys, value) 
+                    self.sigVerifyParameter.emit(keys, value)
                     text += f'<td></td><td>{key}</td><td><b>{value}</b></td>'
+                    if self.matches:
+                        text += '<td>&#x2705;</td>'
+                    else:
+                        text += '<td>&#x274C;</td>'
                 else:
                     top_key = cs[0].strip()
-                    text += f'<td colspan=3><b>{top_key}</b></td>'
+                    text += f'<td colspan=4><b>{top_key}</b></td>'
                 text += '</tr>'
             text += '</table>'
         elif ident == 'confload':
@@ -1240,7 +1247,11 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
                 key = cs[0].strip()[4:]
                 value = cs[1].strip()
                 self.sigSetParameter.emit(key, value) 
-                text += f'<tr><td>set {key}</td><td>to</td><td><b>{value}</b></td></tr>'
+                text += f'<tr><td>set {key}</td><td>to</td><td><b>{value}</b></td>'
+                if self.matches:
+                    text += '<td>&#x2705;</td></tr>'
+                else:
+                    text += '<td>&#x274C;</td></tr>'
             text += '</table>'
             self.sigDisplayTerminal.emit(title, text)
         else:
@@ -1276,8 +1287,8 @@ class Logger(QWidget):
         self.configuration.sigVerifyParameter.connect(self.verify_parameter)
         self.configuration.sigSetParameter.connect(self.set_parameter)
         self.question = YesNoQuestion(self)
-        self.question.yesb.clicked.connect(lambda x: self.cstack.setCurrentWidget(self.message))
-        self.question.nob.clicked.connect(lambda x: self.cstack.setCurrentWidget(self.message))
+        self.question.yesb.clicked.connect(self.close_question)
+        self.question.nob.clicked.connect(self.close_question)
         self.message = Message(self)
         #self.message.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
         self.cstack = QStackedWidget(self)
@@ -1321,6 +1332,7 @@ class Logger(QWidget):
         vbox = QVBoxLayout(self)
         vbox.addWidget(self.logo)
         vbox.addWidget(self.stack)
+        self.last_focus = None
 
         self.device = None
         self.ser = None
@@ -1379,6 +1391,12 @@ class Logger(QWidget):
     def display_message(self, text):
         self.message.display(text)
         self.cstack.setCurrentWidget(self.message)
+
+    def close_question(self):
+        if self.last_focus is not None:
+            self.last_focus.setFocus(Qt.MouseFocusReason)
+            self.last_focus = None
+        self.cstack.setCurrentWidget(self.message)
         
     def find_parameter(self, keys, menu):
         found = False
@@ -1414,6 +1432,7 @@ class Logger(QWidget):
             print('WARNING in verify():', key, 'not found')
         else:
             p.verify(value)
+            self.configuration.matches = p.matches
 
     def set_parameter(self, key, value):
         keys = [k.strip() for k in key.split('>') if len(k.strip()) > 0]
@@ -1422,6 +1441,7 @@ class Logger(QWidget):
             print('WARNING in verify():', key, 'not found')
         else:
             p.set_value(value)
+            self.configuration.matches = p.matches
 
     def parse_idle(self):
         pass
@@ -1629,19 +1649,20 @@ class Logger(QWidget):
                             self.conf_grid.addWidget(title, row, 0, 1, 3)
                             row += 1
                             add_title = False
+                        self.conf_grid.addItem(QSpacerItem(10, 0), row, 0)
                         self.conf_grid.addWidget(QLabel(sk + ': ', self),
-                                                 row, 0)
+                                                 row, 1)
                         param = menu[2][sk][2]
                         param.setup(self)
                         if param.type_str in ['integer', 'float']:
-                            self.conf_grid.addWidget(param.edit_widget, row, 1)
+                            self.conf_grid.addWidget(param.edit_widget, row, 2)
                             if param.unit_widget is not None:
-                                self.conf_grid.addWidget(param.unit_widget, row, 2)
+                                self.conf_grid.addWidget(param.unit_widget, row, 3)
                         else:
                             self.conf_grid.addWidget(param.edit_widget,
-                                                     row, 1, 1, 2)
+                                                     row, 2, 1, 2)
                         self.conf_grid.addWidget(param.state_widget,
-                                                 row, 3)
+                                                 row, 4)
                         if first_param:
                             param.edit_widget.setFocus(Qt.MouseFocusReason)
                             first_param = False
@@ -1712,6 +1733,7 @@ class Logger(QWidget):
             if len(self.input) > 0 and \
                self.input[-1].lower().endswith(' [y/n] '):
                 self.message.clear()
+                self.last_focus = QApplication.focusWidget()
                 self.question.ask(self.input)
                 self.cstack.setCurrentWidget(self.question)
                 self.input = []
