@@ -619,6 +619,27 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.eraserecordings.setToolTip('Delete all recordings (Ctrl+D)')
         self.bench = Benchmark()
         self.bench.setToolTip('Write and read data rates of SD card (Ctrl+W)')
+
+        self.checkcard.sigReadRequest.connect(self.sigReadRequest)
+        self.checkcard.sigDisplayTerminal.connect(self.sigDisplayTerminal)
+        self.formatcard.sigReadRequest.connect(self.sigReadRequest)
+        self.formatcard.sigDisplayTerminal.connect(self.sigDisplayTerminal)
+        self.erasecard.sigReadRequest.connect(self.sigReadRequest)
+        self.erasecard.sigDisplayTerminal.connect(self.sigDisplayTerminal)
+        self.recordings.sigReadRequest.connect(self.sigReadRequest)
+        self.recordings.sigDisplayTerminal.connect(self.sigDisplayTerminal)
+        self.recordings.sigDisplayMessage.connect(self.sigDisplayMessage)
+        self.eraserecordings.sigReadRequest.connect(self.sigReadRequest)
+        self.eraserecordings.sigDisplayTerminal.connect(self.sigDisplayTerminal)
+        self.eraserecordings.sigDisplayMessage.connect(self.sigDisplayMessage)
+        self.root.sigReadRequest.connect(self.sigReadRequest)
+        self.root.sigDisplayTerminal.connect(self.sigDisplayTerminal)
+        self.root.sigDisplayMessage.connect(self.sigDisplayMessage)
+        self.bench.sigReadRequest.connect(self.sigReadRequest)
+        self.bench.sigDisplayTerminal.connect(self.sigDisplayTerminal)
+        self.formatcard.sigUpdateSDCard.connect(self.start)
+        self.erasecard.sigUpdateSDCard.connect(self.start)
+        
         key = QShortcut("CTRL+M", self)
         key.activated.connect(self.checkcard.animateClick)
         key = QShortcut("CTRL+A", self)
@@ -818,6 +839,7 @@ class Message(QWidget):
         super().__init__(*args, **kwargs)
         self.msg = QLabel(self)
         self.msg.setAlignment(Qt.AlignCenter)
+        """
         self.done = QPushButton('&Done', self)
         self.done.setToolTip('Close the message window (Return, Escape, Space)')
         self.done.clicked.connect(self.clear)
@@ -830,10 +852,11 @@ class Message(QWidget):
         buttons = QWidget(self)
         hbox = QHBoxLayout(buttons)
         hbox.addWidget(self.done)
+        """
         vbox = QVBoxLayout(self)
         vbox.addWidget(QLabel(self))
         vbox.addWidget(self.msg)
-        vbox.addWidget(buttons)
+        #vbox.addWidget(buttons)
 
     def clear(self):
         self.msg.setText('')
@@ -1216,13 +1239,28 @@ class Logger(QWidget):
         self.logo = QLabel(self)
         self.logo.setFont(QFont('monospace'))
         self.msg = QLabel(self)
+        
         self.conf = QFrame(self)
         self.conf.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-        self.conf_grid = QGridLayout(self.conf)
+        self.conf_grid = QGridLayout()
         self.configuration = ConfigActions(self)
         self.configuration.sigReadRequest.connect(self.read_request)
         self.configuration.sigDisplayTerminal.connect(self.display_terminal)
         self.configuration.sigDisplayMessage.connect(self.display_message)
+        self.question = YesNoQuestion(self)
+        self.question.yesb.clicked.connect(lambda x: self.cstack.setCurrentWidget(self.message))
+        self.question.nob.clicked.connect(lambda x: self.cstack.setCurrentWidget(self.message))
+        self.message = Message(self)
+        #self.message.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
+        self.cstack = QStackedWidget(self)
+        self.cstack.addWidget(self.message)
+        self.cstack.addWidget(self.question)
+        self.cstack.setCurrentWidget(self.message)
+        vbox = QVBoxLayout(self.conf)
+        vbox.addLayout(self.conf_grid)
+        vbox.addWidget(self.configuration)
+        vbox.addWidget(self.cstack)
+        
         self.loggerinfo = LoggerInfo(self)
         self.loggerinfo.sigReadRequest.connect(self.read_request)
         self.loggerinfo.psramtest.sigReadRequest.connect(self.read_request)
@@ -1232,25 +1270,8 @@ class Logger(QWidget):
         self.softwareinfo = SoftwareInfo(self)
         self.sdcardinfo = SDCardInfo(self)
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
-        self.sdcardinfo.checkcard.sigReadRequest.connect(self.read_request)
-        self.sdcardinfo.checkcard.sigDisplayTerminal.connect(self.display_terminal)
-        self.sdcardinfo.formatcard.sigReadRequest.connect(self.read_request)
-        self.sdcardinfo.formatcard.sigDisplayTerminal.connect(self.display_terminal)
-        self.sdcardinfo.erasecard.sigReadRequest.connect(self.read_request)
-        self.sdcardinfo.erasecard.sigDisplayTerminal.connect(self.display_terminal)
-        self.sdcardinfo.recordings.sigReadRequest.connect(self.read_request)
-        self.sdcardinfo.recordings.sigDisplayTerminal.connect(self.display_terminal)
-        self.sdcardinfo.recordings.sigDisplayMessage.connect(self.display_message)
-        self.sdcardinfo.eraserecordings.sigReadRequest.connect(self.read_request)
-        self.sdcardinfo.eraserecordings.sigDisplayTerminal.connect(self.display_terminal)
-        self.sdcardinfo.eraserecordings.sigDisplayMessage.connect(self.display_message)
-        self.sdcardinfo.root.sigReadRequest.connect(self.read_request)
-        self.sdcardinfo.root.sigDisplayTerminal.connect(self.display_terminal)
-        self.sdcardinfo.root.sigDisplayMessage.connect(self.display_message)
-        self.sdcardinfo.bench.sigReadRequest.connect(self.read_request)
-        self.sdcardinfo.bench.sigDisplayTerminal.connect(self.display_terminal)
-        self.sdcardinfo.formatcard.sigUpdateSDCard.connect(self.sdcardinfo.start)
-        self.sdcardinfo.erasecard.sigUpdateSDCard.connect(self.sdcardinfo.start)
+        self.sdcardinfo.sigDisplayTerminal.connect(self.display_terminal)
+        self.sdcardinfo.sigDisplayMessage.connect(self.display_message)
         self.configuration.sigUpdateSDCard.connect(self.sdcardinfo.start)
         iboxw = QWidget(self)
         ibox = QVBoxLayout(iboxw)
@@ -1264,17 +1285,10 @@ class Logger(QWidget):
         self.box.addWidget(iboxw)
         self.term = Terminal(self)
         self.term.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
-        self.question = YesNoQuestion(self)
-        self.question.yesb.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
-        self.question.nob.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
-        self.message = Message(self)
-        self.message.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
         self.stack = QStackedWidget(self)
         self.stack.addWidget(self.msg)
         self.stack.addWidget(self.boxw)
         self.stack.addWidget(self.term)
-        self.stack.addWidget(self.question)
-        self.stack.addWidget(self.message)
         self.stack.setCurrentWidget(self.msg)
         vbox = QVBoxLayout(self)
         vbox.addWidget(self.logo)
@@ -1336,7 +1350,7 @@ class Logger(QWidget):
 
     def display_message(self, text):
         self.message.display(text)
-        self.stack.setCurrentWidget(self.message)
+        self.cstack.setCurrentWidget(self.message)
 
     def parse_idle(self):
         pass
@@ -1565,7 +1579,6 @@ class Logger(QWidget):
                             print(f'{mk}:')
                             add_title = False
                         print(f'  {sk}')
-        self.conf_grid.addWidget(self.configuration, row, 0, 1, 3)
         self.sdcardinfo.start()
         self.loggerinfo.start()
         self.stack.setCurrentWidget(self.boxw)
@@ -1623,8 +1636,9 @@ class Logger(QWidget):
         elif self.read_state == 1:
             if len(self.input) > 0 and \
                self.input[-1].lower().endswith(' [y/n] '):
+                self.message.clear()
                 self.question.ask(self.input)
-                self.stack.setCurrentWidget(self.question)
+                self.cstack.setCurrentWidget(self.question)
                 self.input = []
                 self.read_state = 5
             elif self.request_stop is None or \
@@ -1670,8 +1684,8 @@ class Logger(QWidget):
                 else:
                     self.ser.write(b'n\n')
                 self.ser.flush()
-                self.stack.setCurrentWidget(self.boxw)
                 self.question.clear()
+                self.cstack.setCurrentWidget(self.message)
                 self.read_state = 1
 
     def write_request(self, msg, start):
