@@ -833,33 +833,14 @@ class Terminal(QWidget):
         vsb.setValue(vsb.maximum())
 
 
-class Message(QWidget):
+class Message(QLabel):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.msg = QLabel(self)
-        self.msg.setAlignment(Qt.AlignCenter)
-        """
-        self.done = QPushButton('&Done', self)
-        self.done.setToolTip('Close the message window (Return, Escape, Space)')
-        self.done.clicked.connect(self.clear)
-        key = QShortcut(QKeySequence.Cancel, self)
-        key.activated.connect(self.done.animateClick)
-        key = QShortcut(Qt.Key_Return, self)
-        key.activated.connect(self.done.animateClick)
-        done = QShortcut(Qt.Key_Space, self)
-        done.activated.connect(self.done.animateClick)
-        buttons = QWidget(self)
-        hbox = QHBoxLayout(buttons)
-        hbox.addWidget(self.done)
-        """
-        vbox = QVBoxLayout(self)
-        vbox.addWidget(QLabel(self))
-        vbox.addWidget(self.msg)
-        #vbox.addWidget(buttons)
+        self.setAlignment(Qt.AlignCenter)
 
     def clear(self):
-        self.msg.setText('')
+        self.setText('')
 
     def display(self, stream):
         if isinstance(stream, (tuple, list)):
@@ -867,9 +848,9 @@ class Message(QWidget):
             for s in stream:
                 text += s
                 text += '\n'
-            self.msg.setText(text)
+            self.setText(text)
         else:
-            self.msg.setText(stream)
+            self.setText(stream)
 
 
 class YesNoQuestion(QWidget):
@@ -1212,9 +1193,27 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
                     text += f'<td colspan=3><b>{cs[0].strip()}</b></td>'
                 text += '</tr>'
             text += '</table>'
-        else:
+        elif ident == 'confload':
             while len(stream) > 0 and len(stream[0].strip()) == 0:
                 del stream[0]
+            if len(stream) > 0:
+                if 'not found' in stream[0]:
+                    self.sigDisplayMessage.emit(stream[0].strip())
+                    return
+                title = stream[0].strip()
+            print(stream)
+            exit()
+            text = '<style type="text/css"> td { padding: 0 15px; }</style>'
+            text += '<table>'
+            for s in stream[1:]:
+                if len(s.strip()) == 0 or 'configuration:' in s.lower():
+                    break
+                ss = s.split(' to ')
+                text += f'<tr><td>{ss[0].strip()}</td><td>to</td><td><b>{ss[1].strip()}</b></td></tr>'
+            text += '</table>'
+            self.sigDisplayTerminal.emit(title, text)
+            print('TODO: transfer values to dialog')
+        else:
             text = ''
             for s in stream:
                 if 'configuration:' in s.lower():
@@ -1224,10 +1223,7 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
             if len(text) > 0:
                 self.sigDisplayMessage.emit(text)
             if success:
-                if ident == 'confload':
-                    print('TODO: transfer values to dialog')
-                elif ident == 'confsave' or ident == 'conferase':
-                    self.sigUpdateSDCard.emit()
+                self.sigUpdateSDCard.emit()
 
         
 class Logger(QWidget):
