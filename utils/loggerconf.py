@@ -534,6 +534,8 @@ class ListFiles(ReportButton):
         self.start = start
         
     def read(self, ident, stream, success):
+        if len(stream) == 0:
+            return
         title = None
         text = '<style type="text/css"> th, td { padding: 0 15px; }</style>'
         text += '<table>'
@@ -542,12 +544,12 @@ class ListFiles(ReportButton):
                 if 'does not exist' in s.lower():
                     self.sigDisplayMessage.emit(s)
                     return
-                if s.lower().strip().startswith('files in'):
+                if s.lower().strip().startswith('files in') or s.lower().strip().startswith('erase all files in'):
                     title = s
             else:
                 if ' name' in s.lower():
                     text += f'<tr><th align="right">size (bytes)</th><th align="left">name</th></tr>'
-                elif 'found' in s.lower():
+                elif 'found' in s.lower() or s.strip().lower().startswith('removed'):
                     text += f'<tr><td colspan=2>{s.strip()}</td></tr>'
                     break
                 else:
@@ -560,7 +562,8 @@ class ListFiles(ReportButton):
                         text += f'<td></td><td align="left">{s.strip()}</td>'
                     text += '</tr>'
         text += '</table>'
-        self.sigDisplayTerminal.emit(title, text)
+        if title is not None:
+            self.sigDisplayTerminal.emit(title, text)
 
                 
 class Benchmark(ReportButton):
