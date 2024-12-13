@@ -618,7 +618,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.checkcard = CheckSDCard()
         self.checkcard.setToolTip('Check accessability of micro SD card (Ctrl+M)')
         self.erasecard = FormatSDCard('sd card>erase and format', 'Erase')
-        self.erasecard.setToolTip('Flash erase and format SD card (Ctrl+A)')
+        self.erasecard.setToolTip('Flash erase and format SD card (Ctrl+E)')
         self.formatcard = FormatSDCard('sd card>format', '&Format')
         self.formatcard.setToolTip('Format SD card (Ctrl+F)')
         self.root = ListFiles()
@@ -650,19 +650,19 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.formatcard.sigUpdateSDCard.connect(self.start)
         self.erasecard.sigUpdateSDCard.connect(self.start)
         
-        key = QShortcut("CTRL+M", self)
+        key = QShortcut('Ctrl+M', self)
         key.activated.connect(self.checkcard.animateClick)
-        key = QShortcut("CTRL+A", self)
+        key = QShortcut('Ctrl+E', self)
         key.activated.connect(self.erasecard.animateClick)
-        key = QShortcut("CTRL+F", self)
+        key = QShortcut('Ctrl+F', self)
         key.activated.connect(self.formatcard.animateClick)
-        key = QShortcut("CTRL+O", self)
+        key = QShortcut('Ctrl+O', self)
         key.activated.connect(self.root.animateClick)
-        key = QShortcut("CTRL+R", self)
+        key = QShortcut('Ctrl+R', self)
         key.activated.connect(self.recordings.animateClick)
-        key = QShortcut("CTRL+D", self)
+        key = QShortcut('Ctrl+D', self)
         key.activated.connect(self.eraserecordings.animateClick)
-        key = QShortcut("CTRL+W", self)
+        key = QShortcut('Ctrl+W', self)
         key.activated.connect(self.bench.animateClick)
         self.box = QGridLayout(self)
         title = QLabel('<b>SD card</b>', self)
@@ -760,8 +760,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                         if keys == 'capacity':
                             self.add(items[i][0], items[i][1], self.formatcard)
                         elif keys == 'available':
-                            self.add('<u>A</u>' + items[i][0][1:],
-                                     items[i][1], self.erasecard)
+                            self.add(items[i][0], items[i][1], self.erasecard)
                             if available is not None:
                                 a = float(available.replace(' GB', ''))
                                 c = float(items[i][1].replace(' GB', ''))
@@ -877,7 +876,7 @@ class YesNoQuestion(QWidget):
         key.activated.connect(self.yesb.animateClick)
         key = QShortcut(Qt.Key_Y, self)
         key.activated.connect(self.yesb.animateClick)
-        key = QShortcut('CTRL+Y', self)
+        key = QShortcut('Ctrl+Y', self)
         key.activated.connect(self.yesb.animateClick)
         self.nob = QPushButton(self)
         self.nob.setText('&No')
@@ -887,7 +886,7 @@ class YesNoQuestion(QWidget):
         key.activated.connect(self.nob.animateClick)
         key = QShortcut(Qt.Key_N, self)
         key.activated.connect(self.nob.animateClick)
-        key = QShortcut('CTRL+N', self)
+        key = QShortcut('Ctrl+N', self)
         key.activated.connect(self.nob.animateClick)
         buttons = QWidget(self)
         hbox = QHBoxLayout(buttons)
@@ -1160,31 +1159,27 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
     def __init__(self, *args, **kwargs):
         super(QWidget, self).__init__(*args, **kwargs)
         self.save_button = QPushButton('&Save', self)
-        self.save_button.setToolTip('Save the configuration to file on SD card (Ctrl+S)')
+        self.save_button.setToolTip('Save the configuration to file on SD card (Alt+S)')
         self.load_button = QPushButton('&Load', self)
-        self.load_button.setToolTip('Load the configuration from file on SD card (Ctrl+L)')
+        self.load_button.setToolTip('Load the configuration from file on SD card (Alt+L)')
         self.erase_button = QPushButton('&Erase', self)
-        self.erase_button.setToolTip('Erase configuration file on SD card (Ctrl+E)')
+        self.erase_button.setToolTip('Erase configuration file on SD card (Alt+E)')
         self.check_button = QPushButton('&Check', self)
-        self.check_button.setToolTip('Check the configuration on the logger (Ctrl+C)')
+        self.check_button.setToolTip('Check the configuration on the logger (Alt+C)')
+        self.run_button = QPushButton('&Run', self)
+        self.run_button.setToolTip('Run logger (Alt+R)')
         self.save_button.clicked.connect(self.save)
         self.load_button.clicked.connect(self.load)
         self.erase_button.clicked.connect(self.erase)
         self.check_button.clicked.connect(self.check)
-        key = QShortcut('CTRL+S', self)
-        key.activated.connect(self.save)
-        key = QShortcut('CTRL+L', self)
-        key.activated.connect(self.load)
-        key = QShortcut('CTRL+E', self)
-        key.activated.connect(self.erase)
-        key = QShortcut('CTRL+C', self)
-        key.activated.connect(self.check)
-        hbox = QHBoxLayout(self)
-        hbox.setContentsMargins(0, 0, 0, 0)
-        hbox.addWidget(self.save_button)
-        hbox.addWidget(self.load_button)
-        hbox.addWidget(self.erase_button)
-        hbox.addWidget(self.check_button)
+        self.run_button.clicked.connect(self.run)
+        box = QGridLayout(self)
+        box.setContentsMargins(0, 0, 0, 0)
+        box.addWidget(self.save_button, 0, 0)
+        box.addWidget(self.load_button, 0, 1)
+        box.addWidget(self.erase_button, 0, 2)
+        box.addWidget(self.check_button, 0, 3)
+        box.addWidget(self.run_button, 1, 3)
         self.start_check = None
         self.start_load = None
         self.start_save = None
@@ -1197,9 +1192,6 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.start_save = self.retrieve('configuration>save', menu)
         self.start_erase = self.retrieve('configuration>erase', menu)
 
-    def check(self):
-        self.sigReadRequest.emit(self, 'confcheck', self.start_check, 'select')
-
     def save(self):
         self.sigReadRequest.emit(self, 'confsave', self.start_save, 'select')
 
@@ -1209,11 +1201,19 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
     def erase(self):
         self.sigReadRequest.emit(self, 'conferase', self.start_erase, 'select')
 
+    def check(self):
+        self.sigReadRequest.emit(self, 'confcheck', self.start_check, 'select')
+
+    def run(self):
+        self.sigReadRequest.emit(self, 'run', ['q'], 'halt')
+
     def read(self, ident, stream, success):
-        if not ident.startswith('conf'):
-            return
         while len(stream) > 0 and len(stream[0].strip()) == 0:
             del stream[0]
+        if ident == 'run':
+            self.sigDisplayTerminal.emit('Run logger', stream)
+        if not ident.startswith('conf'):
+            return
         if ident == 'confcheck':
             top_key = None
             text = '<style type="text/css"> td { padding: 0 15px; }</style>'
