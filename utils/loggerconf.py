@@ -1064,10 +1064,10 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
             fm = self.edit_widget.fontMetrics()
             self.edit_widget.setMinimumWidth(32*fm.averageCharWidth())
             self.edit_widget.textChanged.connect(self.transmit_str)
-        self.state_widget = QCheckBox(parent)
-        self.state_widget.setChecked(True)
-        self.state_widget.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.state_widget.setFocusPolicy(Qt.NoFocus)
+        self.state_widget = QLabel(parent)
+        self.state_widget.setTextFormat(Qt.RichText)
+        self.state_widget.setToolTip('Indicate whether dialog value matches logger settings')
+        self.state_widget.setText('&#x2705;')
 
     def transmit_bool(self, check_state):
         start = list(self.ids)
@@ -1115,7 +1115,10 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                 print('unit mismatch', text, unit, self.unit_widget.text())
         elif self.type_str == 'string':
             self.matches = (self.edit_widget.text() == text)
-        self.state_widget.setChecked(self.matches)
+        if self.matches:
+            self.state_widget.setText('&#x2705;')
+        else:
+            self.state_widget.setText('&#x274C;')
 
     def set_value(self, text):
         if self.type_str == 'boolean':
@@ -1148,7 +1151,7 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                     text = ':'.join(ss[1:]).strip()
                     self.verify(text)
             elif 'new value' in l:
-                self.state_widget.setChecked(False)
+                self.state_widget.setText('&#x274C;')
                 
 
 class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
