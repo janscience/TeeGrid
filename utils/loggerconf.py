@@ -231,13 +231,14 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
         super(QWidget, self).__init__(*args, **kwargs)
         self.time = QLabel(self)
         self.state = QLabel(self)
+        self.state.setTextFormat(Qt.RichText)
         self.box = QHBoxLayout(self)
         self.box.setContentsMargins(0, 0, 0, 0)
         self.box.addWidget(self.time)
         self.box.addWidget(self.state)
-        self.is_set = 0
         self.start_get = None
         self.start_set = None
+        self.set_count = 50
         self.set_state = 0
         self.prev_time = None
         self.timer = QTimer(self)
@@ -248,7 +249,7 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
         self.start_set = self.retrieve('date & time>set', menu)
 
     def start(self):
-        self.is_set = 0
+        self.set_count = 50
         if self.start_get is not None:
             self.timer.start(50)
 
@@ -259,11 +260,12 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
         if self.set_state > 0:
             self.set_time()
         else:            
-            self.is_set += 1
-            if self.is_set == 50:
+            self.set_count -= 1
+            if self.set_count == 0:
                 self.set_state = 1
                 self.set_time()
             else:
+                self.prev_time = QDateTime.currentDateTime().toString(Qt.ISODate)
                 self.sigReadRequest.emit(self, 'rtclock',
                                          self.start_get, 'select')
 
@@ -272,9 +274,15 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
             return
         for s in stream:
             if 'current time' in s.lower():
-                time = ':'.join(s.strip().split(':')[1:])
+                next_time = QDateTime.currentDateTime().toString(Qt.ISODate)
+                time = ':'.join(s.strip().split(':')[1:]).strip()
                 if len(time.strip()) == 19:
                     self.time.setText('<b>' + time.replace('T', '  ') + '</b>')
+                    if time == next_time or time == self.prev_time:
+                        self.state.setText('&#x2705;')
+                    else:
+                        self.state.setText('&#x274C;')
+                        self.set_count = 1
                     break
 
     def set_time(self):
@@ -1701,6 +1709,7 @@ class Logger(QWidget):
             self.read_func = self.parse_read_request
         else:
             self.read_func = self.parse_write_request
+        self.read_func()
 
     def read_request(self, target, ident, start, stop, act='read'):
         if start is None:
