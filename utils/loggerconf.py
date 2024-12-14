@@ -894,7 +894,7 @@ class YesNoQuestion(QWidget):
         hbox.addWidget(QLabel(self))
         hbox.addWidget(self.yesb)
         vbox = QVBoxLayout(self)
-        vbox.addWidget(QLabel(self))
+        #vbox.addWidget(QLabel(self))
         vbox.addWidget(self.msg)
         vbox.addWidget(buttons)
         self.yes = None
@@ -1164,6 +1164,7 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
 
     sigVerifyParameter = Signal(str, str)
     sigSetParameter = Signal(str, str)
+    sigConfigFile = Signal(bool)
     
     def __init__(self, *args, **kwargs):
         super(QWidget, self).__init__(*args, **kwargs)
@@ -1279,6 +1280,12 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
             for s in stream:
                 if 'configuration:' in s.lower():
                     break
+                if ident == 'confsave' and \
+                   s.strip().lower().startswith('saved'):
+                    self.sigConfigFile.emit(True)
+                elif ident == 'conferase' and \
+                   s.strip().lower().startswith('removed'):
+                    self.sigConfigFile.emit(False)
                 text += s.rstrip()
                 text += '\n'
             if len(text) > 0:
@@ -1300,17 +1307,20 @@ class Logger(QWidget):
         self.conf = QFrame(self)
         self.conf.setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.conf_grid = QGridLayout()
+        self.config_file = QLabel()
+        self.config_status = QLabel()
+        self.config_status.setTextFormat(Qt.RichText)
         self.configuration = ConfigActions(self)
         self.configuration.sigReadRequest.connect(self.read_request)
         self.configuration.sigDisplayTerminal.connect(self.display_terminal)
         self.configuration.sigDisplayMessage.connect(self.display_message)
         self.configuration.sigVerifyParameter.connect(self.verify_parameter)
         self.configuration.sigSetParameter.connect(self.set_parameter)
+        self.configuration.sigConfigFile.connect(self.set_configfile_state)
         self.question = YesNoQuestion(self)
         self.question.yesb.clicked.connect(self.close_question)
         self.question.nob.clicked.connect(self.close_question)
         self.message = Message(self)
-        #self.message.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
         self.cstack = QStackedWidget(self)
         self.cstack.addWidget(self.message)
         self.cstack.addWidget(self.question)
@@ -1463,6 +1473,12 @@ class Logger(QWidget):
             p.set_value(value)
             self.configuration.matches = p.matches
 
+    def set_configfile_state(self, present):
+        if present:
+            self.config_status.setText('&#x2705;')
+        else:
+            self.config_status.setText('&#x274C;')
+
     def parse_idle(self):
         pass
         
@@ -1503,13 +1519,27 @@ class Logger(QWidget):
                 title_start = title_mid - 1
             self.softwareinfo.set(self.input[title_start + 1:title_end])
             self.input = self.input[title_end + 1:]
-            self.read_func = self.configure_menu
+            self.read_func = self.parse_configfile
         elif self.read_count > 100:
             self.read_count = 0
             self.ser.write('reboot\n'.encode('latin1'))
             self.ser.flush()
         else:
             self.read_count += 1
+
+    def parse_configfile(self):
+        for k in range(len(self.input)):
+            if 'configuration file "' in self.input[k].lower():
+                config_file = self.input[k].split('"')[1].strip()
+                self.config_file.setText(f'<b>{config_file}</b>')
+                self.set_configfile_state(not 'not found' in self.input[k])
+                self.input = self.input[k + 1:]
+                for k in range(len(self.input)):
+                    if len(self.input[k].strip()) == 0:
+                        self.input = self.input[k:]
+                        break
+                self.read_func = self.configure_menu
+                break
 
     def configure_menu(self):
         if self.read_state == 0:
@@ -1695,6 +1725,9 @@ class Logger(QWidget):
                             print(f'{mk}:')
                             add_title = False
                         print(f'  {sk}')
+        self.conf_grid.addWidget(QLabel('Configuration file'), row, 0, 1, 2)
+        self.conf_grid.addWidget(self.config_file, row, 2, 1, 2)
+        self.conf_grid.addWidget(self.config_status, row, 4)
         self.sdcardinfo.start()
         self.loggerinfo.start()
         self.stack.setCurrentWidget(self.boxw)
