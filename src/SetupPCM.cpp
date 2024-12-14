@@ -2,7 +2,7 @@
 
 
 bool R40SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
-		 float pregain, const InputTDMSettings &aisettings,
+		 const InputTDMSettings &aisettings,
 		 ControlPCM186x **pcm) {
   cpcm.begin();
   bool r = cpcm.setMicBias(false, true);
@@ -13,7 +13,7 @@ bool R40SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
   cpcm.setRate(tdm, aisettings.rate());
   if (tdm.nchannels() < aisettings.nchannels()) {
     if (aisettings.nchannels() - tdm.nchannels() == 2) {
-      if (pregain == 1.0) {
+      if (aisettings.pregain() == 1.0) {
         cpcm.setupTDM(tdm, ControlPCM186x::CH3L, ControlPCM186x::CH3R,
 	              offs, ControlPCM186x::INVERTED);
         Serial.println("configured for 2 channels without preamplifier");
@@ -21,11 +21,12 @@ bool R40SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
       else {
         cpcm.setupTDM(tdm, ControlPCM186x::CH1L, ControlPCM186x::CH1R,
 	              offs, ControlPCM186x::INVERTED);
-        Serial.printf("configured for 2 channels with preamplifier x%.0f\n", pregain);
+        Serial.printf("configured for 2 channels with preamplifier x%.0f\n",
+		      aisettings.pregain());
       }
     }
     else {
-      if (pregain == 1.0) {
+      if (aisettings.pregain() == 1.0) {
         cpcm.setupTDM(tdm, ControlPCM186x::CH3L, ControlPCM186x::CH3R,
                       ControlPCM186x::CH4L, ControlPCM186x::CH4R,
 		      offs, ControlPCM186x::INVERTED);
@@ -35,7 +36,8 @@ bool R40SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
         cpcm.setupTDM(tdm, ControlPCM186x::CH1L, ControlPCM186x::CH1R,
                       ControlPCM186x::CH2L, ControlPCM186x::CH2R,
 		      offs, ControlPCM186x::INVERTED);
-        Serial.printf("configured for 4 channels with preamplifier x%.0f\n", pregain);
+        Serial.printf("configured for 4 channels with preamplifier x%.0f\n",
+		      aisettings.pregain());
       }
     }
     cpcm.setSmoothGainChange(false);

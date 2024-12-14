@@ -13,7 +13,7 @@
 
 
 bool R40SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
-		 float pregain, const InputTDMSettings &aisettings,
+		 const InputTDMSettings &aisettings,
 		 ControlPCM186x **pcm);
 
 bool R4SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,

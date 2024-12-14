@@ -91,6 +91,7 @@ void setup() {
   blink.switchOff();
   files.report();
   files.initialDelay(settings.initialDelay());
+  // TODO: provide gain string!
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
               SOFTWARE);
 }

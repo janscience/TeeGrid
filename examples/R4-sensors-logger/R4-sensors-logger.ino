@@ -69,7 +69,7 @@ SDCard sdcard1("secondary");
 Configurator config;
 Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY,
 	 	  false, 0, 0, SENSORS_INTERVAL);
-InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN);
+InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, true, GAIN, PREGAIN);
 DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard0);
 SDCardMenu sdcard0_menu(sdcard0, settings);
@@ -134,6 +134,7 @@ void setup() {
     R4SetupPCM(aidata, *pcms[k], k%2==1, aisettings, &pcm);
   }
   Serial.println();
+  // TODO: check number of available channels!
   aidata.begin();
   if (!aidata.check()) {
     Serial.println("Fix ADC settings and check your hardware.");
@@ -146,7 +147,7 @@ void setup() {
   files.report();
   files.initialDelay(settings.initialDelay());
   char gs[16];
-  pcm->gainStr(gs, PREGAIN);
+  pcm->gainStr(gs, aisettings.pregain());
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
               SOFTWARE, gs);
   String sfile = files.baseName();

@@ -49,7 +49,7 @@ SDCard sdcard1;
 
 Configurator config;
 Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY);
-InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN);                  
+InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, true, GAIN, PREGAIN);
 
 LoggerFileStorage files(aidata, sdcard0, sdcard1, rtclock, deviceid, blink);
 
@@ -76,9 +76,10 @@ void setup() {
   Wire.begin();
   for (int k=0;k < NPCMS; k++) {
     Serial.printf("Setup PCM186x %d: ", k);
-    R40SetupPCM(aidata, *pcms[k], k%2==1, PREGAIN, aisettings, &pcm);
+    R40SetupPCM(aidata, *pcms[k], k%2==1, aisettings, &pcm);
   }
   Serial.println();
+  // TODO: check number of available channels!
   aidata.begin();
   if (!aidata.check()) {
     Serial.println("Fix ADC settings and check your hardware.");
@@ -91,7 +92,7 @@ void setup() {
   files.report();
   files.initialDelay(settings.initialDelay());
   char gs[16];
-  pcm1.gainStr(gs, PREGAIN);
+  pcm1.gainStr(gs, aisettings.pregain());
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
               SOFTWARE, gs);
 }

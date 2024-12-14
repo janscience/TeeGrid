@@ -71,7 +71,8 @@ SDCard sdcard0;
 Configurator config;
 Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
                   INITIAL_DELAY, RANDOM_BLINKS);
-InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN);                  
+InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, true, GAIN, PREGAIN);
+
 DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard0);
 SDCardMenu sdcard0_menu(sdcard0, settings);
@@ -138,6 +139,11 @@ void setup() {
   }
   Serial.println();
   blink.switchOff();
+  if (aisettings.exactChannels() &&
+      aidata.nchannels() != aisettings.nchannels()) {
+    Serial.println("Wrong number of channels available. Check your hardware.");
+    halt();
+  }
   aidata.begin();
   if (!aidata.check()) {
     Serial.println("Fix ADC settings and check your hardware.");
@@ -149,7 +155,7 @@ void setup() {
   files.initialDelay(settings.initialDelay());
   shutdown_usb();   // saves power!
   char gs[16];
-  pcm->gainStr(gs, PREGAIN);
+  pcm->gainStr(gs, aisettings.pregain());
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
               SOFTWARE, gs, settings.randomBlinks());
 }
