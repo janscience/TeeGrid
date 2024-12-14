@@ -117,6 +117,7 @@ void setup() {
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
   aisettings.setRateSelection(SamplingRates, 3);
+  aisettings.enable("Pregain");
   config.setConfigFile("logger.cfg");
   config.load(sdcard0);
   if (Serial)

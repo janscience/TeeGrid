@@ -1045,12 +1045,18 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
             self.edit_widget = QDoubleSpinBox(parent)
             self.edit_widget.setDecimals(self.ndec)
             if self.min_val is not None:
-                minv = float(self.min_val[:-len(self.out_unit)])
+                if self.out_unit:
+                    minv = float(self.min_val[:-len(self.out_unit)])
+                else:
+                    minv = float(self.min_val)
                 self.edit_widget.setMinimum(minv)
             if self.edit_widget.minimum() >= 0:
                 self.edit_widget.setStepType(QSpinBox.AdaptiveDecimalStepType)
             if self.max_val is not None:
-                maxv = float(self.max_val[:-len(self.out_unit)])
+                if self.out_unit:
+                    maxv = float(self.max_val[:-len(self.out_unit)])
+                else:
+                    maxv = float(self.max_val)
                 self.edit_widget.setMaximum(maxv)
             else:
                 self.edit_widget.setMaximum(1e9)
