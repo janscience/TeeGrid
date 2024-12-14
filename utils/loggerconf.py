@@ -894,7 +894,6 @@ class YesNoQuestion(QWidget):
         hbox.addWidget(QLabel(self))
         hbox.addWidget(self.yesb)
         vbox = QVBoxLayout(self)
-        #vbox.addWidget(QLabel(self))
         vbox.addWidget(self.msg)
         vbox.addWidget(buttons)
         self.yes = None
@@ -1102,11 +1101,8 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                 s = s.replace(locale.groupSeparator(), '')
                 s = s.replace(locale.decimalPoint(), '.')
                 self.matches = abs(value - float(s)) < 1e-6
-                if not self.matches:
-                    print('value mismatch', text, self.edit_widget.currentText())
                 if self.unit_widget is not None and unit != self.unit_widget.text():
                     self.matches = False
-                    print('unit mismatch', text, unit, self.unit_widget.text())
             else:
                 self.matches = self.edit_widget.currentText() == text
         elif self.type_str in ['integer', 'float']:
@@ -1115,10 +1111,8 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                 value = self.special_val
             if self.edit_widget.value() != value:
                 self.matches = False
-                print('value mismatch', text, value, self.edit_widget.value())
             if self.unit_widget is not None and unit != self.unit_widget.text():
                 self.matches = False
-                print('unit mismatch', text, unit, self.unit_widget.text())
         elif self.type_str == 'string':
             self.matches = (self.edit_widget.text() == text)
         if self.matches:
@@ -1310,6 +1304,7 @@ class Logger(QWidget):
         self.config_file = QLabel()
         self.config_status = QLabel()
         self.config_status.setTextFormat(Qt.RichText)
+        self.config_status.setToolTip('Indicates presence of configuration file')
         self.configuration = ConfigActions(self)
         self.configuration.sigReadRequest.connect(self.read_request)
         self.configuration.sigDisplayTerminal.connect(self.display_terminal)
