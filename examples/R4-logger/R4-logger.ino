@@ -139,13 +139,8 @@ void setup() {
   }
   Serial.println();
   blink.switchOff();
-  if (aisettings.exactChannels() &&
-      aidata.nchannels() != aisettings.nchannels()) {
-    Serial.println("Wrong number of channels available. Check your hardware.");
-    halt();
-  }
   aidata.begin();
-  if (!aidata.check()) {
+  if (!aidata.check(aisettings.exactChannels() ? aisettings.nchannels() : 0)) {
     Serial.println("Fix ADC settings and check your hardware.");
     halt();
   }

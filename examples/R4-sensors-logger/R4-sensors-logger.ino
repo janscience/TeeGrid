@@ -136,7 +136,7 @@ void setup() {
   Serial.println();
   // TODO: check number of available channels!
   aidata.begin();
-  if (!aidata.check()) {
+  if (!aidata.check(aisettings.exactChannels() ? aisettings.nchannels() : 0)) {
     Serial.println("Fix ADC settings and check your hardware.");
     Serial.println("HALT");
     while (true) { yield(); };

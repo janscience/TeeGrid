@@ -84,7 +84,7 @@ void setup() {
   }
   Serial.println();
   aidata.begin();
-  aidata.check();
+  aidata.check(NCHANNELS);
   aidata.start();
   aidata.report();
   char gs[16];
