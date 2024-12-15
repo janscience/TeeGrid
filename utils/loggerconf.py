@@ -943,7 +943,6 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
         self.special_str = special_str
         self.selection = selection
         self.edit_widget = None
-        self.unit_widget = None
         self.state_widget = None
         self.matches = False
 
@@ -1012,17 +1011,9 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                 si = s[1]
                 if si == self.value:
                     idx = s[0]
-                if self.out_unit and si.endswith(self.out_unit):
-                    si = si[:-len(self.out_unit)]
-                if self.type_str in ['integer', 'float'] and '.' in si:
-                    while si[-1] == '0':
-                        si = si[:-1]
-                    if si[-1] == '.':
-                        si = si[:-1]
+                if self.type_str in ['integer', 'float']:
                     si = si.replace('.', locale.decimalPoint())
                 self.edit_widget.addItem(si)
-            if self.out_unit:
-                self.unit_widget = QLabel(self.out_unit, parent)
             self.edit_widget.setCurrentIndex(idx)
             self.edit_widget.setEditable(False)
             self.edit_widget.currentTextChanged.connect(self.transmit_str)
@@ -1060,9 +1051,9 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
             else:
                 self.edit_widget.setMaximum(1e9)
             self.edit_widget.setValue(self.num_value)
-            self.edit_widget.textChanged.connect(self.transmit_str)
             if self.out_unit:
-                self.unit_widget = QLabel(self.out_unit, parent)
+                self.edit_widget.setSuffix(self.out_unit)
+            self.edit_widget.textChanged.connect(self.transmit_str)
         elif self.type_str == 'string':
             self.edit_widget = QLineEdit(self.value, parent)
             self.edit_widget.setMaxLength(self.max_chars)
@@ -1100,19 +1091,20 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                 s = self.edit_widget.currentText()
                 s = s.replace(locale.groupSeparator(), '')
                 s = s.replace(locale.decimalPoint(), '.')
-                self.matches = abs(value - float(s)) < 1e-6
-                if self.unit_widget is not None and unit != self.unit_widget.text():
-                    self.matches = False
+                svalue, sunit, _ = parse_number(s)
+                self.matches = abs(value - svalue) < 1e-6 and unit == sunit
             else:
                 self.matches = self.edit_widget.currentText() == text
         elif self.type_str in ['integer', 'float']:
             value, unit, _ = parse_number(text)
             if value is None and text == self.special_str:
                 value = self.special_val
-            if self.edit_widget.value() != value:
-                self.matches = False
-            if self.unit_widget is not None and unit != self.unit_widget.text():
-                self.matches = False
+            locale = QLocale()
+            s = self.edit_widget.text()
+            s = s.replace(locale.groupSeparator(), '')
+            s = s.replace(locale.decimalPoint(), '.')
+            svalue, sunit, _ = parse_number(s)
+            self.matches = abs(value - svalue) < 1e-6 and unit == sunit
         elif self.type_str == 'string':
             self.matches = (self.edit_widget.text() == text)
         if self.matches:
@@ -1691,7 +1683,7 @@ class Logger(QWidget):
                             title = QLabel('<b>' + mk + '</b>', self)
                             title.setSizePolicy(QSizePolicy.Policy.Preferred,
                                                 QSizePolicy.Policy.Fixed)
-                            self.conf_grid.addWidget(title, row, 0, 1, 3)
+                            self.conf_grid.addWidget(title, row, 0, 1, 4)
                             row += 1
                             add_title = False
                         self.conf_grid.addItem(QSpacerItem(10, 0), row, 0)
@@ -1699,15 +1691,9 @@ class Logger(QWidget):
                                                  row, 1)
                         param = menu[2][sk][2]
                         param.setup(self)
-                        if param.type_str in ['integer', 'float']:
-                            self.conf_grid.addWidget(param.edit_widget, row, 2)
-                            if param.unit_widget is not None:
-                                self.conf_grid.addWidget(param.unit_widget, row, 3)
-                        else:
-                            self.conf_grid.addWidget(param.edit_widget,
-                                                     row, 2, 1, 2)
+                        self.conf_grid.addWidget(param.edit_widget, row, 2)
                         self.conf_grid.addWidget(param.state_widget,
-                                                 row, 4)
+                                                 row, 3)
                         if first_param:
                             param.edit_widget.setFocus(Qt.MouseFocusReason)
                             first_param = False
@@ -1721,8 +1707,8 @@ class Logger(QWidget):
                             add_title = False
                         print(f'  {sk}')
         self.conf_grid.addWidget(QLabel('Configuration file'), row, 0, 1, 2)
-        self.conf_grid.addWidget(self.config_file, row, 2, 1, 2)
-        self.conf_grid.addWidget(self.config_status, row, 4)
+        self.conf_grid.addWidget(self.config_file, row, 2)
+        self.conf_grid.addWidget(self.config_status, row, 3)
         self.sdcardinfo.start()
         self.loggerinfo.start()
         self.stack.setCurrentWidget(self.boxw)
