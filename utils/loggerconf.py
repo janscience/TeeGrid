@@ -795,7 +795,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.formatcard.setup(menu)
         self.erasecard.setup(menu)
 
-    def add(self, label, value, button2=None, button1=None):
+    def add(self, label, value, button=None):
         if self.box.itemAtPosition(self.row, 0) is not None:
             w = self.box.itemAtPosition(self.row, 1).widget()
             w.setText('<b>' + value + '</b>')
@@ -803,14 +803,8 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.box.addWidget(QLabel(label, self), self.row, 0)
             self.box.addWidget(QLabel('<b>' + value + '</b>', self),
                                self.row, 1, Qt.AlignRight)
-            if button1 is not None:
-                box = QHBoxLayout()
-                box.setContentsMargins(0, 0, 0, 0)
-                self.box.addLayout(box, self.row, 2)
-                box.addWidget(button1)
-                box.addWidget(button2)
-            elif button2 is not None:
-                self.box.addWidget(button2, self.row, 2, Qt.AlignRight)
+            if button is not None:
+                self.box.addWidget(button, self.row, 2, Qt.AlignRight)
         self.row += 1
 
     def start(self):
@@ -866,14 +860,15 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                             if available is not None:
                                 a = float(available.replace(' GB', ''))
                                 c = float(items[i][1].replace(' GB', ''))
-                                self.add('Used', f'{100 - 100*a/c:.0f} %')
+                                self.add('Used', f'{100 - 100*a/c:.0f} %',
+                                         self.eraserecordings)
                             value = 'none'
                             if self.nrecordings > 0:
                                 value = f'{self.nrecordings}'
                             if self.srecordings is not None:
                                 value += f' ({self.srecordings})'
                             self.add('<u>R</u>ecorded files', value,
-                                     self.recordings, self.eraserecordings)
+                                     self.recordings)
                             value = 'none'
                             if self.nroot > 0:
                                 value = f'{self.nroot}'
