@@ -538,43 +538,34 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.rtclock.start()
 
 
-class SoftwareInfo(QFrame):
+class SoftwareInfo(QLabel):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-        self.box = QGridLayout(self)
-        title = QLabel('<b>Software</b>', self)
-        self.box.addWidget(title, 0, 0, 1, 2)
-        self.row = 1
-
-    def add(self, label, value):
-        self.box.addWidget(QLabel(label, self), self.row, 0)
-        self.box.addWidget(QLabel('<b>' + value + '</b>', self), self.row, 1)
-        self.row += 1
+        self.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
     def set(self, stream):
+        text = '<style type="text/css"> th, td { padding: 0 15px; }</style>'
+        text += '<table>'
+        libs = False
         n = 0
         for s in stream:
             s = s.strip()
             if len(s) > 0:
                 if n == 0:
-                    i = s.find(' by ')
-                    if i < 0:
-                        i = len(s)
-                    j = s[:i].find(' v')
-                    if j < 0:
-                        j = i
-                    self.add('Software', s[:j])
-                    if j < i:
-                        self.add('Version', s[j + 2:i])
-                    if i < len(s):
-                        self.add('Author', s[i + 4:])
+                    text += f'<tr><td colspan=2><b>{s}</b></td></tr>'
                 else:
+                    if not libs:
+                        text += '<tr><td>based on</td>'
+                        libs = True
+                    else:
+                        text += '<tr><td></td>'
                     s = s.replace('based on ', '')
                     s = s.replace('and ', '')
-                    self.add(f'Library {n}', s)
+                    text += f'<td><b>{s}</b></td></tr>'
                 n += 1
+        text += '</table>'
+        self.setText(text)
 
                 
 class CheckSDCard(ReportButton):
@@ -1492,6 +1483,13 @@ class Logger(QWidget):
         super().__init__(*args, **kwargs)
         self.logo = QLabel(self)
         self.logo.setFont(QFont('monospace'))
+        self.softwareinfo = SoftwareInfo(self)
+        logoboxw = QWidget(self)
+        logobox = QHBoxLayout(logoboxw)
+        logobox.addWidget(self.logo)
+        logobox.addWidget(QLabel())
+        logobox.addWidget(self.softwareinfo)
+        
         self.msg = QLabel(self)
         
         self.conf = QFrame(self)
@@ -1527,7 +1525,6 @@ class Logger(QWidget):
         self.loggerinfo.psramtest.sigDisplayTerminal.connect(self.display_terminal)
         self.loggerinfo.rtclock.sigReadRequest.connect(self.read_request)
         self.loggerinfo.rtclock.sigWriteRequest.connect(self.write_request)
-        self.softwareinfo = SoftwareInfo(self)
         self.sdcardinfo = SDCardInfo(self)
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.sigDisplayTerminal.connect(self.display_terminal)
@@ -1537,7 +1534,7 @@ class Logger(QWidget):
         ibox = QVBoxLayout(iboxw)
         ibox.setContentsMargins(0, 0, 0, 0)
         ibox.addWidget(self.loggerinfo)
-        ibox.addWidget(self.softwareinfo)
+        #ibox.addWidget(self.softwareinfo)
         ibox.addWidget(self.sdcardinfo)
         self.boxw = QWidget(self)
         self.box = QHBoxLayout(self.boxw)
@@ -1551,7 +1548,7 @@ class Logger(QWidget):
         self.stack.addWidget(self.term)
         self.stack.setCurrentWidget(self.msg)
         vbox = QVBoxLayout(self)
-        vbox.addWidget(self.logo)
+        vbox.addWidget(logoboxw)
         vbox.addWidget(self.stack)
         self.last_focus = None
 
