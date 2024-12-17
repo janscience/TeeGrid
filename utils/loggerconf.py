@@ -1376,6 +1376,7 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.start_save = None
         self.start_erase = None
         self.matches = False
+        self.stream_len = 0
     
     def setup(self, menu):
         self.start_check = self.retrieve('configuration>print', menu)
@@ -1402,7 +1403,9 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         while len(stream) > 0 and len(stream[0].strip()) == 0:
             del stream[0]
         if ident == 'run':
-            self.sigDisplayTerminal.emit('Run logger', stream)
+            if len(stream) != self.stream_len:
+                self.sigDisplayTerminal.emit('Run logger', stream)
+                self.stream_len = len(stream)
         if not ident.startswith('conf'):
             return
         if ident == 'confcheck':
