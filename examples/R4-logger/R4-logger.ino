@@ -130,8 +130,13 @@ void setup() {
 #ifdef BACKUP_SDCARD
   setTeensySpeed(150);
 #else
-  setTeensySpeed(24);  // 24MHz is enough for logging
+  int rate = aisettings.rate() / 1000;  // sampling rate in kHz
+  int speed = ((12+rate/2)/24)*24;      // CPU speed in MHz, steps of 24, TODO: take channels into account?
+  if (speed < 24)
+    speed = 24;
+  setTeensySpeed(speed);
 #endif
+  Serial.printf("Set CPU speed to %dMHz\n\n", teensySpeed());
   Wire.begin();
   Wire1.begin();
   for (int k=0;k < NPCMS; k++) {
@@ -148,8 +153,8 @@ void setup() {
   aidata.start();
   aidata.report();
   files.report();
-  files.initialDelay(settings.initialDelay());
   shutdown_usb();   // saves power!
+  files.initialDelay(settings.initialDelay());
   char gs[16];
   pcm->gainStr(gs, aisettings.pregain());
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
