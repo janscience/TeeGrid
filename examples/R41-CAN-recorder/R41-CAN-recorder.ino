@@ -62,7 +62,7 @@ SDCard sdcard1("secondary");
 
 Configurator config;
 Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY);
-InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, true, GAIN, PREGAIN);                  
+InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);                  
 DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard0);
 SDCardMenu sdcard0_menu(sdcard0, settings);

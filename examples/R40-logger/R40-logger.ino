@@ -49,7 +49,7 @@ SDCard sdcard1;
 
 Configurator config;
 Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY);
-InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, true, GAIN, PREGAIN);
+InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
 LoggerFileStorage files(aidata, sdcard0, sdcard1, rtclock, deviceid, blink);
 
@@ -81,7 +81,7 @@ void setup() {
   Serial.println();
   // TODO: check number of available channels!
   aidata.begin();
-  if (!aidata.check(aisettings.exactChannels() ? aisettings.nchannels() : 0)) {
+  if (!aidata.check(aisettings.nchannels())) {
     Serial.println("Fix ADC settings and check your hardware.");
     Serial.println("HALT");
     while (true) { yield(); };
