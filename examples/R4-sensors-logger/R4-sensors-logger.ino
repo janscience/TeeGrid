@@ -12,7 +12,7 @@
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
 #include <ToolMenus.h>
-#include <LoggerFileStorage.h>
+#include <SensorsLoggerFileStorage.h>
 #include <R41CAN.h>
 #include <ESensors.h>
 #include <TemperatureDS18x20.h>
@@ -39,8 +39,6 @@
 
 #define TEMP_PIN         35    // pin for DATA line of DS18x20 themperature sensor
 
-#define SDCARD1_CS       10    // CS pin for second SD card on SPI bus
-
 
 // ----------------------------------------------------------------------------
 
@@ -63,41 +61,34 @@ R41CAN can;
 RTClock rtclock;
 DeviceID deviceid(DEVICEID);
 Blink blink(LED_PIN, true, LED_BUILTIN, false);
-SDCard sdcard0("primary");
-SDCard sdcard1("secondary");
+SDCard sdcard;
 
 Configurator config;
 Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY,
 	 	  false, 0, 0, SENSORS_INTERVAL);
 InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 DateTimeMenu datetime_menu(rtclock);
-ConfigurationMenu configuration_menu(sdcard0);
-SDCardMenu sdcard0_menu(sdcard0, settings);
-SDCardMenu sdcard1_menu(sdcard1, settings);
+ConfigurationMenu configuration_menu(sdcard);
+SDCardMenu sdcard_menu(sdcard, settings);
 #ifdef FIRMWARE_UPDATE
-FirmwareMenu firmware_menu(sdcard0);
+FirmwareMenu firmware_menu(sdcard);
 #endif
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, sdcard1);
+DiagnosticMenu diagnostic_menu("Diagnostics", sdcard);
 HelpAction help_act(config, "Help");
 
 ESensors sensors;
 
 TemperatureDS18x20 temp(&sensors);
 
-LoggerFileStorage files(aidata, sdcard0, sdcard1, rtclock, deviceid, blink);
+SensorsLoggerFileStorage files(aidata, sensors, sdcard,
+                               rtclock, deviceid, blink);
 
 
 void setupSensors() {
   temp.begin(TEMP_PIN);
   temp.setName("water-temperature");
   temp.setSymbol("T_water");
-  sensors.setInterval(SENSORS_INTERVAL);
-  sensors.setPrintTime(ESensors::ISO_TIME);
-  sensors.report();
-  sensors.start();
-  sensors.read();
-  sensors.start();
-  sensors.read();
+  files.initSensors(settings.sensorsInterval());
 }
 
 
@@ -110,25 +101,24 @@ void setup() {
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
   rtclock.check();
-  pinMode(SDCARD1_CS, OUTPUT);
-  SPI.begin();
-  sdcard0.begin();
-  sdcard1.begin(SDCARD1_CS, DEDICATED_SPI, 40, &SPI);
-  files.check(true);
-  rtclock.setFromFile(sdcard0);
+  sdcard.begin();
+  files.check();
+  rtclock.setFromFile(sdcard);
   settings.enable("InitialDelay");
   settings.enable("SensorsInterval");
+  settings.enable("RandomBlinks");
   aisettings.setRateSelection(SamplingRates, 3);
   config.setConfigFile("logger.cfg");
-  config.load(sdcard0);
+  config.load(sdcard);
   if (Serial)
     config.configure(Serial, 10000);
   config.report();
   Serial.println();
-  setupSensors();
-  aidata.setSwapLR();
   Wire.begin();
   Wire1.begin();
+  setupSensors();
+  deviceid.setID(settings.deviceID());
+  aidata.setSwapLR();
   for (int k=0;k < NPCMS; k++) {
     Serial.printf("Setup PCM186x %d on TDM %d: ", k, pcms[k]->TDMBus());
     R4SetupPCM(aidata, *pcms[k], k%2==1, aisettings, &pcm);
@@ -148,18 +138,11 @@ void setup() {
   char gs[16];
   pcm->gainStr(gs, aisettings.pregain());
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
-              SOFTWARE, gs);
-  String sfile = files.baseName();
-  sfile.append("-sensors");
-  sensors.openCSV(sdcard0, sfile.c_str());
+              SOFTWARE, gs, settings.randomBlinks());
 }
 
 
 void loop() {
   files.update();
   blink.update();
-  if (sensors.update()) {
-    sensors.writeCSV();
-    sensors.print(true, true);
-  }
 }

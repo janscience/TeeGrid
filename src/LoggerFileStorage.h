@@ -1,6 +1,6 @@
 /*
   LoggerFileStorage - High level handling of file storage of logger data.
-  Created by Jan Benda, August 28th, 2023.
+  Created by Jan Benda, August 28th, 2024.
 */
 
 #ifndef LoggerFileStorage_h
@@ -28,7 +28,7 @@ public:
   // Check accessibility of SD cards.
   // Halt if the main SD card can not be written.
   // If check_backup force checking backup SD card as well.
-  bool check(bool check_backup, Stream &stream=Serial);
+  bool check(bool check_backup=false, Stream &stream=Serial);
 
   // If secondary SD card is not available, end its usage.
   void endBackup(SPIClass *spi=NULL);
