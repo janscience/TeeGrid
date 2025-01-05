@@ -703,6 +703,73 @@ class Benchmark(ReportButton):
         self.sigDisplayTerminal.emit(title, text)
 
         
+class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
+    
+    def __init__(self, *args, **kwargs):
+        super(QFrame, self).__init__(*args, **kwargs)
+        self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.box = QGridLayout(self)
+        title = QLabel('<b>Periphery</b>', self)
+        title.setSizePolicy(QSizePolicy.Policy.Preferred,
+                            QSizePolicy.Policy.Fixed)
+        self.box.addWidget(title, 0, 0, 1, 4)
+        space = QLabel('')
+        fm = space.fontMetrics()
+        space.setMaximumHeight(fm.ascent()//2)
+        self.box.addWidget(space, 1, 0, 1, 4)
+        self.row = 2
+        self.add('<b>Device</b>', 0)
+        self.add('<b>Bus</b>', 1)
+        self.add('<b>Pin</b>', 2)
+        self.add('<b>Identifier</b>', 3)
+        self.row += 1
+        self.devices_start_get = None
+
+    def setup(self, menu):
+        self.devices_start_get = self.retrieve('diagnostics>sensor devices', menu)
+
+    def start(self):
+        self.row = 3
+        self.sigReadRequest.emit(self, 'sensordevices',
+                                 self.devices_start_get, 'select')
+
+    def add(self, text, col):
+        label = QLabel(text)
+        label.setSizePolicy(QSizePolicy.Policy.Preferred,
+                            QSizePolicy.Policy.Fixed)
+        self.box.addWidget(label, self.row, col)
+
+    def read(self, ident, stream, success):
+        while len(stream) > 0 and len(stream[0].strip()) == 0:
+            del stream[0]
+        if not success:
+            return
+        if int(stream[0].split()[0]) == 0:
+            return
+        for s in stream[1:]:
+            if len(s.strip()) == 0:
+                break
+            ss = s.split()
+            if 'device' in ss:
+                dev_idx = ss.index('device')
+                device = ss[dev_idx + 1]
+                self.add(device, 0)
+            if 'on' in ss:
+                bus_idx = ss.index('on')
+                bus = ss[bus_idx + 1]
+                self.add(bus, 1)
+            if 'at' in ss:
+                pin_idx = ss.index('at')
+                pin = ss[pin_idx + 2]
+                self.add(pin, 2)
+            if 'with' in ss and 'ID' in ss:
+                id_idx = ss.index('ID')
+                identifier = ' '.join(ss[id_idx + 1:])
+                self.add(identifier, 3)
+            self.row += 1
+        self.box.addWidget(QLabel(''), self.row, 0, 1, 4)
+        
+        
 class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     
     def __init__(self, *args, **kwargs):
@@ -1528,6 +1595,8 @@ class Logger(QWidget):
         self.loggerinfo.psramtest.sigDisplayTerminal.connect(self.display_terminal)
         self.loggerinfo.rtclock.sigReadRequest.connect(self.read_request)
         self.loggerinfo.rtclock.sigWriteRequest.connect(self.write_request)
+        self.hardwareinfo = HardwareInfo(self)
+        self.hardwareinfo.sigReadRequest.connect(self.read_request)
         self.sdcardinfo = SDCardInfo(self)
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.sigDisplayTerminal.connect(self.display_terminal)
@@ -1537,7 +1606,7 @@ class Logger(QWidget):
         ibox = QVBoxLayout(iboxw)
         ibox.setContentsMargins(0, 0, 0, 0)
         ibox.addWidget(self.loggerinfo)
-        #ibox.addWidget(self.softwareinfo)
+        ibox.addWidget(self.hardwareinfo)
         ibox.addWidget(self.sdcardinfo)
         self.boxw = QWidget(self)
         self.box = QHBoxLayout(self.boxw)
@@ -1873,6 +1942,7 @@ class Logger(QWidget):
             self.menu.pop('Help')
         self.configuration.setup(self.menu)
         self.loggerinfo.setup(self.menu)
+        self.hardwareinfo.setup(self.menu)
         self.sdcardinfo.setup(self.menu)
         missing_tools = False
         first_param = True
@@ -1913,6 +1983,7 @@ class Logger(QWidget):
         self.conf_grid.addWidget(QLabel('Configuration file'), row, 0, 1, 2)
         self.conf_grid.addWidget(self.config_file, row, 2)
         self.conf_grid.addWidget(self.config_status, row, 3)
+        self.hardwareinfo.start()
         self.sdcardinfo.start()
         self.loggerinfo.start()
         self.stack.setCurrentWidget(self.boxw)
