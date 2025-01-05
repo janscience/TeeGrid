@@ -713,11 +713,7 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         title.setSizePolicy(QSizePolicy.Policy.Preferred,
                             QSizePolicy.Policy.Fixed)
         self.box.addWidget(title, 0, 0, 1, 4)
-        space = QLabel('')
-        fm = space.fontMetrics()
-        space.setMaximumHeight(fm.ascent()//2)
-        self.box.addWidget(space, 1, 0, 1, 4)
-        self.row = 2
+        self.row = 1
         self.add('<b>Device</b>', 0)
         self.add('<b>Bus</b>', 1)
         self.add('<b>Pin</b>', 2)
@@ -727,11 +723,14 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
 
     def setup(self, menu):
         self.devices_start_get = self.retrieve('diagnostics>sensor devices', menu)
+        if self.devices_start_get is None:
+            self.setVisible(False)
 
     def start(self):
-        self.row = 3
-        self.sigReadRequest.emit(self, 'sensordevices',
-                                 self.devices_start_get, 'select')
+        self.row = 2
+        if self.devices_start_get is not None:
+            self.sigReadRequest.emit(self, 'sensordevices',
+                                     self.devices_start_get, 'select')
 
     def add(self, text, col):
         label = QLabel(text)
@@ -767,7 +766,83 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 identifier = ' '.join(ss[id_idx + 1:])
                 self.add(identifier, 3)
             self.row += 1
-        self.box.addWidget(QLabel(''), self.row, 0, 1, 4)
+        space = QLabel('')
+        space.setMinimumHeight(0)
+        #self.box.addWidget(space, self.row, 0, 1, 4)
+        
+        
+class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
+    
+    def __init__(self, *args, **kwargs):
+        super(QFrame, self).__init__(*args, **kwargs)
+        self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.box = QGridLayout(self)
+        title = QLabel('<b>Environmental sensors</b>', self)
+        title.setSizePolicy(QSizePolicy.Policy.Preferred,
+                            QSizePolicy.Policy.Fixed)
+        self.box.addWidget(title, 0, 0, 1, 5)
+        self.row = 1
+        self.add('<b>Parameter</b>', 0)
+        self.add('<b>Symbol</b>', 1)
+        self.add('<b>Error</b>', 2)
+        self.add('<b>Unit</b>', 3)
+        self.add('<b>Device</b>', 4)
+        self.row += 1
+        self.sensors_start_get = None
+
+    def setup(self, menu):
+        self.sensors_start_get = self.retrieve('diagnostics>environmental sensors', menu)
+        if self.sensors_start_get is None:
+            self.setVisible(False)
+
+    def start(self):
+        self.row = 2
+        if self.sensors_start_get is not None:
+            self.sigReadRequest.emit(self, 'sensors',
+                                     self.sensors_start_get, 'select')
+
+    def add(self, text, col):
+        label = QLabel(text)
+        label.setSizePolicy(QSizePolicy.Policy.Preferred,
+                            QSizePolicy.Policy.Fixed)
+        self.box.addWidget(label, self.row, col)
+
+    def read(self, ident, stream, success):
+        while len(stream) > 0 and len(stream[0].strip()) == 0:
+            del stream[0]
+        if not success:
+            return
+        if int(stream[0].split()[0]) == 0:
+            return
+        for s in stream[1:]:
+            if len(s.strip()) == 0:
+                break
+            ss = s.split()
+            if ':' not in ss:
+                continue
+            idx = ss.index(':')
+            name = ' '.join(ss[:idx - 2])
+            self.add(name, 0)
+            symbol = ss[idx - 2]
+            self.add(symbol, 1)
+            unit = ss[idx - 1].lstrip('(').rstrip(')')
+            unit = unit.encode('latin1').decode('utf8')
+            self.add(unit, 3)
+            res_idx = ss.index('resolution')
+            resolution = ss[res_idx + 2]
+            for k in reversed(range(len(resolution))):
+                if resolution[k].isdigit():
+                    resolution = resolution[:k + 1]
+                    break
+            self.add(resolution, 2)
+            if 'device' in ss:
+                dev_idx = ss.index('device')
+                device = ss[dev_idx - 1]
+                self.add(device, 4)
+            self.row += 1
+        space = QLabel('')
+        space.setMinimumHeight(0)
+        #self.box.addWidget(space, self.row, 0, 1, 4)
         
         
 class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
@@ -1597,6 +1672,8 @@ class Logger(QWidget):
         self.loggerinfo.rtclock.sigWriteRequest.connect(self.write_request)
         self.hardwareinfo = HardwareInfo(self)
         self.hardwareinfo.sigReadRequest.connect(self.read_request)
+        self.sensorsinfo = SensorsInfo(self)
+        self.sensorsinfo.sigReadRequest.connect(self.read_request)
         self.sdcardinfo = SDCardInfo(self)
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.sigDisplayTerminal.connect(self.display_terminal)
@@ -1607,6 +1684,7 @@ class Logger(QWidget):
         ibox.setContentsMargins(0, 0, 0, 0)
         ibox.addWidget(self.loggerinfo)
         ibox.addWidget(self.hardwareinfo)
+        ibox.addWidget(self.sensorsinfo)
         ibox.addWidget(self.sdcardinfo)
         self.boxw = QWidget(self)
         self.box = QHBoxLayout(self.boxw)
@@ -1943,6 +2021,7 @@ class Logger(QWidget):
         self.configuration.setup(self.menu)
         self.loggerinfo.setup(self.menu)
         self.hardwareinfo.setup(self.menu)
+        self.sensorsinfo.setup(self.menu)
         self.sdcardinfo.setup(self.menu)
         missing_tools = False
         first_param = True
@@ -1984,6 +2063,7 @@ class Logger(QWidget):
         self.conf_grid.addWidget(self.config_file, row, 2)
         self.conf_grid.addWidget(self.config_status, row, 3)
         self.hardwareinfo.start()
+        self.sensorsinfo.start()
         self.sdcardinfo.start()
         self.loggerinfo.start()
         self.stack.setCurrentWidget(self.boxw)
