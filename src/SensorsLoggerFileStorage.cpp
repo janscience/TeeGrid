@@ -15,6 +15,7 @@ SensorsLoggerFileStorage::SensorsLoggerFileStorage(Input &aiinput,
 void SensorsLoggerFileStorage::initSensors(float interval) {
   Sensors.setInterval(interval);
   Sensors.setPrintTime(ESensors::ISO_TIME);
+  Sensors.reportDevices();
   Sensors.report();
   Sensors.start();
   Sensors.read();

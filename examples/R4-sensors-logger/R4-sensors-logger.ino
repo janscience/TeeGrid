@@ -12,6 +12,7 @@
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
 #include <ToolMenus.h>
+#include <HardwareActions.h>
 #include <SensorsLoggerFileStorage.h>
 #include <R41CAN.h>
 #include <ESensors.h>
@@ -63,6 +64,9 @@ DeviceID deviceid(DEVICEID);
 Blink blink(LED_PIN, true, LED_BUILTIN, false);
 SDCard sdcard;
 
+ESensors sensors;
+TemperatureDS18x20 temp(&sensors);
+
 Configurator config;
 Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY,
 	 	  false, 0, 0, SENSORS_INTERVAL);
@@ -74,11 +78,9 @@ SDCardMenu sdcard_menu(sdcard, settings);
 FirmwareMenu firmware_menu(sdcard);
 #endif
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard);
+ESensorDevicesAction esensordevs_act(diagnostic_menu, "Sensor devices", sensors);
+ESensorsAction esensors_act(diagnostic_menu, "Environmental sensors", sensors);
 HelpAction help_act(config, "Help");
-
-ESensors sensors;
-
-TemperatureDS18x20 temp(&sensors);
 
 SensorsLoggerFileStorage files(aidata, sensors, sdcard,
                                rtclock, deviceid, blink);
@@ -88,7 +90,6 @@ void setupSensors() {
   temp.begin(TEMP_PIN);
   temp.setName("water-temperature");
   temp.setSymbol("T_water");
-  files.initSensors(settings.sensorsInterval());
 }
 
 
@@ -104,6 +105,9 @@ void setup() {
   sdcard.begin();
   files.check();
   rtclock.setFromFile(sdcard);
+  Wire.begin();
+  Wire1.begin();
+  setupSensors();
   settings.enable("InitialDelay");
   settings.enable("SensorsInterval");
   settings.enable("RandomBlinks");
@@ -114,9 +118,7 @@ void setup() {
     config.configure(Serial, 10000);
   config.report();
   Serial.println();
-  Wire.begin();
-  Wire1.begin();
-  setupSensors();
+  files.initSensors(settings.sensorsInterval());
   deviceid.setID(settings.deviceID());
   aidata.setSwapLR();
   for (int k=0;k < NPCMS; k++) {
