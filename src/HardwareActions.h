@@ -22,13 +22,21 @@ class ESensorsAction : public Action {
   /* Initialize and add to configuration menu. */
   ESensorsAction(Configurable &menu, const char *name, ESensors &sensors);
 
-  /* Print infos about available environmental sensors. */
-  virtual void configure(Stream &stream=Serial, unsigned long timeout=0,
-			 bool echo=true, bool detailed=false);
-
 protected:
 
   ESensors &Sensors;
+};
+
+
+class ESensorSensorsAction : public ESensorsAction {
+
+ public:
+
+  using ESensorsAction::ESensorsAction;
+
+  /* Print infos about available environmental sensors. */
+  virtual void configure(Stream &stream=Serial, unsigned long timeout=0,
+			 bool echo=true, bool detailed=false);
 };
 
 

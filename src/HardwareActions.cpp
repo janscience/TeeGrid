@@ -14,8 +14,8 @@ ESensorsAction::ESensorsAction(Configurable &menu, const char *name,
 }
 
 
-void ESensorsAction::configure(Stream &stream, unsigned long timeout,
-			       bool echo, bool detailed) {
+void ESensorSensorsAction::configure(Stream &stream, unsigned long timeout,
+				     bool echo, bool detailed) {
   Sensors.report(stream);
 }
 
