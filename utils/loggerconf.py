@@ -847,6 +847,7 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 device = ss[dev_idx - 1]
                 self.add(device, 4)
             self.row += 1
+        self.box.addWidget(QLabel(), self.row, 0)
         
         
 class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
@@ -1684,12 +1685,16 @@ class Logger(QWidget):
         self.sdcardinfo.sigDisplayMessage.connect(self.display_message)
         self.configuration.sigUpdateSDCard.connect(self.sdcardinfo.start)
         iboxw = QWidget(self)
-        ibox = QVBoxLayout(iboxw)
+        ibox = QHBoxLayout(iboxw)
         ibox.setContentsMargins(0, 0, 0, 0)
-        ibox.addWidget(self.loggerinfo)
-        ibox.addWidget(self.hardwareinfo)
-        ibox.addWidget(self.sensorsinfo)
-        ibox.addWidget(self.sdcardinfo)
+        ibox0 = QVBoxLayout()
+        ibox1 = QVBoxLayout()
+        ibox.addLayout(ibox0)
+        ibox.addLayout(ibox1)
+        ibox0.addWidget(self.loggerinfo)
+        ibox0.addWidget(self.sdcardinfo)
+        ibox1.addWidget(self.hardwareinfo)
+        ibox1.addWidget(self.sensorsinfo)
         self.boxw = QWidget(self)
         self.box = QHBoxLayout(self.boxw)
         self.box.addWidget(self.conf)
