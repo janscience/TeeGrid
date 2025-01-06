@@ -714,23 +714,29 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                             QSizePolicy.Policy.Fixed)
         self.box.addWidget(title, 0, 0, 1, 4)
         self.row = 1
-        self.add('<b>Device</b>', 0)
-        self.add('<b>Bus</b>', 1)
-        self.add('<b>Pin</b>', 2)
-        self.add('<b>Identifier</b>', 3)
+        self.add('<b>Type</b>', 0)
+        self.add('<b>Device</b>', 1)
+        self.add('<b>Bus</b>', 2)
+        self.add('<b>Pin</b>', 3)
+        self.add('<b>Identifier</b>', 4)
         self.row += 1
+        self.sensors_start_get = None
         self.devices_start_get = None
 
     def setup(self, menu):
-        self.devices_start_get = self.retrieve('diagnostics>sensor devices', menu)
-        if self.devices_start_get is None:
+        self.devices_start_get = self.retrieve('diagnostics>input devices', menu)
+        self.sensors_start_get = self.retrieve('diagnostics>sensor devices', menu)
+        if self.devices_start_get is None and self.sensors_start_get is None:
             self.setVisible(False)
 
     def start(self):
         self.row = 2
         if self.devices_start_get is not None:
-            self.sigReadRequest.emit(self, 'sensordevices',
+            self.sigReadRequest.emit(self, 'inputdevices',
                                      self.devices_start_get, 'select')
+        if self.devices_start_get is not None:
+            self.sigReadRequest.emit(self, 'sensordevices',
+                                     self.sensors_start_get, 'select')
 
     def add(self, text, col):
         label = QLabel(text)
@@ -748,27 +754,28 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         for s in stream[1:]:
             if len(s.strip()) == 0:
                 break
+            if ident == 'inputdevices':
+                self.add('input', 0)
+            elif ident == 'sensordevices':
+                self.add('sensor', 0)
             ss = s.split()
             if 'device' in ss:
                 dev_idx = ss.index('device')
                 device = ss[dev_idx + 1]
-                self.add(device, 0)
+                self.add(device, 1)
             if 'on' in ss:
                 bus_idx = ss.index('on')
                 bus = ss[bus_idx + 1]
-                self.add(bus, 1)
+                self.add(bus, 2)
             if 'at' in ss:
                 pin_idx = ss.index('at')
                 pin = ss[pin_idx + 2]
-                self.add(pin, 2)
+                self.add(pin, 3)
             if 'with' in ss and 'ID' in ss:
                 id_idx = ss.index('ID')
                 identifier = ' '.join(ss[id_idx + 1:])
-                self.add(identifier, 3)
+                self.add(identifier, 4)
             self.row += 1
-        space = QLabel('')
-        space.setMinimumHeight(0)
-        #self.box.addWidget(space, self.row, 0, 1, 4)
         
         
 class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
@@ -840,9 +847,6 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 device = ss[dev_idx - 1]
                 self.add(device, 4)
             self.row += 1
-        space = QLabel('')
-        space.setMinimumHeight(0)
-        #self.box.addWidget(space, self.row, 0, 1, 4)
         
         
 class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
