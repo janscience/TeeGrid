@@ -472,6 +472,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.box = QGridLayout(self)
         title = QLabel('<b>Logger</b>', self)
         self.box.addWidget(title, 0, 0, 1, 3)
+        self.box.setRowStretch(0, 1)
         self.psramtest = PSRAMTest(self)
         self.psramtest.setToolTip('Test PSRAM memory (Ctrl+P)')
         key = QShortcut("CTRL+P", self)
@@ -503,6 +504,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.box.addWidget(QLabel('<b>' + value + '</b>', self),
                                self.row, 1)
             self.box.addWidget(button, self.row, 2)
+        self.box.setRowStretch(self.row, 1)
         self.row += 1
         
     def start(self):
@@ -534,7 +536,12 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         if ident == 'psram':
             self.box.addWidget(QLabel('Time', self), self.row, 0)
             self.box.addWidget(self.rtclock, self.row, 1, 1, 2)
+            self.box.setRowStretch(self.row, 1)
             self.row += 1
+            self.box.addItem(QSpacerItem(0, 0,
+                                         QSizePolicy.Policy.Minimum,
+                                         QSizePolicy.Policy.Expanding),
+                             self.row, 0)
             self.rtclock.start()
 
 
@@ -713,12 +720,14 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         title.setSizePolicy(QSizePolicy.Policy.Preferred,
                             QSizePolicy.Policy.Fixed)
         self.box.addWidget(title, 0, 0, 1, 4)
+        self.box.setRowStretch(0, 1)
         self.row = 1
         self.add('<b>Type</b>', 0)
         self.add('<b>Device</b>', 1)
         self.add('<b>Bus</b>', 2)
         self.add('<b>Pin</b>', 3)
         self.add('<b>Identifier</b>', 4)
+        self.box.setRowStretch(1, 1)
         self.row += 1
         self.sensors_start_get = None
         self.devices_start_get = None
@@ -734,7 +743,7 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         if self.devices_start_get is not None:
             self.sigReadRequest.emit(self, 'inputdevices',
                                      self.devices_start_get, 'select')
-        if self.devices_start_get is not None:
+        if self.sensors_start_get is not None:
             self.sigReadRequest.emit(self, 'sensordevices',
                                      self.sensors_start_get, 'select')
 
@@ -775,7 +784,12 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 id_idx = ss.index('ID')
                 identifier = ' '.join(ss[id_idx + 1:])
                 self.add(identifier, 4)
+            self.box.setRowStretch(self.row, 1)
             self.row += 1
+        self.box.addItem(QSpacerItem(0, 0,
+                                     QSizePolicy.Policy.Minimum,
+                                     QSizePolicy.Policy.Expanding),
+                         self.row, 0)
         
         
 class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
@@ -788,12 +802,14 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         title.setSizePolicy(QSizePolicy.Policy.Preferred,
                             QSizePolicy.Policy.Fixed)
         self.box.addWidget(title, 0, 0, 1, 5)
+        self.box.setRowStretch(0, 1)
         self.row = 1
         self.add('<b>Parameter</b>', 0)
         self.add('<b>Symbol</b>', 1)
         self.add('<b>Error</b>', 2)
         self.add('<b>Unit</b>', 3)
         self.add('<b>Device</b>', 4)
+        self.box.setRowStretch(1, 1)
         self.row += 1
         self.sensors_start_get = None
 
@@ -846,8 +862,12 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 dev_idx = ss.index('device')
                 device = ss[dev_idx - 1]
                 self.add(device, 4)
+            self.box.setRowStretch(self.row, 1)
             self.row += 1
-        self.box.addWidget(QLabel(), self.row, 0)
+        self.box.addItem(QSpacerItem(0, 0,
+                                     QSizePolicy.Policy.Minimum,
+                                     QSizePolicy.Policy.Expanding),
+                         self.row, 0)
         
         
 class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
@@ -908,6 +928,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         title = QLabel('<b>SD card</b>', self)
         self.box.addWidget(title, 0, 0, 1, 2)
         self.box.addWidget(self.checkcard, 0, 2, Qt.AlignRight)
+        self.box.setRowStretch(0, 1)
         self.sdcard_start_get = None
         self.root_start_get = None
         self.recordings_start_get = None
@@ -943,6 +964,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                                self.row, 1, Qt.AlignRight)
             if button is not None:
                 self.box.addWidget(button, self.row, 2, Qt.AlignRight)
+        self.box.setRowStretch(self.row, 1)
         self.row += 1
 
     def start(self):
@@ -1017,6 +1039,10 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                             self.add(items[i][0], items[i][1])
             self.add('<u>W</u>rite speed', 'none', self.bench)
             self.bench.set_value(self.box.itemAtPosition(self.row - 1, 1).widget())
+            self.box.addItem(QSpacerItem(0, 0,
+                                         QSizePolicy.Policy.Minimum,
+                                         QSizePolicy.Policy.Expanding),
+                             self.row, 0)
 
 
 class Terminal(QWidget):
@@ -1685,16 +1711,12 @@ class Logger(QWidget):
         self.sdcardinfo.sigDisplayMessage.connect(self.display_message)
         self.configuration.sigUpdateSDCard.connect(self.sdcardinfo.start)
         iboxw = QWidget(self)
-        ibox = QHBoxLayout(iboxw)
+        ibox = QGridLayout(iboxw)
         ibox.setContentsMargins(0, 0, 0, 0)
-        ibox0 = QVBoxLayout()
-        ibox1 = QVBoxLayout()
-        ibox.addLayout(ibox0)
-        ibox.addLayout(ibox1)
-        ibox0.addWidget(self.loggerinfo)
-        ibox0.addWidget(self.sdcardinfo)
-        ibox1.addWidget(self.hardwareinfo)
-        ibox1.addWidget(self.sensorsinfo)
+        ibox.addWidget(self.loggerinfo, 0, 0)
+        ibox.addWidget(self.sdcardinfo, 0, 1)
+        ibox.addWidget(self.hardwareinfo, 1, 0)
+        ibox.addWidget(self.sensorsinfo, 1, 1)
         self.boxw = QWidget(self)
         self.box = QHBoxLayout(self.boxw)
         self.box.addWidget(self.conf)
