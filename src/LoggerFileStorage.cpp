@@ -3,6 +3,7 @@
 // filesystem.
 //#define SINGLE_FILE_MTP
 
+#include <TeensyBoard.h>
 #include <LoggerFileStorage.h>
 #ifdef SINGLE_FILE_MTP
 #include <MTP_Teensy.h>
@@ -11,7 +12,8 @@
 
 LoggerFileStorage::LoggerFileStorage(Input &aiinput, SDCard &sdcard0,
 				     const RTClock &rtclock,
-				     const DeviceID &deviceid, Blink &blink) :
+				     const DeviceID &deviceid,
+				     Blink &blink) :
   AIInput(aiinput),
   SDCard0(&sdcard0),
   SDCard1(0),
@@ -75,6 +77,21 @@ void LoggerFileStorage::endBackup(SPIClass *spi) {
   }
 }
 
+
+void LoggerFileStorage::setCPUSpeed(uint32_t rate) {
+  if (SDCard1 != NULL && !SDCard1->available()) {
+    setTeensySpeed(150);
+  }
+  else {
+    rate /= 1000;                    // sampling rate in kHz
+    int speed = ((12+rate/2)/24)*24; // CPU speed in MHz, steps of 24, TODO: take channels into account?
+    if (speed < 24)
+      speed = 24;
+    setTeensySpeed(speed);
+  }
+  Serial.printf("Set CPU speed to %dMHz\n\n", teensySpeed());
+}
+
   
 void LoggerFileStorage::report(Stream &stream) const {
   DeviceIdent.report(stream);
@@ -82,7 +99,9 @@ void LoggerFileStorage::report(Stream &stream) const {
 }
 
 
-void LoggerFileStorage::initialDelay(float initial_delay) {
+void LoggerFileStorage::initialDelay(float initial_delay,
+				     Stream &stream) {
+  stream.printf("Delay for %.0fs ... ", initial_delay);
   if (initial_delay >= 2.0) {
     delay(1000);
     BlinkLED.setDouble();
@@ -90,6 +109,8 @@ void LoggerFileStorage::initialDelay(float initial_delay) {
   }
   else
     delay(uint32_t(1000.0*initial_delay));
+  stream.println();
+  stream.println();
 }
 
 
@@ -379,4 +400,5 @@ void LoggerFileStorage::update() {
   }
   if (RandomBlinks)
     storeBlinks();
+  BlinkLED.update();
 }

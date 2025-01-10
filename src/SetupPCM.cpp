@@ -2,8 +2,7 @@
 
 
 bool R40SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
-		 const InputTDMSettings &aisettings,
-		 ControlPCM186x **pcm) {
+		 const InputTDMSettings &aisettings) {
   cpcm.begin();
   bool r = cpcm.setMicBias(false, true);
   if (!r) {
@@ -43,7 +42,6 @@ bool R40SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
     cpcm.setSmoothGainChange(false);
     cpcm.setGain(aisettings.gain());
     cpcm.setFilters(ControlPCM186x::FIR, false);
-    *pcm = &cpcm;
   }
   else {
     // channels not recorded, but need to be configured to not corupt TDM bus:
@@ -56,8 +54,7 @@ bool R40SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
 
 
 bool R4SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
-		uint32_t rate, int nchannels, float gain,
-		ControlPCM186x **pcm) {
+		uint32_t rate, int nchannels, float gain) {
   cpcm.begin();
   bool r = cpcm.setMicBias(false, true);
   if (!r) {
@@ -80,7 +77,6 @@ bool R4SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
     cpcm.setSmoothGainChange(false);
     cpcm.setGain(gain);
     cpcm.setFilters(ControlPCM186x::FIR, false);
-    *pcm = &cpcm;
   }
   else {
     // channels not recorded, but need to be configured to not corupt TDM bus:
@@ -93,9 +89,9 @@ bool R4SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
 
 
 bool R4SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
-		const InputTDMSettings &aisettings, ControlPCM186x **pcm) {
+		const InputTDMSettings &aisettings) {
   return R4SetupPCM(tdm, cpcm, offs, aisettings.rate(),
-		    aisettings.nchannels(), aisettings.gain(), pcm);
+		    aisettings.nchannels(), aisettings.gain());
 }
 
 

@@ -10,6 +10,10 @@
 #include <Settings.h>
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
+#include <ToolMenus.h>
+#include <HardwareActions.h>
+#include <TeensyBoard.h>
+#include <PowerSave.h>
 #include <LoggerFileStorage.h>
 
 // Default settings: ----------------------------------------------------------
@@ -24,34 +28,42 @@
 #define FILENAME      "loggerID-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME 5*60   // seconds
 #define INITIAL_DELAY  10.0  // seconds
+#define RANDOM_BLINKS  false  // set to true for blinking the LED randomly
 
 // ----------------------------------------------------------------------------
 
 #define LED_PIN       31
 
-#define SOFTWARE      "TeeGrid R40-logger v1.6"
+#define SOFTWARE      "TeeGrid R40-logger v2.0"
 
-//DATA_BUFFER(AIBuffer, NAIBuffer, 512*256)
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
 #define NPCMS 2
 ControlPCM186x pcm1(Wire, PCM186x_I2C_ADDR1, InputTDM::TDM1);
 ControlPCM186x pcm2(Wire, PCM186x_I2C_ADDR2, InputTDM::TDM1);
 ControlPCM186x *pcms[NPCMS] = {&pcm1, &pcm2};
-ControlPCM186x *pcm = 0;
 uint32_t SamplingRates[3] = {24000, 48000, 96000};
 
 RTClock rtclock;
 DeviceID deviceid(DEVICEID);
 Blink blink(LED_PIN, true, LED_BUILTIN, false);
-SDCard sdcard0;
-SDCard sdcard1;
+SDCard sdcard;
 
 Configurator config;
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY);
+Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+                  INITIAL_DELAY, RANDOM_BLINKS);
 InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
-LoggerFileStorage files(aidata, sdcard0, sdcard1, rtclock, deviceid, blink);
+DateTimeMenu datetime_menu(rtclock);
+ConfigurationMenu configuration_menu(sdcard);
+SDCardMenu sdcard0_menu(sdcard, settings);
+#ifdef FIRMWARE_UPDATE
+FirmwareMenu firmware_menu(sdcard0);
+#endif
+DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &pcm1, &pcm2, &rtclock);
+HelpAction help_act(config, "Help");
+
+LoggerFileStorage files(aidata, sdcard, rtclock, deviceid, blink);
 
 
 // -----------------------------------------------------------------------------
@@ -61,44 +73,48 @@ void setup() {
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
+  Wire.begin();
+  rtclock.init();
   rtclock.check();
-  sdcard0.begin();
+  sdcard.begin();
   files.check();
-  rtclock.setFromFile(sdcard0);
+  rtclock.setFromFile(sdcard);
   settings.enable("InitialDelay");
+  settings.enable("RandomBlinks");
   aisettings.setRateSelection(SamplingRates, 3);
-  config.setConfigFile("teegrid.cfg");
-  config.load(sdcard0);
+  aisettings.enable("Pregain");
+  config.setConfigFile("logger.cfg");
+  config.load(sdcard);
   if (Serial)
     config.configure(Serial);
   config.report();
+  Serial.println();
+  deviceid.setID(settings.deviceID());
   aidata.setSwapLR();
-  Wire.begin();
+  files.setCPUSpeed(aisettings.rate());
   for (int k=0;k < NPCMS; k++) {
     Serial.printf("Setup PCM186x %d: ", k);
-    R40SetupPCM(aidata, *pcms[k], k%2==1, aisettings, &pcm);
+    R40SetupPCM(aidata, *pcms[k], k%2==1, aisettings);
   }
   Serial.println();
-  // TODO: check number of available channels!
+  blink.switchOff();
   aidata.begin();
   if (!aidata.check(aisettings.nchannels())) {
     Serial.println("Fix ADC settings and check your hardware.");
-    Serial.println("HALT");
-    while (true) { yield(); };
+    halt();
   }
   aidata.start();
   aidata.report();
-  blink.switchOff();
   files.report();
+  shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
   char gs[16];
   pcm1.gainStr(gs, aisettings.pregain());
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
-              SOFTWARE, gs);
+              SOFTWARE, gs, settings.randomBlinks());
 }
 
 
 void loop() {
   files.update();
-  blink.update();
 }

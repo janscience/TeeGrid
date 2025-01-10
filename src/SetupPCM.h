@@ -13,14 +13,12 @@
 
 
 bool R40SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
-		 const InputTDMSettings &aisettings,
-		 ControlPCM186x **pcm);
+		 const InputTDMSettings &aisettings);
 
 bool R4SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
-		uint32_t rate, int nchannels, float gain,
-		ControlPCM186x **pcm);
+		uint32_t rate, int nchannels, float gain);
 bool R4SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
-		const InputTDMSettings &aisettings, ControlPCM186x **pcm);
+		const InputTDMSettings &aisettings);
 
 
 #endif

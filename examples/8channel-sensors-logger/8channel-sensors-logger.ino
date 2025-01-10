@@ -1,10 +1,5 @@
 #include <TeeGridBanner.h>
 #include <InputADC.h>
-#include <ESensors.h>
-#include <TemperatureDS18x20.h>
-#include <SenseBME280.h>
-#include <LightTSL2591.h>
-#include <DewPoint.h>
 #include <SDCard.h>
 #include <RTClock.h>
 #include <DeviceID.h>
@@ -13,7 +8,16 @@
 #include <Configurator.h>
 #include <Settings.h>
 #include <InputADCSettings.h>
-#include <LoggerFileStorage.h>
+#include <ToolMenus.h>
+#include <HardwareActions.h>
+#include <TeensyBoard.h>
+#include <PowerSave.h>
+#include <SensorsLoggerFileStorage.h>
+#include <ESensors.h>
+#include <TemperatureDS18x20.h>
+#include <SenseBME280.h>
+#include <LightTSL2591.h>
+#include <DewPoint.h>
 
 
 // Default settings: ----------------------------------------------------------
@@ -42,7 +46,7 @@ int signalPins[] = {9, 8, 7, 6, 5, 4, 3, 2, -1}; // pins where to put out test s
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid 8channel-sensors-logger v1.2"
+#define SOFTWARE      "TeeGrid 8channel-sensors-logger v1.4"
 
 DATA_BUFFER(AIBuffer, NAIBuffer, 256*256)
 InputADC aidata(AIBuffer, NAIBuffer, channels0, channels1);
@@ -50,14 +54,7 @@ InputADC aidata(AIBuffer, NAIBuffer, channels0, channels1);
 RTClock rtclock;
 DeviceID deviceid(DEVICEID);
 Blink blink(LED_BUILTIN);
-SDCard sdcard0;
-SDCard sdcard1;
-
-Configurator config;
-InputADCSettings aisettings(SAMPLING_RATE, BITS, AVERAGING,
-			    CONVERSION, SAMPLING, REFERENCE);
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY,
-                  false, PULSE_FREQUENCY, 0.0, SENSORS_INTERVAL);
+SDCard sdcard;
 
 ESensors sensors;
 TemperatureDS18x20 temp(&sensors);
@@ -70,7 +67,25 @@ LightTSL2591 tsl;
 IRRatioTSL2591 irratio(&tsl, &sensors);
 IlluminanceTSL2591 illum(&tsl, &sensors);
 
-LoggerFileStorage files(aidata, sdcard0, sdcard1, rtclock, deviceid, blink);
+Configurator config;
+Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+                  INITIAL_DELAY, false, PULSE_FREQUENCY,
+		  0.0, SENSORS_INTERVAL);
+InputADCSettings aisettings(SAMPLING_RATE, BITS, AVERAGING,
+			    CONVERSION, SAMPLING, REFERENCE);
+DateTimeMenu datetime_menu(rtclock);
+ConfigurationMenu configuration_menu(sdcard);
+SDCardMenu sdcard_menu(sdcard, settings);
+#ifdef FIRMWARE_UPDATE
+FirmwareMenu firmware_menu(sdcard);
+#endif
+DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &aidata, &rtclock);
+ESensorDevicesAction esensordevs_act(diagnostic_menu, "Sensor devices", sensors);
+ESensorSensorsAction esensors_act(diagnostic_menu, "Environmental sensors", sensors);
+HelpAction help_act(config, "Help");
+
+SensorsLoggerFileStorage files(aidata, sensors, sdcard,
+                               rtclock, deviceid, blink);
 
 
 void setupSensors() {
@@ -84,16 +99,6 @@ void setupSensors() {
   tsl.begin(Wire1);
   tsl.setGain(LightTSL2591::AUTO_GAIN);
   irratio.setPercent();
-  sensors.setInterval(settings.sensorsInterval());
-  sensors.setPrintTime(ESensors::ISO_TIME);
-  sensors.report();
-  Serial.println();
-  // init sensors:
-  sensors.start();
-  sensors.read();
-  tsl.setTemperature(bme.temperature());
-  sensors.read();
-  sensors.start();
 }
 
 
@@ -104,47 +109,43 @@ void setup() {
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
+  Wire.begin();
+  rtclock.init();
   rtclock.check();
-  sdcard0.begin();
+  sdcard.begin();
   files.check();
-  rtclock.setFromFile(sdcard0);
+  rtclock.setFromFile(sdcard);
+  setupSensors();
   settings.enable("InitialDelay");
   settings.enable("PulseFreq");
   settings.enable("SensorsInterval");
   config.setConfigFile("teegrid.cfg");
-  config.load(sdcard0);
+  config.load(sdcard);
   if (Serial)
     config.configure(Serial, 10000);
   config.report();
   Serial.println();
+  files.initSensors(settings.sensorsInterval());
+  tsl.setTemperature(bme.temperature());
   setupTestSignals(signalPins, settings.pulseFrequency());
-  setupSensors();
   aisettings.configure(&aidata);
+  blink.switchOff();
   if (!aidata.check()) {
     Serial.println("Fix ADC settings and check your hardware.");
-    Serial.println("HALT");
-    while (true) { yield(); };
+    halt();
   }
   aidata.start();
   aidata.report();
-  blink.switchOff();
   files.report();
+  shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
   // TODO: provide gain string!
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
               SOFTWARE);
-  String sfile = files.baseName();
-  sfile.append("-sensors");
-  sensors.openCSV(sdcard0, sfile.c_str());
 }
 
 
 void loop() {
-  files.update();
-  blink.update();
-  if (sensors.update()) {
+  if (files.update())
     tsl.setTemperature(bme.temperature());
-    sensors.writeCSV();
-    sensors.print(true, true);
-  }
 }

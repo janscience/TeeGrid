@@ -9,6 +9,9 @@
 #include <Settings.h>
 #include <InputADCSettings.h>
 #include <ToolMenus.h>
+#include <HardwareActions.h>
+#include <TeensyBoard.h>
+#include <PowerSave.h>
 #include <LoggerFileStorage.h>
 
 // Default settings: ----------------------------------------------------------
@@ -34,7 +37,7 @@ int signalPins[] = {9, 8, 7, 6, 5, 4, 3, 2, -1}; // pins where to put out test s
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid 8channel-logger v2.6"
+#define SOFTWARE      "TeeGrid 8channel-logger v2.8"
 
 DATA_BUFFER(AIBuffer, NAIBuffer, 256*256)
 InputADC aidata(AIBuffer, NAIBuffer, channels0, channels1);
@@ -42,22 +45,23 @@ InputADC aidata(AIBuffer, NAIBuffer, channels0, channels1);
 RTClock rtclock;
 DeviceID deviceid(DEVICEID);
 Blink blink(LED_BUILTIN);
-SDCard sdcard0;
+SDCard sdcard;
 
 Configurator config;
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY,
-                  false, PULSE_FREQUENCY);
+Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+	          INITIAL_DELAY, false, PULSE_FREQUENCY);
 InputADCSettings aisettings(SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE);
 DateTimeMenu datetime_menu(rtclock);
-ConfigurationMenu configuration_menu(sdcard0);
-SDCardMenu sdcard0_menu(sdcard0, settings);
+ConfigurationMenu configuration_menu(sdcard);
+SDCardMenu sdcard_menu(sdcard, settings);
 #ifdef FIRMWARE_UPDATE
-FirmwareMenu firmware_menu(sdcard0);
+FirmwareMenu firmware_menu(sdcard);
 #endif
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0);
+DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &aidata, &rtclock);
+HelpAction help_act(config, "Help");
 
-LoggerFileStorage files(aidata, sdcard0, rtclock, deviceid, blink);
+LoggerFileStorage files(aidata, sdcard, rtclock, deviceid, blink);
 
 
 // ----------------------------------------------------------------------------
@@ -67,29 +71,31 @@ void setup() {
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
+  rtclock.init();
   rtclock.check();
-  sdcard0.begin();
+  sdcard.begin();
   files.check(true);
-  rtclock.setFromFile(sdcard0);
+  rtclock.setFromFile(sdcard);
   settings.enable("InitialDelay");
   settings.enable("PulseFreq");
   config.setConfigFile("teegrid.cfg");
-  config.load(sdcard0);
+  config.load(sdcard);
   if (Serial)
     config.configure(Serial, 10000);
   config.report();
   Serial.println();
+  deviceid.setID(settings.deviceID());
   aisettings.configure(&aidata);
   setupTestSignals(signalPins, settings.pulseFrequency());
+  blink.switchOff();
   if (!aidata.check()) {
     Serial.println("Fix ADC settings and check your hardware.");
-    Serial.println("HALT");
-    while (true) { yield(); };
+    halt();
   }
   aidata.start();
   aidata.report();
-  blink.switchOff();
   files.report();
+  shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
   // TODO: provide gain string!
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
@@ -99,5 +105,4 @@ void setup() {
 
 void loop() {
   files.update();
-  blink.update();
 }

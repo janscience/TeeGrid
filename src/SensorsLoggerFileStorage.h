@@ -26,7 +26,8 @@ public:
 	     const char *software, char *gainstr=0, bool randomblinks=false);
 
   // Call this in loop() for writing data to files.
-  void update();
+  // Returns true if sensors have been updated.
+  bool update();
 
 
 protected:
@@ -34,8 +35,8 @@ protected:
   // Open file that stores sensor data.
   void openSensorsFile();
   
-  // Store sensor reasings in file.
-  void storeSensors();
+  // Store sensor readings in file.
+  bool storeSensors();
 
   // Write recorded data to files.
   bool store(SDWriter &sdfile, bool backup);

@@ -12,6 +12,8 @@
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
 #include <ToolMenus.h>
+#include <HardwareActions.h>
+#include <TeensyBoard.h>
 #include <PowerSave.h>
 #include <LoggerFileStorage.h>
 #include <R41CAN.h>
@@ -44,7 +46,6 @@
 
 #define SOFTWARE      "TeeGrid R4-logger v2.0"
 
-//DATA_BUFFER(AIBuffer, NAIBuffer, 512*256)
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
 #define NPCMS 4
@@ -53,7 +54,6 @@ ControlPCM186x pcm2(Wire, PCM186x_I2C_ADDR2, InputTDM::TDM1);
 ControlPCM186x pcm3(Wire1, PCM186x_I2C_ADDR1, InputTDM::TDM2);
 ControlPCM186x pcm4(Wire1, PCM186x_I2C_ADDR2, InputTDM::TDM2);
 ControlPCM186x *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
-ControlPCM186x *pcm = 0;
 uint32_t SamplingRates[3] = {24000, 48000, 96000};
 
 R41CAN can;
@@ -130,19 +130,10 @@ void setup() {
   Serial.println();
   deviceid.setID(settings.deviceID());
   aidata.setSwapLR();
-#ifdef BACKUP_SDCARD
-  setTeensySpeed(150);
-#else
-  int rate = aisettings.rate() / 1000;  // sampling rate in kHz
-  int speed = ((12+rate/2)/24)*24;      // CPU speed in MHz, steps of 24, TODO: take channels into account?
-  if (speed < 24)
-    speed = 24;
-  setTeensySpeed(speed);
-#endif
-  Serial.printf("Set CPU speed to %dMHz\n\n", teensySpeed());
-  for (int k=0;k < NPCMS; k++) {
+  files.setCPUSpeed(aisettings.rate());
+  for (int k=0; k<NPCMS; k++) {
     Serial.printf("Setup PCM186x %d on TDM %d: ", k, pcms[k]->TDMBus());
-    R4SetupPCM(aidata, *pcms[k], k%2==1, aisettings, &pcm);
+    R4SetupPCM(aidata, *pcms[k], k%2==1, aisettings);
   }
   Serial.println();
   blink.switchOff();
@@ -157,7 +148,7 @@ void setup() {
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
   char gs[16];
-  pcm->gainStr(gs, aisettings.pregain());
+  pcm1.gainStr(gs, aisettings.pregain());
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
               SOFTWARE, gs, settings.randomBlinks());
 }
@@ -165,5 +156,4 @@ void setup() {
 
 void loop() {
   files.update();
-  blink.update();
 }

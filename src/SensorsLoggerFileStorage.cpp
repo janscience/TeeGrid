@@ -40,15 +40,17 @@ void SensorsLoggerFileStorage::openSensorsFile() {
 }
 
 
-void SensorsLoggerFileStorage::storeSensors() {
+bool SensorsLoggerFileStorage::storeSensors() {
   if (Sensors.update()) {
     Sensors.writeCSV();
     Sensors.print(true, true);
+    return true;
   }
+  return false;
 }
 
 
-void SensorsLoggerFileStorage::update() {
+bool SensorsLoggerFileStorage::update() {
   LoggerFileStorage::update();
-  storeSensors();
+  return storeSensors();
 }

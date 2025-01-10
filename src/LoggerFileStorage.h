@@ -33,11 +33,14 @@ public:
   // If secondary SD card is not available, end its usage.
   void endBackup(SPIClass *spi=NULL);
 
+  // Reduce CPU speed according to sampling rate.
+  void setCPUSpeed(uint32_t rate);
+
   // Report device identifier and current date and time.
   void report(Stream &stream=Serial) const;
 
   // Delay with double blinks for initial_delay seconds.
-  void initialDelay(float initial_delay);
+  void initialDelay(float initial_delay, Stream &stream=Serial);
 
   // Initialize recording directory and firt files.
   void start(const char *path, const char *filename, float filetime,

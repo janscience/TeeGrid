@@ -2,7 +2,6 @@
 #include <Wire.h>
 #include <ControlPCM186x.h>
 #include <InputTDM.h>
-#include <SPI.h>
 #include <SDCard.h>
 #include <RTClock.h>
 #include <DeviceID.h>
@@ -13,6 +12,8 @@
 #include <SetupPCM.h>
 #include <ToolMenus.h>
 #include <HardwareActions.h>
+#include <TeensyBoard.h>
+#include <PowerSave.h>
 #include <SensorsLoggerFileStorage.h>
 #include <R41CAN.h>
 #include <ESensors.h>
@@ -31,6 +32,7 @@
 #define FILE_SAVE_TIME   5*60    // seconds
 #define INITIAL_DELAY    10.0    // seconds
 #define SENSORS_INTERVAL 10.0  // interval between sensors readings in seconds
+#define RANDOM_BLINKS  false  // set to true for blinking the LED randomly
 
 
 // ----------------------------------------------------------------------------
@@ -45,7 +47,6 @@
 
 #define SOFTWARE      "TeeGrid R4-sensors-logger v2.0"
 
-//DATA_BUFFER(AIBuffer, NAIBuffer, 512*256)
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
 #define NPCMS 4
@@ -54,7 +55,6 @@ ControlPCM186x pcm2(Wire, PCM186x_I2C_ADDR2, InputTDM::TDM1);
 ControlPCM186x pcm3(Wire1, PCM186x_I2C_ADDR1, InputTDM::TDM2);
 ControlPCM186x pcm4(Wire1, PCM186x_I2C_ADDR2, InputTDM::TDM2);
 ControlPCM186x *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
-ControlPCM186x *pcm = 0;
 uint32_t SamplingRates[3] = {24000, 48000, 96000};
 
 R41CAN can;
@@ -68,9 +68,11 @@ ESensors sensors;
 TemperatureDS18x20 temp(&sensors);
 
 Configurator config;
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY,
-	 	  false, 0, 0, SENSORS_INTERVAL);
+Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+                  INITIAL_DELAY, RANDOM_BLINKS, 0, 0,
+		  SENSORS_INTERVAL);
 InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
+
 DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard);
 SDCardMenu sdcard_menu(sdcard, settings);
@@ -110,9 +112,10 @@ void setup() {
   rtclock.setFromFile(sdcard);
   setupSensors();
   settings.enable("InitialDelay");
-  settings.enable("SensorsInterval");
   settings.enable("RandomBlinks");
+  settings.enable("SensorsInterval");
   aisettings.setRateSelection(SamplingRates, 3);
+  aisettings.enable("Pregain");
   config.setConfigFile("logger.cfg");
   config.load(sdcard);
   if (Serial)
@@ -122,24 +125,25 @@ void setup() {
   files.initSensors(settings.sensorsInterval());
   deviceid.setID(settings.deviceID());
   aidata.setSwapLR();
-  for (int k=0;k < NPCMS; k++) {
+  files.setCPUSpeed(aisettings.rate());
+  for (int k=0; k<NPCMS; k++) {
     Serial.printf("Setup PCM186x %d on TDM %d: ", k, pcms[k]->TDMBus());
-    R4SetupPCM(aidata, *pcms[k], k%2==1, aisettings, &pcm);
+    R4SetupPCM(aidata, *pcms[k], k%2==1, aisettings);
   }
   Serial.println();
+  blink.switchOff();
   aidata.begin();
   if (!aidata.check(aisettings.nchannels())) {
     Serial.println("Fix ADC settings and check your hardware.");
-    Serial.println("HALT");
-    while (true) { yield(); };
+    halt();
   }
   aidata.start();
   aidata.report();
-  blink.switchOff();
   files.report();
+  shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
   char gs[16];
-  pcm->gainStr(gs, aisettings.pregain());
+  pcm1.gainStr(gs, aisettings.pregain());
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
               SOFTWARE, gs, settings.randomBlinks());
 }
@@ -147,5 +151,4 @@ void setup() {
 
 void loop() {
   files.update();
-  blink.update();
 }
