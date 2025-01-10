@@ -83,9 +83,9 @@ SDCardMenu sdcard1_menu(sdcard1, settings);
 FirmwareMenu firmware_menu(sdcard0);
 #endif
 #ifdef BACKUP_SDCARD
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, sdcard1);
+DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, sdcard1, &pcm1, &pcm2, &pcm3, &pcm4);
 #else
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0);
+DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, &pcm1, &pcm2, &pcm3, &pcm4);
 #endif
 HelpAction help_act(config, "Help");
 
