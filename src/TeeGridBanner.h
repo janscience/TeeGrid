@@ -10,7 +10,7 @@
 #include <Arduino.h>
 
 
-#define TEEGRID_SOFTWARE "TeeGrid version 1.0.0"
+#define TEEGRID_SOFTWARE "TeeGrid version 1.2.0"
 
 
 void printTeeGridBanner(const char *software=NULL, Stream &stream=Serial);
