@@ -506,6 +506,11 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.box.addWidget(button, self.row, 2)
         self.box.setRowStretch(self.row, 1)
         self.row += 1
+        self.box.addItem(QSpacerItem(0, 0,
+                                     QSizePolicy.Policy.Minimum,
+                                     QSizePolicy.Policy.Expanding),
+                         self.row, 0)
+        self.row += 1
         
     def start(self):
         self.row = 1
@@ -672,6 +677,9 @@ class ListFiles(ReportButton):
         text += '</table>'
         if title is not None:
             self.sigDisplayTerminal.emit(title, text)
+            if success and \
+               title.lower().strip().startswith('erase all files in'):
+                self.sigUpdateSDCard.emit()
 
                 
 class Benchmark(ReportButton):
@@ -731,6 +739,7 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.row += 1
         self.sensors_start_get = None
         self.devices_start_get = None
+        self.add_spacer = ''
 
     def setup(self, menu):
         self.devices_start_get = self.retrieve('diagnostics>input devices', menu)
@@ -741,9 +750,12 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     def start(self):
         self.row = 2
         if self.devices_start_get is not None:
+            if self.sensors_start_get is None:
+                self.add_spacer = 'inputdevices'
             self.sigReadRequest.emit(self, 'inputdevices',
                                      self.devices_start_get, 'select')
         if self.sensors_start_get is not None:
+            self.add_spacer = 'sensordevices'
             self.sigReadRequest.emit(self, 'sensordevices',
                                      self.sensors_start_get, 'select')
 
@@ -783,10 +795,11 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 self.add(identifier, 4)
             self.box.setRowStretch(self.row, 1)
             self.row += 1
-        self.box.addItem(QSpacerItem(0, 0,
-                                     QSizePolicy.Policy.Minimum,
-                                     QSizePolicy.Policy.Expanding),
-                         self.row, 0)
+        if self.add_spacer == ident:
+            self.box.addItem(QSpacerItem(0, 0,
+                                         QSizePolicy.Policy.Minimum,
+                                         QSizePolicy.Policy.Expanding),
+                             self.row, 0)
         
         
 class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
@@ -906,6 +919,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.bench.sigDisplayTerminal.connect(self.sigDisplayTerminal)
         self.formatcard.sigUpdateSDCard.connect(self.start)
         self.erasecard.sigUpdateSDCard.connect(self.start)
+        self.eraserecordings.sigUpdateSDCard.connect(self.start)
         
         key = QShortcut('Ctrl+M', self)
         key.activated.connect(self.checkcard.animateClick)
@@ -955,14 +969,20 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         if self.box.itemAtPosition(self.row, 0) is not None:
             w = self.box.itemAtPosition(self.row, 1).widget()
             w.setText('<b>' + value + '</b>')
+            self.row += 2
         else:
             self.box.addWidget(QLabel(label, self), self.row, 0)
             self.box.addWidget(QLabel('<b>' + value + '</b>', self),
                                self.row, 1, Qt.AlignRight)
             if button is not None:
                 self.box.addWidget(button, self.row, 2, Qt.AlignRight)
-        self.box.setRowStretch(self.row, 1)
-        self.row += 1
+            self.box.setRowStretch(self.row, 1)
+            self.row += 1
+            self.box.addItem(QSpacerItem(0, 0,
+                                         QSizePolicy.Policy.Minimum,
+                                         QSizePolicy.Policy.Expanding),
+                             self.row, 0)
+            self.row += 1
 
     def start(self):
         self.row = 1
@@ -1035,11 +1055,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                         else:
                             self.add(items[i][0], items[i][1])
             self.add('<u>W</u>rite speed', 'none', self.bench)
-            self.bench.set_value(self.box.itemAtPosition(self.row - 1, 1).widget())
-            self.box.addItem(QSpacerItem(0, 0,
-                                         QSizePolicy.Policy.Minimum,
-                                         QSizePolicy.Policy.Expanding),
-                             self.row, 0)
+            self.bench.set_value(self.box.itemAtPosition(self.row - 2, 1).widget())
 
 
 class Terminal(QWidget):
