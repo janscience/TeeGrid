@@ -83,9 +83,9 @@ SDCardMenu sdcard1_menu(sdcard1, settings);
 FirmwareMenu firmware_menu(sdcard0);
 #endif
 #ifdef BACKUP_SDCARD
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, sdcard1, &pcm1, &pcm2, &pcm3, &pcm4);
+DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, sdcard1, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 #else
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, &pcm1, &pcm2, &pcm3, &pcm4);
+DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 #endif
 HelpAction help_act(config, "Help");
 
@@ -103,6 +103,9 @@ void setup() {
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
+  Wire.begin();
+  Wire1.begin();
+  rtclock.init();
   rtclock.check();
   sdcard0.begin();
 #ifdef BACKUP_SDCARD
@@ -137,8 +140,6 @@ void setup() {
   setTeensySpeed(speed);
 #endif
   Serial.printf("Set CPU speed to %dMHz\n\n", teensySpeed());
-  Wire.begin();
-  Wire1.begin();
   for (int k=0;k < NPCMS; k++) {
     Serial.printf("Setup PCM186x %d on TDM %d: ", k, pcms[k]->TDMBus());
     R4SetupPCM(aidata, *pcms[k], k%2==1, aisettings, &pcm);

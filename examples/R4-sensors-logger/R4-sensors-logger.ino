@@ -77,7 +77,7 @@ SDCardMenu sdcard_menu(sdcard, settings);
 #ifdef FIRMWARE_UPDATE
 FirmwareMenu firmware_menu(sdcard);
 #endif
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &pcm1, &pcm2, &pcm3, &pcm4);
+DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 ESensorDevicesAction esensordevs_act(diagnostic_menu, "Sensor devices", sensors);
 ESensorSensorsAction esensors_act(diagnostic_menu, "Environmental sensors", sensors);
 HelpAction help_act(config, "Help");
@@ -101,12 +101,13 @@ void setup() {
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
+  Wire.begin();
+  Wire1.begin();
+  rtclock.init();
   rtclock.check();
   sdcard.begin();
   files.check();
   rtclock.setFromFile(sdcard);
-  Wire.begin();
-  Wire1.begin();
   setupSensors();
   settings.enable("InitialDelay");
   settings.enable("SensorsInterval");

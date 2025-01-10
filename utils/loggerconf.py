@@ -763,11 +763,11 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         for s in stream[1:]:
             if len(s.strip()) == 0:
                 break
+            ss = s.split()
             if ident == 'inputdevices':
-                self.add('input', 0)
+                self.add(ss[0], 0)
             elif ident == 'sensordevices':
                 self.add('sensor', 0)
-            ss = s.split()
             if 'device' in ss:
                 dev_idx = ss.index('device')
                 device = ss[dev_idx + 1]
