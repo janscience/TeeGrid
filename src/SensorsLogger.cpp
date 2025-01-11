@@ -12,7 +12,13 @@ SensorsLogger::SensorsLogger(Input &aiinput,
 }
 
 
-void SensorsLogger::initSensors(float interval) {
+void SensorsLogger::setupSensors() {
+  Sensors.setPrintTime(ESensors::NO_TIME);
+  Sensors.start();
+}
+
+
+void SensorsLogger::startSensors(float interval) {
   Sensors.setInterval(interval);
   Sensors.setPrintTime(ESensors::ISO_TIME);
   Sensors.reportDevices();

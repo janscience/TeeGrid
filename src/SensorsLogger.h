@@ -19,7 +19,10 @@ public:
 		Blink &blink);
 
   // Initialize environmental sensors.
-  void initSensors(float interval);
+  void setupSensors();
+
+  // Start environmental sensors.
+  void startSensors(float interval);
 
   // Initialize recording directory and first files.
   void start(const char *path, const char *filename, float filetime,

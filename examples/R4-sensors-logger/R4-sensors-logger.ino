@@ -92,6 +92,7 @@ void setupSensors() {
   temp.begin(TEMP_PIN);
   temp.setName("water-temperature");
   temp.setSymbol("T_water");
+  files.setupSensors();
 }
 
 
@@ -122,7 +123,7 @@ void setup() {
     config.configure(Serial, 10000);
   config.report();
   Serial.println();
-  files.initSensors(settings.sensorsInterval());
+  files.startSensors(settings.sensorsInterval());
   deviceid.setID(settings.deviceID());
   aidata.setSwapLR();
   files.setCPUSpeed(aisettings.rate());
