@@ -1120,7 +1120,6 @@ class Terminal(QWidget):
         super().__init__(*args, **kwargs)
         self.title = QLabel(self)
         self.out = QLabel(self)
-        self.out.setFont(QFont('monospace'))
         self.scroll = QScrollArea(self)
         self.scroll.setWidget(self.out)
         self.done = QPushButton(self)
@@ -1166,8 +1165,10 @@ class Terminal(QWidget):
                 text += s
                 text += '\n'
             self.out.setText(text)
+            self.out.setFont(QFont('monospace'))
         else:
             self.out.setText(stream)
+            self.out.setFont(QFont('sans'))
         self.out.setMinimumSize(self.out.sizeHint())
         vsb = self.scroll.verticalScrollBar()
         vsb.setValue(vsb.maximum())
