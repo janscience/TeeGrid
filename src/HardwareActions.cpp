@@ -30,5 +30,4 @@ void ESensorValuesAction::configure(Stream &stream, unsigned long timeout,
 				    bool echo, bool detailed) {
   Sensors.read();
   Sensors.print(false, false, stream);
-  stream.println();
 }

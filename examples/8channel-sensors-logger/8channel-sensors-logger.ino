@@ -90,15 +90,16 @@ SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);
 
 void setupSensors() {
   temp.begin(TEMP_PIN);
-  temp.setName("water temperature", "Tw");
+  temp.setName("water-temperature", "Tw");
   Wire1.begin();
   bme.beginI2C(Wire1, 0x77);
-  tempbme.setName("air temperature", "Ta");
+  tempbme.setName("air-temperature", "Ta");
   hum.setPercent();
   pres.setHecto();
   tsl.begin(Wire1);
   tsl.setGain(LightTSL2591::AUTO_GAIN);
   irratio.setPercent();
+  files.setupSensors();
 }
 
 
@@ -125,7 +126,7 @@ void setup() {
     config.configure(Serial, 10000);
   config.report();
   Serial.println();
-  files.initSensors(settings.sensorsInterval());
+  files.startSensors(settings.sensorsInterval());
   tsl.setTemperature(bme.temperature());
   setupTestSignals(signalPins, settings.pulseFrequency());
   aisettings.configure(&aidata);

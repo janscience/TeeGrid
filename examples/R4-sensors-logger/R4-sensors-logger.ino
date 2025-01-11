@@ -18,6 +18,8 @@
 #include <R41CAN.h>
 #include <ESensors.h>
 #include <TemperatureDS18x20.h>
+#include <SenseBME280.h>
+#include <LightTSL2591.h>
 
 // Default settings: ----------------------------------------------------------
 // (may be overwritten by config file logger.cfg)
@@ -66,6 +68,13 @@ SDCard sdcard;
 
 ESensors sensors;
 TemperatureDS18x20 temp(&sensors);
+SenseBME280 bme;
+TemperatureBME280 tempbme(&bme, &sensors);
+HumidityBME280 hum(&bme, &sensors);
+PressureBME280 pres(&bme, &sensors);
+LightTSL2591 tsl;
+IRRatioTSL2591 irratio(&tsl, &sensors);
+IlluminanceTSL2591 illum(&tsl, &sensors);
 
 Configurator config;
 Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
@@ -92,6 +101,13 @@ void setupSensors() {
   temp.begin(TEMP_PIN);
   temp.setName("water-temperature");
   temp.setSymbol("T_water");
+  bme.beginI2C(Wire, 0x77);
+  tempbme.setName("air-temperature", "Ta");
+  hum.setPercent();
+  pres.setHecto();
+  tsl.begin(Wire1);
+  tsl.setGain(LightTSL2591::AUTO_GAIN);
+  irratio.setPercent();
   files.setupSensors();
 }
 
