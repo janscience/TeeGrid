@@ -26,8 +26,15 @@ void ESensorDevicesAction::configure(Stream &stream, unsigned long timeout,
 }
 
 
+void ESensorRequestAction::configure(Stream &stream, unsigned long timeout,
+				     bool echo, bool detailed) {
+  Sensors.request();
+  stream.println("Requested new sensor readings.\n");
+}
+
+
 void ESensorValuesAction::configure(Stream &stream, unsigned long timeout,
 				    bool echo, bool detailed) {
-  Sensors.read();
+  Sensors.get();
   Sensors.print(false, false, stream);
 }

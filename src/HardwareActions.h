@@ -52,6 +52,18 @@ class ESensorDevicesAction : public ESensorsAction {
 };
 
 
+class ESensorRequestAction : public ESensorsAction {
+
+ public:
+
+  using ESensorsAction::ESensorsAction;
+
+  /* Request sensor values. */
+  virtual void configure(Stream &stream=Serial, unsigned long timeout=0,
+			 bool echo=true, bool detailed=false);
+};
+
+
 class ESensorValuesAction : public ESensorsAction {
 
  public:

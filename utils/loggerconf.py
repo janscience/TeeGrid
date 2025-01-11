@@ -816,9 +816,10 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.row = 1
         self.add('<b>Parameter</b>', 0)
         self.add('<b>Symbol</b>', 1)
-        self.add('<b>Error</b>', 2)
-        self.add('<b>Unit</b>', 3)
-        self.add('<b>Device</b>', 4)
+        self.add('<b>Value</b>', 2)
+        self.add('<b>Error</b>', 3)
+        self.add('<b>Unit</b>', 4)
+        self.add('<b>Device</b>', 5)
         self.box.setRowStretch(1, 1)
         self.row += 1
         self.sensors_start_get = None
@@ -838,7 +839,10 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         label = QLabel(text)
         label.setSizePolicy(QSizePolicy.Policy.Preferred,
                             QSizePolicy.Policy.Fixed)
-        self.box.addWidget(label, self.row, col)
+        align = Qt.AlignLeft
+        if col == 2 or col == 3:
+            align = Qt.AlignRight
+        self.box.addWidget(label, self.row, col, align)
 
     def read(self, ident, stream, success):
         while len(stream) > 0 and len(stream[0].strip()) == 0:
@@ -858,20 +862,21 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.add(name, 0)
             symbol = ss[idx - 2]
             self.add(symbol, 1)
+            self.add('-', 2)
             unit = ss[idx - 1].lstrip('(').rstrip(')')
             unit = unit.encode('latin1').decode('utf8')
-            self.add(unit, 3)
+            self.add(unit, 4)
             res_idx = ss.index('resolution')
             resolution = ss[res_idx + 2]
             for k in reversed(range(len(resolution))):
                 if resolution[k].isdigit():
                     resolution = resolution[:k + 1]
                     break
-            self.add(resolution, 2)
+            self.add(resolution, 3)
             if 'device' in ss:
                 dev_idx = ss.index('device')
                 device = ss[dev_idx - 1]
-                self.add(device, 4)
+                self.add(device, 5)
             self.box.setRowStretch(self.row, 1)
             self.row += 1
         self.box.addItem(QSpacerItem(0, 0,
