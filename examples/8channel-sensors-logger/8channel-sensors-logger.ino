@@ -82,6 +82,7 @@ FirmwareMenu firmware_menu(sdcard);
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &aidata, &rtclock);
 ESensorDevicesAction esensordevs_act(diagnostic_menu, "Sensor devices", sensors);
 ESensorSensorsAction esensors_act(diagnostic_menu, "Environmental sensors", sensors);
+ESensorValuesAction esensorvals_act(diagnostic_menu, "Sensor readings", sensors);
 HelpAction help_act(config, "Help");
 
 SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);

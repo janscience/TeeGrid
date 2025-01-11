@@ -52,4 +52,16 @@ class ESensorDevicesAction : public ESensorsAction {
 };
 
 
+class ESensorValuesAction : public ESensorsAction {
+
+ public:
+
+  using ESensorsAction::ESensorsAction;
+
+  /* Print sensor values. */
+  virtual void configure(Stream &stream=Serial, unsigned long timeout=0,
+			 bool echo=true, bool detailed=false);
+};
+
+
 #endif
