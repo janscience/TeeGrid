@@ -1,22 +1,22 @@
 /*
-  SensorsLoggerFileStorage - High level handling of file storage of logger and sensors data.
+  SensorsLogger - High level handling of file storage of logger and sensors data.
   Created by Jan Benda, January 4th, 2025.
 */
 
-#ifndef SenorsLoggerFileStorage_h
-#define SensorsLoggerFileStorage_h
+#ifndef SenorsLogger_h
+#define SensorsLogger_h
 
 #include <ESensors.h>
-#include <LoggerFileStorage.h>
+#include <Logger.h>
 
 
-class SensorsLoggerFileStorage : public LoggerFileStorage {
+class SensorsLogger : public Logger {
   
 public:
 
-  SensorsLoggerFileStorage(Input &aiinput, ESensors &sensors, SDCard &sdcard0,
-			   const RTClock &rtclock, const DeviceID &deviceid,
-			   Blink &blink);
+  SensorsLogger(Input &aiinput, ESensors &sensors, SDCard &sdcard0,
+		const RTClock &rtclock, const DeviceID &deviceid,
+		Blink &blink);
 
   // Initialize environmental sensors.
   void initSensors(float interval);

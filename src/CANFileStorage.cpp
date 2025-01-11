@@ -6,7 +6,7 @@
 CANFileStorage::CANFileStorage(Input &aiinput, SDCard &sdcard0, SDCard &sdcard1,
 			       R41CAN &can, bool master, const RTClock &rtclock,
 			       const DeviceID &deviceid, Blink &blink) :
-  LoggerFileStorage(aiinput, sdcard0, sdcard1, rtclock, deviceid, blink),
+  Logger(aiinput, sdcard0, sdcard1, rtclock, deviceid, blink),
   CAN(can),
   Master(master) {
 }

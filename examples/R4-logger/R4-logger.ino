@@ -15,7 +15,7 @@
 #include <HardwareActions.h>
 #include <TeensyBoard.h>
 #include <PowerSave.h>
-#include <LoggerFileStorage.h>
+#include <Logger.h>
 #include <R41CAN.h>
 
 // Default settings: ----------------------------------------------------------
@@ -37,6 +37,8 @@
 #define LED_PIN        26    // R4.1       warning: this is the MOSI1 pin for thebackup SD card
 //#define LED_PIN        27    // R4.2
 
+// Secondary backup SD card on SPI bus:
+// Not recommended, since it draws a lot of more current.
 //#define BACKUP_SDCARD 1       // define if you want to use a backup SD card
 //#define SDCARD1_CS     10    // CS pin for second SD card on SPI bus
 #define SDCARD1_CS     38    // CS pin for second SD card on SPI1 bus
@@ -90,9 +92,9 @@ DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, &pcm1, &pcm2, &pcm3, &pcm
 HelpAction help_act(config, "Help");
 
 #ifdef BACKUP_SDCARD
-LoggerFileStorage files(aidata, sdcard0, sdcard1, rtclock, deviceid, blink);
+Logger files(aidata, sdcard0, sdcard1, rtclock, deviceid, blink);
 #else
-LoggerFileStorage files(aidata, sdcard0, rtclock, deviceid, blink);
+Logger files(aidata, sdcard0, rtclock, deviceid, blink);
 #endif
 
 // -----------------------------------------------------------------------------

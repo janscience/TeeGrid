@@ -12,7 +12,7 @@
 #include <HardwareActions.h>
 #include <TeensyBoard.h>
 #include <PowerSave.h>
-#include <SensorsLoggerFileStorage.h>
+#include <SensorsLogger.h>
 #include <ESensors.h>
 #include <TemperatureDS18x20.h>
 #include <SenseBME280.h>
@@ -84,8 +84,7 @@ ESensorDevicesAction esensordevs_act(diagnostic_menu, "Sensor devices", sensors)
 ESensorSensorsAction esensors_act(diagnostic_menu, "Environmental sensors", sensors);
 HelpAction help_act(config, "Help");
 
-SensorsLoggerFileStorage files(aidata, sensors, sdcard,
-                               rtclock, deviceid, blink);
+SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);
 
 
 void setupSensors() {

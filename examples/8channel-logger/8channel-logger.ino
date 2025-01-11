@@ -12,7 +12,7 @@
 #include <HardwareActions.h>
 #include <TeensyBoard.h>
 #include <PowerSave.h>
-#include <LoggerFileStorage.h>
+#include <Logger.h>
 
 // Default settings: ----------------------------------------------------------
 // (may be overwritten by config file teegrid.cfg)
@@ -61,7 +61,7 @@ FirmwareMenu firmware_menu(sdcard);
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &aidata, &rtclock);
 HelpAction help_act(config, "Help");
 
-LoggerFileStorage files(aidata, sdcard, rtclock, deviceid, blink);
+Logger files(aidata, sdcard, rtclock, deviceid, blink);
 
 
 // ----------------------------------------------------------------------------

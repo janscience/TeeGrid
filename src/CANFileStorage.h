@@ -8,11 +8,11 @@
 
 #include <R41CAN.h>
 #include <TeensyBoard.h>
-#include <LoggerFileStorage.h>
+#include <Logger.h>
 
 #ifdef TEENSY4
 
-class CANFileStorage : public LoggerFileStorage {
+class CANFileStorage : public Logger {
   
 public:
 

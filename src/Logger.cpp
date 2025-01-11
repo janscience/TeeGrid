@@ -4,16 +4,15 @@
 //#define SINGLE_FILE_MTP
 
 #include <TeensyBoard.h>
-#include <LoggerFileStorage.h>
+#include <Logger.h>
 #ifdef SINGLE_FILE_MTP
 #include <MTP_Teensy.h>
 #endif
 
 
-LoggerFileStorage::LoggerFileStorage(Input &aiinput, SDCard &sdcard0,
-				     const RTClock &rtclock,
-				     const DeviceID &deviceid,
-				     Blink &blink) :
+Logger::Logger(Input &aiinput, SDCard &sdcard0,
+	       const RTClock &rtclock, const DeviceID &deviceid,
+	       Blink &blink) :
   AIInput(aiinput),
   SDCard0(&sdcard0),
   SDCard1(0),
@@ -32,9 +31,9 @@ LoggerFileStorage::LoggerFileStorage(Input &aiinput, SDCard &sdcard0,
 }
 
 
-LoggerFileStorage::LoggerFileStorage(Input &aiinput, SDCard &sdcard0,
-				     SDCard &sdcard1, const RTClock &rtclock,
-				     const DeviceID &deviceid, Blink &blink) :
+Logger::Logger(Input &aiinput, SDCard &sdcard0,
+	       SDCard &sdcard1, const RTClock &rtclock,
+	       const DeviceID &deviceid, Blink &blink) :
   AIInput(aiinput),
   SDCard0(&sdcard0),
   SDCard1(&sdcard1),
@@ -53,7 +52,7 @@ LoggerFileStorage::LoggerFileStorage(Input &aiinput, SDCard &sdcard0,
 }
 
 
-bool LoggerFileStorage::check(bool check_backup, Stream &stream) {
+bool Logger::check(bool check_backup, Stream &stream) {
   if (!SDCard0->check(1e9)) {
     SDCard0->end();
     BlinkLED.switchOff();
@@ -68,7 +67,7 @@ bool LoggerFileStorage::check(bool check_backup, Stream &stream) {
 }
 
 
-void LoggerFileStorage::endBackup(SPIClass *spi) {
+void Logger::endBackup(SPIClass *spi) {
   if (SDCard1 != NULL && !SDCard1->available()) {
     SDCard1->end();
     if (spi != NULL)
@@ -78,7 +77,7 @@ void LoggerFileStorage::endBackup(SPIClass *spi) {
 }
 
 
-void LoggerFileStorage::setCPUSpeed(uint32_t rate) {
+void Logger::setCPUSpeed(uint32_t rate) {
   if (SDCard1 != NULL && !SDCard1->available()) {
     setTeensySpeed(150);
   }
@@ -93,13 +92,13 @@ void LoggerFileStorage::setCPUSpeed(uint32_t rate) {
 }
 
   
-void LoggerFileStorage::report(Stream &stream) const {
+void Logger::report(Stream &stream) const {
   DeviceIdent.report(stream);
   Clock.report(stream);
 }
 
 
-void LoggerFileStorage::initialDelay(float initial_delay,
+void Logger::initialDelay(float initial_delay,
 				     Stream &stream) {
   stream.printf("Delay for %.0fs ... ", initial_delay);
   if (initial_delay >= 2.0) {
@@ -114,8 +113,8 @@ void LoggerFileStorage::initialDelay(float initial_delay,
 }
 
 
-void LoggerFileStorage::setup(SDWriter &sdfile, float filetime,
-			      const char *software, char *gainstr) {
+void Logger::setup(SDWriter &sdfile, float filetime,
+		   const char *software, char *gainstr) {
   sdfile.setWriteInterval(2*AIInput.DMABufferTime());
   sdfile.setMaxFileTime(filetime);
   sdfile.header().setSoftware(software);
@@ -125,9 +124,9 @@ void LoggerFileStorage::setup(SDWriter &sdfile, float filetime,
 }
 
 
-void LoggerFileStorage::start(const char *path, const char *filename,
-			      float filetime, const char *software,
-			      char *gainstr, bool randomblinks) {
+void Logger::start(const char *path, const char *filename,
+		   float filetime, const char *software,
+		   char *gainstr, bool randomblinks) {
   RandomBlinks = randomblinks;
   Filename = filename;
   PrevFilename = "";
@@ -159,7 +158,7 @@ void LoggerFileStorage::start(const char *path, const char *filename,
 }
 
 
-void LoggerFileStorage::open(bool backup) {
+void Logger::open(bool backup) {
   if (backup) {
     if (File1.sdcard() == NULL || !File1.sdcard()->available())
       return;
@@ -240,14 +239,14 @@ void LoggerFileStorage::open(bool backup) {
 }
 
 
-bool LoggerFileStorage::store(SDWriter &sdfile, bool backup) {
+bool Logger::store(SDWriter &sdfile, bool backup) {
   if (!sdfile.pending())
     return false;
   ssize_t samples = sdfile.write();
   if (samples < 0) {
     BlinkLED.clear();
     Serial.println();
-    Serial.printf("ERROR in writing data to file on %sSD card in LoggerFileStorage::store():\n", sdfile.sdcard()->name());
+    Serial.printf("ERROR in writing data to file on %sSD card in Logger::store():\n", sdfile.sdcard()->name());
     char errorstr[20];
     switch (samples) {
       case -1:
@@ -300,7 +299,7 @@ bool LoggerFileStorage::store(SDWriter &sdfile, bool backup) {
     Restarts++;
     Serial.printf("Incremented restarts to %d, samples=%d on %sSD card\n", Restarts, samples, sdfile.sdcard()->name());
     if (Restarts >= 5) {
-      Serial.printf("ERROR in LoggerFileStorage::storeData() on %sSD card: too many file errors", sdfile.sdcard()->name());
+      Serial.printf("ERROR in Logger::storeData() on %sSD card: too many file errors", sdfile.sdcard()->name());
       if (backup) {
 	Serial.println(" -> end backups");
 	SDCard1->end();
@@ -323,7 +322,7 @@ bool LoggerFileStorage::store(SDWriter &sdfile, bool backup) {
 }
 
 
-void LoggerFileStorage::openBlinkFiles() {
+void Logger::openBlinkFiles() {
   String fname = File0.name();
   fname.replace(".wav", "-blinks.dat");
   BlinkFile0 = SDCard0->openWrite(fname.c_str());
@@ -337,7 +336,7 @@ void LoggerFileStorage::openBlinkFiles() {
 }
 
 
-void LoggerFileStorage::storeBlinks() {
+void Logger::storeBlinks() {
   if (BlinkLED.nswitchTimes() < Blink::MaxTimes/2)
     return;
   uint32_t tstart = File0.startWriteTime();
@@ -358,7 +357,7 @@ void LoggerFileStorage::storeBlinks() {
 }
 
 
-void LoggerFileStorage::update() {
+void Logger::update() {
   if (NextStore == 0) {
     if (store(File0, false) && SDCard1 != NULL && SDCard1->available())
       NextStore = 1;
