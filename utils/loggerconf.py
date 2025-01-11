@@ -334,6 +334,7 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
         self.time = QLabel(self)
         self.state = QLabel(self)
         self.state.setTextFormat(Qt.RichText)
+        self.state.setToolTip('Indicate whether real-time clock matches computer clock')
         self.box = QHBoxLayout(self)
         self.box.setContentsMargins(0, 0, 0, 0)
         self.box.addWidget(self.time)
@@ -471,6 +472,8 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.rtclock = RTClock(self)
         self.box = QGridLayout(self)
         title = QLabel('<b>Logger</b>', self)
+        title.setSizePolicy(QSizePolicy.Policy.Preferred,
+                            QSizePolicy.Policy.Fixed)
         self.box.addWidget(title, 0, 0, 1, 3)
         self.box.setRowStretch(0, 1)
         self.psramtest = PSRAMTest(self)
@@ -496,20 +499,24 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.psramtest.setup(menu)
 
     def add(self, label, value, button=None):
-        self.box.addWidget(QLabel(label, self), self.row, 0)
-        if button is None:
-            self.box.addWidget(QLabel('<b>' + value + '</b>', self),
-                               self.row, 1, 1, 2)
-        else:
-            self.box.addWidget(QLabel('<b>' + value + '</b>', self),
-                               self.row, 1)
-            self.box.addWidget(button, self.row, 2)
-        self.box.setRowStretch(self.row, 1)
-        self.row += 1
         self.box.addItem(QSpacerItem(0, 0,
                                      QSizePolicy.Policy.Minimum,
                                      QSizePolicy.Policy.Expanding),
                          self.row, 0)
+        self.row += 1
+        lw = QLabel(label, self)
+        lw.setSizePolicy(QSizePolicy.Policy.Preferred,
+                         QSizePolicy.Policy.Fixed)
+        self.box.addWidget(lw, self.row, 0)
+        vw = QLabel('<b>' + value + '</b>', self)
+        vw.setSizePolicy(QSizePolicy.Policy.Preferred,
+                         QSizePolicy.Policy.Fixed)
+        if button is None:
+            self.box.addWidget(vw, self.row, 1, 1, 2)
+        else:
+            self.box.addWidget(vw, self.row, 1)
+            self.box.addWidget(button, self.row, 2)
+        self.box.setRowStretch(self.row, 1)
         self.row += 1
         
     def start(self):
@@ -539,7 +546,15 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             else:
                 self.add(label, value)
         if ident == 'psram':
-            self.box.addWidget(QLabel('Time', self), self.row, 0)
+            self.box.addItem(QSpacerItem(0, 0,
+                                         QSizePolicy.Policy.Minimum,
+                                         QSizePolicy.Policy.Expanding),
+                             self.row, 0)
+            self.row += 1
+            lw = QLabel('Time', self)
+            lw.setSizePolicy(QSizePolicy.Policy.Preferred,
+                             QSizePolicy.Policy.Fixed)
+            self.box.addWidget(lw, self.row, 0)
             self.box.addWidget(self.rtclock, self.row, 1, 1, 2)
             self.box.setRowStretch(self.row, 1)
             self.row += 1
@@ -737,9 +752,13 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.add('<b>Identifier</b>', 4)
         self.box.setRowStretch(1, 1)
         self.row += 1
+        self.box.addItem(QSpacerItem(0, 0,
+                                     QSizePolicy.Policy.Minimum,
+                                     QSizePolicy.Policy.Expanding),
+                         self.row, 0)
+        self.row += 1
         self.sensors_start_get = None
         self.devices_start_get = None
-        self.add_spacer = ''
 
     def setup(self, menu):
         self.devices_start_get = self.retrieve('diagnostics>input devices', menu)
@@ -748,14 +767,11 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.setVisible(False)
 
     def start(self):
-        self.row = 2
+        self.row = 3
         if self.devices_start_get is not None:
-            if self.sensors_start_get is None:
-                self.add_spacer = 'inputdevices'
             self.sigReadRequest.emit(self, 'inputdevices',
                                      self.devices_start_get, 'select')
         if self.sensors_start_get is not None:
-            self.add_spacer = 'sensordevices'
             self.sigReadRequest.emit(self, 'sensordevices',
                                      self.sensors_start_get, 'select')
 
@@ -795,11 +811,11 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 self.add(identifier, 4)
             self.box.setRowStretch(self.row, 1)
             self.row += 1
-        if self.add_spacer == ident:
             self.box.addItem(QSpacerItem(0, 0,
                                          QSizePolicy.Policy.Minimum,
                                          QSizePolicy.Policy.Expanding),
                              self.row, 0)
+            self.row += 1
         
         
 class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
@@ -822,6 +838,11 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.add('<b>Device</b>', 5)
         self.box.setRowStretch(1, 1)
         self.row += 1
+        self.box.addItem(QSpacerItem(0, 0,
+                                     QSizePolicy.Policy.Minimum,
+                                     QSizePolicy.Policy.Expanding),
+                         self.row, 0)
+        self.row += 1
         self.sensors_get = None
         self.request_get = None
         self.values_get = None
@@ -840,7 +861,7 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.setVisible(False)
 
     def start(self):
-        self.row = 2
+        self.row = 3
         if self.sensors_get is not None:
             self.sigReadRequest.emit(self, 'sensors',
                                      self.sensors_get, 'select')
@@ -930,10 +951,11 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.sensors[name] = (unit, self.row)
             self.box.setRowStretch(self.row, 1)
             self.row += 1
-        self.box.addItem(QSpacerItem(0, 0,
-                                     QSizePolicy.Policy.Minimum,
-                                     QSizePolicy.Policy.Expanding),
-                         self.row, 0)
+            self.box.addItem(QSpacerItem(0, 0,
+                                         QSizePolicy.Policy.Minimum,
+                                         QSizePolicy.Policy.Expanding),
+                             self.row, 0)
+            self.row += 1
         
         
 class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
@@ -993,6 +1015,8 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         key.activated.connect(self.bench.animateClick)
         self.box = QGridLayout(self)
         title = QLabel('<b>SD card</b>', self)
+        title.setSizePolicy(QSizePolicy.Policy.Preferred,
+                            QSizePolicy.Policy.Fixed)
         self.box.addWidget(title, 0, 0, 1, 2)
         self.box.addWidget(self.checkcard, 0, 2, Qt.AlignRight)
         self.box.setRowStretch(0, 1)
@@ -1023,21 +1047,26 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
 
     def add(self, label, value, button=None):
         if self.box.itemAtPosition(self.row, 0) is not None:
-            w = self.box.itemAtPosition(self.row, 1).widget()
+            w = self.box.itemAtPosition(self.row + 1, 1).widget()
             w.setText('<b>' + value + '</b>')
             self.row += 2
         else:
-            self.box.addWidget(QLabel(label, self), self.row, 0)
-            self.box.addWidget(QLabel('<b>' + value + '</b>', self),
-                               self.row, 1, Qt.AlignRight)
-            if button is not None:
-                self.box.addWidget(button, self.row, 2, Qt.AlignRight)
-            self.box.setRowStretch(self.row, 1)
-            self.row += 1
             self.box.addItem(QSpacerItem(0, 0,
                                          QSizePolicy.Policy.Minimum,
                                          QSizePolicy.Policy.Expanding),
                              self.row, 0)
+            self.row += 1
+            lw = QLabel(label, self)
+            lw.setSizePolicy(QSizePolicy.Policy.Preferred,
+                             QSizePolicy.Policy.Fixed)
+            self.box.addWidget(lw, self.row, 0)
+            vw = QLabel('<b>' + value + '</b>', self)
+            vw.setSizePolicy(QSizePolicy.Policy.Preferred,
+                             QSizePolicy.Policy.Fixed)
+            self.box.addWidget(vw, self.row, 1, Qt.AlignRight)
+            if button is not None:
+                self.box.addWidget(button, self.row, 2, Qt.AlignRight)
+            self.box.setRowStretch(self.row, 1)
             self.row += 1
 
     def start(self):
@@ -1111,7 +1140,11 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                         else:
                             self.add(items[i][0], items[i][1])
             self.add('<u>W</u>rite speed', 'none', self.bench)
-            self.bench.set_value(self.box.itemAtPosition(self.row - 2, 1).widget())
+            self.bench.set_value(self.box.itemAtPosition(self.row - 1, 1).widget())
+            self.box.addItem(QSpacerItem(0, 0,
+                                         QSizePolicy.Policy.Minimum,
+                                         QSizePolicy.Policy.Expanding),
+                             self.row, 0)
 
 
 class Terminal(QWidget):
