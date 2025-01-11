@@ -70,7 +70,8 @@ class ESensorValuesAction : public ESensorsAction {
 
   using ESensorsAction::ESensorsAction;
 
-  /* Print sensor values. */
+  /* Print sensor values. If detailed, just get previously requested values.
+     Otherwise request and read them. */
   virtual void configure(Stream &stream=Serial, unsigned long timeout=0,
 			 bool echo=true, bool detailed=false);
 };

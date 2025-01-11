@@ -29,12 +29,17 @@ void ESensorDevicesAction::configure(Stream &stream, unsigned long timeout,
 void ESensorRequestAction::configure(Stream &stream, unsigned long timeout,
 				     bool echo, bool detailed) {
   Sensors.request();
-  stream.println("Requested new sensor readings.\n");
+  stream.println("Requested new sensor readings.");
+  stream.printf("Sensor values are available after %dms.\n\n",
+		Sensors.delayTime());
 }
 
 
 void ESensorValuesAction::configure(Stream &stream, unsigned long timeout,
 				    bool echo, bool detailed) {
-  Sensors.get();
+  if (detailed)
+    Sensors.get();
+  else
+    Sensors.read();
   Sensors.print(false, false, stream);
 }
