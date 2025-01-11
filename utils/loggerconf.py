@@ -257,7 +257,7 @@ class Interactor(ABC):
     sigTransmitRequest = Signal(object, str, list)
     sigDisplayTerminal = Signal(str, object)
     sigDisplayMessage = Signal(object)
-    sigUpdateSDCard = Signal()
+    sigUpdate = Signal()
 
     @abstractmethod
     def setup(self, menu):
@@ -635,7 +635,7 @@ class FormatSDCard(ReportButton):
             title = 'Format SD card'
         self.sigDisplayTerminal.emit(title, stream)
         if success:
-            self.sigUpdateSDCard.emit()
+            self.sigUpdate.emit()
 
                 
 class ListFiles(ReportButton):
@@ -679,7 +679,7 @@ class ListFiles(ReportButton):
             self.sigDisplayTerminal.emit(title, text)
             if success and \
                title.lower().strip().startswith('erase all files in'):
-                self.sigUpdateSDCard.emit()
+                self.sigUpdate.emit()
 
                 
 class Benchmark(ReportButton):
@@ -822,18 +822,47 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.add('<b>Device</b>', 5)
         self.box.setRowStretch(1, 1)
         self.row += 1
-        self.sensors_start_get = None
+        self.sensors_get = None
+        self.request_get = None
+        self.values_get = None
+        self.sensors = {}
+        self.state = 0
+        self.delay = 1000
+        self.timer = QTimer(self)
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.read_sensors)
 
     def setup(self, menu):
-        self.sensors_start_get = self.retrieve('diagnostics>environmental sensors', menu)
-        if self.sensors_start_get is None:
+        self.sensors_get = self.retrieve('diagnostics>environmental sensors', menu)
+        self.request_get = self.retrieve('diagnostics>sensor request', menu)
+        self.values_get = self.retrieve('diagnostics>sensor readings', menu)
+        if self.sensors_get is None:
             self.setVisible(False)
 
     def start(self):
         self.row = 2
-        if self.sensors_start_get is not None:
+        if self.sensors_get is not None:
             self.sigReadRequest.emit(self, 'sensors',
-                                     self.sensors_start_get, 'select')
+                                     self.sensors_get, 'select')
+            if self.request_get is not None and \
+               self.values_get is not None:
+                self.state = 0
+                self.timer.start(1000)
+
+    def stop(self):
+        self.timer.stop()
+
+    def read_sensors(self):
+        if self.state == 0:
+            self.sigReadRequest.emit(self, 'request',
+                                     self.request_get, 'select')
+            self.state = 1
+            self.timer.start(self.delay)
+        else:
+            self.sigReadRequest.emit(self, 'values',
+                                     self.values_get, 'select')
+            self.state = 0
+            self.timer.start(10000 - self.delay)
 
     def add(self, text, col):
         label = QLabel(text)
@@ -849,6 +878,29 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             del stream[0]
         if not success:
             return
+        if ident == 'request':
+            for s in stream:
+                if len(s.strip()) == 0:
+                    break
+                if 'are available after' in s.lower():
+                    delaystr = s.strip().rstrip('.').split()[-1]
+                    self.delay = int(delaystr.replace('ms', ''))
+            return
+        elif ident == 'values':
+            for s in stream:
+                if len(s.strip()) == 0:
+                    break
+                if '=' not in s:
+                    continue
+                name, value = [sx.strip() for sx in s.split('=')]
+                if name in self.sensors:
+                    unit, row = self.sensors[name]
+                    if self.box.itemAtPosition(row, 2) is not None:
+                        value = value.encode('latin1').decode('utf8')
+                        w = self.box.itemAtPosition(row, 2).widget()
+                        w.setText('<b>' + value.replace(unit, '') + '</b>')
+            return
+        self.sensors = {}
         if int(stream[0].split()[0]) == 0:
             return
         for s in stream[1:]:
@@ -877,6 +929,7 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 dev_idx = ss.index('device')
                 device = ss[dev_idx - 1]
                 self.add(device, 5)
+            self.sensors[name] = (unit, self.row)
             self.box.setRowStretch(self.row, 1)
             self.row += 1
         self.box.addItem(QSpacerItem(0, 0,
@@ -922,9 +975,9 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.root.sigDisplayMessage.connect(self.sigDisplayMessage)
         self.bench.sigReadRequest.connect(self.sigReadRequest)
         self.bench.sigDisplayTerminal.connect(self.sigDisplayTerminal)
-        self.formatcard.sigUpdateSDCard.connect(self.start)
-        self.erasecard.sigUpdateSDCard.connect(self.start)
-        self.eraserecordings.sigUpdateSDCard.connect(self.start)
+        self.formatcard.sigUpdate.connect(self.start)
+        self.erasecard.sigUpdate.connect(self.start)
+        self.eraserecordings.sigUpdate.connect(self.start)
         
         key = QShortcut('Ctrl+M', self)
         key.activated.connect(self.checkcard.animateClick)
@@ -1666,7 +1719,7 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
             if len(text) > 0:
                 self.sigDisplayMessage.emit(text)
             if success:
-                self.sigUpdateSDCard.emit()
+                self.sigUpdate.emit()
 
         
 class Logger(QWidget):
@@ -1727,7 +1780,7 @@ class Logger(QWidget):
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.sigDisplayMessage.connect(self.display_message)
-        self.configuration.sigUpdateSDCard.connect(self.sdcardinfo.start)
+        self.configuration.sigUpdate.connect(self.sdcardinfo.start)
         iboxw = QWidget(self)
         ibox = QGridLayout(iboxw)
         ibox.setContentsMargins(0, 0, 0, 0)

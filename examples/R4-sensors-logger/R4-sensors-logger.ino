@@ -101,7 +101,7 @@ SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);
 void setupSensors() {
   temp.begin(TEMP_PIN);
   temp.setName("water-temperature");
-  temp.setSymbol("T_water");
+  temp.setSymbol("Tw");
   bme.beginI2C(Wire, 0x77);
   tempbme.setName("air-temperature", "Ta");
   hum.setPercent();
