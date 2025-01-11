@@ -896,7 +896,6 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 if name in self.sensors:
                     unit, row = self.sensors[name]
                     if self.box.itemAtPosition(row, 2) is not None:
-                        value = value.encode('latin1').decode('utf8')
                         w = self.box.itemAtPosition(row, 2).widget()
                         w.setText('<b>' + value.replace(unit, '') + '</b>')
             return
@@ -916,7 +915,6 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.add(symbol, 1)
             self.add('-', 2)
             unit = ss[idx - 1].lstrip('(').rstrip(')')
-            unit = unit.encode('latin1').decode('utf8')
             self.add(unit, 4)
             res_idx = ss.index('resolution')
             resolution = ss[res_idx + 2]
@@ -2330,7 +2328,7 @@ class Logger(QWidget):
             if self.ser.in_waiting > 0:
                 # read in incoming data:
                 x = self.ser.read(self.ser.in_waiting)
-                lines = x.decode('latin1').split('\n')
+                lines = x.decode('utf8').split('\n')
                 if len(self.input) == 0:
                     self.input = ['']
                 self.input[-1] += lines[0].rstrip('\r')
