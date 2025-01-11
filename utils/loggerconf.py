@@ -1120,6 +1120,7 @@ class Terminal(QWidget):
         super().__init__(*args, **kwargs)
         self.title = QLabel(self)
         self.out = QLabel(self)
+        self.out.setFont(QFont('monospace'))
         self.scroll = QScrollArea(self)
         self.scroll.setWidget(self.out)
         self.done = QPushButton(self)
