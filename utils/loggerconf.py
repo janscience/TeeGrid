@@ -2212,12 +2212,13 @@ class Logger(QWidget):
 
     def parse_read_request(self):
         if self.read_state == 0:
+            self.clear_input()
+            self.ser.write(self.request_start[0].encode('latin1'))
+            self.ser.write(b'\n')
+            self.ser.flush()
+            self.request_start.pop(0)
             if len(self.request_start) > 0:
-                self.clear_input()
-                self.ser.write(self.request_start[0].encode('latin1'))
-                self.ser.write(b'\n')
-                self.ser.flush()
-                self.request_start.pop(0)
+                self.read_state = 4
             else:
                 self.request_start = None
                 self.read_state += 1
@@ -2265,6 +2266,10 @@ class Logger(QWidget):
                 self.request_end = None
                 self.request_type = None
                 self.read_func = self.parse_request_stack
+        elif self.read_state == 4:
+            if len(self.input) > 0 and \
+               'select' in self.input[-1].lower():
+                self.read_state = 0
         elif self.read_state == 5:
             if self.question.yes is not None:
                 self.clear_input()
