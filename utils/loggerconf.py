@@ -927,9 +927,9 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             if len(s.strip()) == 0:
                 break
             ss = s.split()
-            if ':' not in ss:
+            if 'at' not in ss and 'resolution' not in ss:
                 continue
-            idx = ss.index(':')
+            idx = ss.index('at')
             name = ' '.join(ss[:idx - 2])
             self.add(name, 0)
             symbol = ss[idx - 2]
