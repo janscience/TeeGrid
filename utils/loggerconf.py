@@ -1457,10 +1457,10 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
         for k, l in enumerate(stream):
             sel = l[4:]
             i = sel.find(') ')
-            if sel[:i].isdigit():
-                sel = (int(sel[:i]) - 1, sel[i + 2:])
+            if i >= 0 and sel[:i].isdigit():
+                sel = (sel[:i], sel[i + 2:])
             else:
-                sel = (k, sel)
+                sel = (None, sel)
             self.selection.append(sel)
         
     def setup(self, parent):
@@ -1476,10 +1476,10 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
             locale = QLocale()
             self.edit_widget = QComboBox(parent)
             idx = None
-            for s in self.selection:
+            for i, s in enumerate(self.selection):
                 si = s[1]
                 if si == self.value:
-                    idx = s[0]
+                    idx = i
                 if self.type_str in ['integer', 'float']:
                     si = si.replace('.', locale.decimalPoint())
                 self.edit_widget.addItem(si)
@@ -1542,6 +1542,11 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
 
     def transmit_str(self, text):
         start = list(self.ids)
+        if len(self.selection) > 0:
+            for s in self.selection:
+                if s[1].lower() == text.lower() and s[0] is not None:
+                    text = s[0]
+                    break
         if self.type_str in ['integer', 'float']:
             locale = QLocale()
             text = text.replace(locale.groupSeparator(), '')
@@ -1593,10 +1598,10 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
         elif len(self.selection) > 0:
             if self.type_str in ['integer', 'float']:
                 value, unit, _ = parse_number(text)
-                for s in self.selection:
+                for i, s in enumerate(self.selection):
                     svalue, sunit, _ = parse_number(s[1])
                     if abs(value - svalue) < 1e-8 and unit == sunit:
-                        self.edit_widget.setCurrentIndex(s[0])
+                        self.edit_widget.setCurrentIndex(i)
                         break
             else:
                 self.edit_widget.setCurrentText(text)
@@ -2258,7 +2263,7 @@ class Logger(QWidget):
                 self.request_start = None
                 self.read_state += 1
         elif self.read_state == 1:
-            if len(self.input) > 0 and \
+            if self.request_type == 'read' and len(self.input) > 0 and \
                self.input[-1].lower().endswith(' [y/n] '):
                 self.message.clear()
                 self.last_focus = QApplication.focusWidget()
@@ -2270,7 +2275,7 @@ class Logger(QWidget):
                len(self.request_stop) == 0:
                 self.read_state += 1
             elif len(self.input) > 0:
-                for k in range(len(self.request_stop)):
+                for k in reversed(range(len(self.request_stop))):
                     if self.request_stop[k] in self.input[-1].lower():
                         self.request_stop = None
                         self.request_stop_index = k
@@ -2302,8 +2307,11 @@ class Logger(QWidget):
                 self.request_type = None
                 self.read_func = self.parse_request_stack
         elif self.read_state == 4:
+            stop_str = 'select'
+            if self.request_type == 'transmit' and len(self.request_start) == 1:
+                stop_str = 'new value'
             if len(self.input) > 0 and \
-               'select' in self.input[-1].lower():
+               stop_str in self.input[-1].lower():
                 self.read_state = 0
         elif self.read_state == 5:
             if self.question.yes is not None:
