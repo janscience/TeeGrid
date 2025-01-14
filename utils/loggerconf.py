@@ -478,6 +478,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.box.setRowStretch(0, 1)
         self.psramtest = PSRAMTest(self)
         self.psramtest.setToolTip('Test PSRAM memory (Ctrl+P)')
+        self.psramtest.setVisible(False)
         key = QShortcut("CTRL+P", self)
         key.activated.connect(self.psramtest.animateClick)
         self.device = None
@@ -540,6 +541,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             value = ':'.join(x[1:]).strip()
             if ident == 'psram':
                 if label.lower() == 'size':
+                    self.psramtest.setVisible(True)
                     self.add('<u>P</u>SRAM size', value, self.psramtest)
                 else:
                     continue
@@ -1456,7 +1458,7 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
             sel = l[4:]
             i = sel.find(') ')
             if sel[:i].isdigit():
-                sel = (sel[:i], sel[i + 2:])
+                sel = (int(sel[:i]) - 1, sel[i + 2:])
             else:
                 sel = (k, sel)
             self.selection.append(sel)
