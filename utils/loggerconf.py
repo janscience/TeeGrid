@@ -2145,7 +2145,8 @@ class Logger(QWidget):
             if list_start is None or list_end is None:
                 return
             s = self.input[list_end]
-            s = s[s.find('new value (') + 11:s.find('):')]
+            i = s.find('new value')
+            s = s[i + s[i:].find('(') + 1:s.find('):')]
             param = Parameter(self.menu_ids, self.menu_key, self.menu_item[2])
             param.initialize(s)
             param.set_selection(self.input[list_start:list_end])
