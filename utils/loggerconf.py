@@ -348,6 +348,7 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
         self.timer.timeout.connect(self.get_time)
     
     def setup(self, menu):
+        self.retrieve('date & time>report', menu)   # not needed
         self.start_get = self.retrieve('date & time>print', menu)
         self.start_set = self.retrieve('date & time>set', menu)
 
@@ -1141,8 +1142,9 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                             self.add('R<u>o</u>ot files', value, self.root)
                         else:
                             self.add(items[i][0], items[i][1])
-            self.add('<u>W</u>rite speed', 'none', self.bench)
-            self.bench.set_value(self.box.itemAtPosition(self.row - 1, 1).widget())
+            if len(items) > 1:
+                self.add('<u>W</u>rite speed', 'none', self.bench)
+                self.bench.set_value(self.box.itemAtPosition(self.row - 1, 1).widget())
             self.box.addItem(QSpacerItem(0, 0,
                                          QSizePolicy.Policy.Minimum,
                                          QSizePolicy.Policy.Expanding),
