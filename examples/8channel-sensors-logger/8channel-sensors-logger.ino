@@ -76,9 +76,7 @@ InputADCSettings aisettings(SAMPLING_RATE, BITS, AVERAGING,
 DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard);
 SDCardMenu sdcard_menu(sdcard, settings);
-#ifdef FIRMWARE_UPDATE
 FirmwareMenu firmware_menu(sdcard);
-#endif
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &aidata, &rtclock);
 ESensorDevicesAction esensordevs_act(diagnostic_menu, "Sensor devices", sensors);
 ESensorSensorsAction esensors_act(diagnostic_menu, "Environmental sensors", sensors);

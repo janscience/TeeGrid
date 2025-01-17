@@ -57,9 +57,7 @@ InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard);
 SDCardMenu sdcard0_menu(sdcard, settings);
-#ifdef FIRMWARE_UPDATE
 FirmwareMenu firmware_menu(sdcard0);
-#endif
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &pcm1, &pcm2, &rtclock);
 HelpAction help_act(config, "Help");
 

@@ -81,9 +81,7 @@ SDCardMenu sdcard0_menu(sdcard0, settings);
 #ifdef BACKUP_SDCARD
 SDCardMenu sdcard1_menu(sdcard1, settings);
 #endif
-#ifdef FIRMWARE_UPDATE
 FirmwareMenu firmware_menu(sdcard0);
-#endif
 #ifdef BACKUP_SDCARD
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, sdcard1, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 #else

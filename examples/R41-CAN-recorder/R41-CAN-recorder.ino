@@ -67,9 +67,7 @@ DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard0);
 SDCardMenu sdcard0_menu(sdcard0, settings);
 SDCardMenu sdcard1_menu(sdcard1, settings);
-#ifdef FIRMWARE_UPDATE
 FirmwareMenu firmware_menu(sdcard0);
-#endif
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, sdcard1);
 HelpAction help_act(config, "Help");
 
