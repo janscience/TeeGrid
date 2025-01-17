@@ -107,7 +107,7 @@ void setup() {
   printTeeGridBanner(SOFTWARE);
   Wire.begin();
   Wire1.begin();
-  rtclock.init();
+  rtclock.begin();
   rtclock.check();
   sdcard0.begin();
 #ifdef BACKUP_SDCARD

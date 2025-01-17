@@ -80,9 +80,7 @@ InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard);
 SDCardMenu sdcard_menu(sdcard, settings);
-#ifdef FIRMWARE_UPDATE
 FirmwareMenu firmware_menu(sdcard);
-#endif
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 ESensorDevicesAction esensordevs_act(diagnostic_menu, "Sensor devices", sensors);
 ESensorSensorsAction esensors_act(diagnostic_menu, "Environmental sensors", sensors);
@@ -114,7 +112,7 @@ void setup() {
   printTeeGridBanner(SOFTWARE);
   Wire.begin();
   Wire1.begin();
-  rtclock.init();
+  rtclock.begin();
   rtclock.check();
   sdcard.begin();
   files.check();

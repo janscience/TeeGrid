@@ -85,6 +85,7 @@ void setup() {
   printTeeGridBanner(SOFTWARE);
   sdcard.begin();
   rtclock.setFromFile(sdcard);
+  rtclock.begin();
   rtclock.report();
 #ifdef SENSORS
   setupSensors();

@@ -70,6 +70,7 @@ void setup() {
   while (!Serial && millis() < 2000) {};
   blink.switchOff();
   printTeeGridBanner(SOFTWARE);
+  rtclock.begin();
   rtclock.check();
   sdcard.begin();
   rtclock.setFromFile(sdcard);

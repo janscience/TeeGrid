@@ -112,7 +112,7 @@ void setup() {
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
   Wire.begin();
-  rtclock.init();
+  rtclock.begin();
   rtclock.check();
   sdcard.begin();
   files.check();
