@@ -31,6 +31,14 @@ from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QSpacerItem
 from PyQt5.QtWidgets import QWidget, QFrame, QPushButton, QSizePolicy
 from PyQt5.QtWidgets import QAction, QShortcut
 from PyQt5.QtWidgets import QCheckBox, QLineEdit, QComboBox, QSpinBox, QAbstractSpinBox
+try:
+    from PyQt5.QtChart import QChart, QChartView
+    from PyQt5.QtChart import QValueAxis, QDateTimeAxis, QLineSeries
+except ImportError:
+    print('ERROR: failed to import PyQtChart module !')
+    print('Install it using')
+    print('> pip install PyQtChart')
+    exit()
 
 
 __version__ = '1.0'
@@ -823,14 +831,25 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         
 class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     
-    def __init__(self, *args, **kwargs):
+    sigPlot = Signal()
+    
+    def __init__(self, plot, *args, **kwargs):
         super(QFrame, self).__init__(*args, **kwargs)
         self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        self.plot = plot
         self.box = QGridLayout(self)
         title = QLabel('<b>Environmental sensors</b>', self)
         title.setSizePolicy(QSizePolicy.Policy.Preferred,
                             QSizePolicy.Policy.Fixed)
-        self.box.addWidget(title, 0, 0, 1, 5)
+        self.box.addWidget(title, 0, 0, 1, 4)
+        self.plotb = QPushButton('Plot', self)
+        bbox = self.fontMetrics().boundingRect('Plot')
+        self.plotb.setMaximumWidth(bbox.width() + 10)
+        self.plotb.setMaximumHeight(bbox.height() + 2)
+        self.plotb.clicked.connect(self.sigPlot)
+        key = QShortcut('Ctrl+S', self)
+        key.activated.connect(self.plotb.animateClick)
+        self.box.addWidget(self.plotb, 0, 5, Qt.AlignRight)
         self.box.setRowStretch(0, 1)
         self.row = 1
         self.add('<b>Parameter</b>', 0)
@@ -886,7 +905,7 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.sigReadRequest.emit(self, 'values',
                                      self.values_get, 'select')
             self.state = 0
-            self.timer.start(10000 - self.delay)
+            self.timer.start(5000 - self.delay)
 
     def add(self, text, col):
         label = QLabel(text)
@@ -919,9 +938,11 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 name, value = [sx.strip() for sx in s.split('=')]
                 if name in self.sensors:
                     unit, row = self.sensors[name]
+                    value = value.replace(unit, '')
                     if self.box.itemAtPosition(row, 2) is not None:
                         w = self.box.itemAtPosition(row, 2).widget()
-                        w.setText('<b>' + value.replace(unit, '') + '</b>')
+                        w.setText('<b>' + value + '</b>')
+                    self.plot.addData(name, float(value))
             return
         self.sensors = {}
         if int(stream[0].split()[0]) == 0:
@@ -952,6 +973,7 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 device = ss[dev_idx - 1]
                 self.add(device, 5)
             self.sensors[name] = (unit, self.row)
+            self.plot.addSensor(name, unit)
             self.box.setRowStretch(self.row, 1)
             self.row += 1
             self.box.addItem(QSpacerItem(0, 0,
@@ -1287,6 +1309,70 @@ class YesNoQuestion(QWidget):
         
     def reject(self):
         self.yes = False
+
+
+class Plot(QWidget):
+    
+    def __init__(self, title, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title = QLabel(title, self)
+        self.vbox = QVBoxLayout()
+        self.vbox.setContentsMargins(0, 0, 0, 0)
+        self.sensors = {}
+        self.done = QPushButton(self)
+        self.done.setText('&Done')
+        self.done.setToolTip('Close the plot (Return, Escape, Space)')
+        key = QShortcut(QKeySequence.Cancel, self)
+        key.activated.connect(self.done.animateClick)
+        key = QShortcut(Qt.Key_Space, self)
+        key.activated.connect(self.done.animateClick)
+        key = QShortcut(Qt.Key_Return, self)
+        key.activated.connect(self.done.animateClick)
+        vbox = QVBoxLayout(self)
+        vbox.addWidget(self.title)
+        vbox.addLayout(self.vbox)
+        vbox.addWidget(self.done)
+
+    def addSensor(self, name, unit):
+        if len(self.sensors) > 2:
+            return
+        chart = QChart()
+        chart.legend().hide()
+        data = QLineSeries()
+        chart.addSeries(data)
+        xaxis = QValueAxis()
+        xaxis.setTitleText('Time')
+        xaxis.setLabelFormat('%.0f')
+        chart.addAxis(xaxis, Qt.AlignBottom)
+        data.attachAxis(xaxis)
+        yaxis = QValueAxis()
+        yaxis.setTitleText(f'{name} [{unit}]')
+        chart.addAxis(yaxis, Qt.AlignLeft)
+        data.attachAxis(yaxis)
+        chartv = QChartView(self)
+        chartv.setChart(chart)
+        self.vbox.addWidget(chartv)
+        self.sensors[name] = [chart, xaxis, yaxis, None, None, data]
+
+    def addData(self, name, value):
+        if not name in self.sensors:
+            return
+        chart, xaxis, yaxis, ymin, ymax, data = self.sensors[name]
+        xaxis.setMax(max(10, data.count() + 1))
+        xaxis.setTickAnchor(0)
+        xaxis.setTickInterval(xaxis.max()//5)
+        if ymin is None or value < ymin:
+            ymin = value - 1
+        if ymax is None or value > ymax:
+            ymax = value + 1
+        yaxis.setMin(ymin)
+        yaxis.setMax(ymax)
+        self.sensors[name][3] = ymin
+        self.sensors[name][4] = ymax
+        data.append(data.count(), value)
+
+    def display(self, title, stream):
+        self.done.setEnabled(True)
 
 
 class SpinBox(QAbstractSpinBox):
@@ -1808,6 +1894,9 @@ class Logger(QWidget):
         vbox.addWidget(self.configuration)
         vbox.addWidget(self.cstack)
         
+        self.plot = Plot('Environmental sensors', self)
+        self.plot.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
+        
         self.loggerinfo = LoggerInfo(self)
         self.loggerinfo.sigReadRequest.connect(self.read_request)
         self.loggerinfo.psramtest.sigReadRequest.connect(self.read_request)
@@ -1816,8 +1905,9 @@ class Logger(QWidget):
         self.loggerinfo.rtclock.sigWriteRequest.connect(self.write_request)
         self.hardwareinfo = HardwareInfo(self)
         self.hardwareinfo.sigReadRequest.connect(self.read_request)
-        self.sensorsinfo = SensorsInfo(self)
+        self.sensorsinfo = SensorsInfo(self.plot, self)
         self.sensorsinfo.sigReadRequest.connect(self.read_request)
+        self.sensorsinfo.sigPlot.connect(self.display_plot)
         self.sdcardinfo = SDCardInfo(self)
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.sigDisplayTerminal.connect(self.display_terminal)
@@ -1840,6 +1930,7 @@ class Logger(QWidget):
         self.stack.addWidget(self.msg)
         self.stack.addWidget(self.boxw)
         self.stack.addWidget(self.term)
+        self.stack.addWidget(self.plot)
         self.stack.setCurrentWidget(self.msg)
         vbox = QVBoxLayout(self)
         vbox.addWidget(logoboxw)
@@ -1903,6 +1994,9 @@ class Logger(QWidget):
     def display_message(self, text):
         self.message.display(text)
         self.cstack.setCurrentWidget(self.message)
+
+    def display_plot(self):
+        self.stack.setCurrentWidget(self.plot)
 
     def close_question(self):
         if self.last_focus is not None:
