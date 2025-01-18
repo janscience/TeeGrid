@@ -2139,10 +2139,8 @@ class Logger(QWidget):
                    self.input[k].lower().startswith(self.menu_key.lower()):
                     list_start = k + 1
                 elif list_end is None and \
-                     self.input[k].lower().startswith('select new value'):
-                    list_end = k
-                elif list_end is None and \
-                     self.input[k].lower().startswith('enter new value'):
+                     'new value' in self.input[k].lower() and \
+                     self.input[k].rstrip()[-1] == ':':
                     list_end = k
             if list_start is None or list_end is None:
                 return
