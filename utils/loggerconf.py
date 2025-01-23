@@ -23,7 +23,7 @@ try:
     from PyQt5.QtCore import Signal
 except ImportError:
     from PyQt5.QtCore import pyqtSignal as Signal
-from PyQt5.QtCore import Qt, QObject, QTimer, QDateTime, QLocale
+from PyQt5.QtCore import Qt, QObject, QTimer, QElapsedTimer, QDateTime, QLocale
 from PyQt5.QtGui import QKeySequence, QFont, QPalette, QColor, QValidator
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtWidgets import QStackedWidget, QLabel, QScrollArea
@@ -32,12 +32,11 @@ from PyQt5.QtWidgets import QWidget, QFrame, QPushButton, QSizePolicy
 from PyQt5.QtWidgets import QAction, QShortcut
 from PyQt5.QtWidgets import QCheckBox, QLineEdit, QComboBox, QSpinBox, QAbstractSpinBox
 try:
-    from PyQt5.QtChart import QChart, QChartView
-    from PyQt5.QtChart import QValueAxis, QDateTimeAxis, QLineSeries
+    import pyqtgraph as pg
 except ImportError:
-    print('ERROR: failed to import PyQtChart module !')
+    print('ERROR: failed to import pyqtgraph module !')
     print('Install it using')
-    print('> pip install PyQtChart')
+    print('> pip install pyqtgraph')
     exit()
 
 
@@ -905,7 +904,7 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.sigReadRequest.emit(self, 'values',
                                      self.values_get, 'select')
             self.state = 0
-            self.timer.start(5000 - self.delay)
+            self.timer.start(max(0, 2000 - self.delay))
 
     def add(self, text, col):
         label = QLabel(text)
@@ -1316,8 +1315,12 @@ class Plot(QWidget):
     def __init__(self, title, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title = QLabel(title, self)
-        self.vbox = QVBoxLayout()
-        self.vbox.setContentsMargins(0, 0, 0, 0)
+        self.vbox = pg.GraphicsLayoutWidget()
+        fm = self.fontMetrics()
+        self.vbox.ci.setSpacing(3*fm.averageCharWidth())
+        self.scroll = QScrollArea(self)
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setWidget(self.vbox)
         self.sensors = {}
         self.done = QPushButton(self)
         self.done.setText('&Done')
@@ -1330,46 +1333,36 @@ class Plot(QWidget):
         key.activated.connect(self.done.animateClick)
         vbox = QVBoxLayout(self)
         vbox.addWidget(self.title)
-        vbox.addLayout(self.vbox)
+        vbox.addWidget(self.scroll)
         vbox.addWidget(self.done)
+        self.time = QElapsedTimer();
 
     def addSensor(self, name, unit):
-        if len(self.sensors) > 2:
-            return
-        chart = QChart()
-        chart.legend().hide()
-        data = QLineSeries()
-        chart.addSeries(data)
-        xaxis = QValueAxis()
-        xaxis.setTitleText('Time')
-        xaxis.setLabelFormat('%.0f')
-        chart.addAxis(xaxis, Qt.AlignBottom)
-        data.attachAxis(xaxis)
-        yaxis = QValueAxis()
-        yaxis.setTitleText(f'{name} [{unit}]')
-        chart.addAxis(yaxis, Qt.AlignLeft)
-        data.attachAxis(yaxis)
-        chartv = QChartView(self)
-        chartv.setChart(chart)
-        self.vbox.addWidget(chartv)
-        self.sensors[name] = [chart, xaxis, yaxis, None, None, data]
+        plot = self.vbox.addPlot(row=len(self.sensors), col=0,
+                                 labels=dict(left=(name, unit),
+                                             bottom=('time', 's')),
+                                 enableMenu=False)
+        fm = self.fontMetrics()
+        plot.getAxis('left').setWidth(10*fm.averageCharWidth())
+        plot.getAxis('bottom').enableAutoSIPrefix(True)
+        plot.getViewBox().setMouseMode(pg.ViewBox.PanMode)
+        plot.setMenuEnabled(False)
+        plot.addItem(pg.PlotDataItem(pen=dict(color='#DD0000', width=2)))
+        for p, _, _ in self.sensors.values():
+            p.getAxis('bottom').setStyle(showValues=False)
+            p.setLabel('bottom', '', '')
+            p.setXLink(plot.getViewBox())
+        self.sensors[name] = [plot, [], []]
+        self.vbox.setMinimumHeight(len(self.sensors)*20*fm.averageCharWidth())
+        self.time.start()
 
     def addData(self, name, value):
         if not name in self.sensors:
             return
-        chart, xaxis, yaxis, ymin, ymax, data = self.sensors[name]
-        xaxis.setMax(max(10, data.count() + 1))
-        xaxis.setTickAnchor(0)
-        xaxis.setTickInterval(xaxis.max()//5)
-        if ymin is None or value < ymin:
-            ymin = value - 1
-        if ymax is None or value > ymax:
-            ymax = value + 1
-        yaxis.setMin(ymin)
-        yaxis.setMax(ymax)
-        self.sensors[name][3] = ymin
-        self.sensors[name][4] = ymax
-        data.append(data.count(), value)
+        plot, time, data = self.sensors[name]
+        time.append(0.001*self.time.elapsed())
+        data.append(value)
+        plot.listDataItems()[0].setData(time, data)
 
     def display(self, title, stream):
         self.done.setEnabled(True)
