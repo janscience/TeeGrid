@@ -1311,13 +1311,18 @@ class YesNoQuestion(QWidget):
 
 
 class Plot(QWidget):
-    
+
+    # from https://github.com/bendalab/plottools/blob/master/src/plottools/colors.py :
+    colors_vivid = ['#D71000', '#FF9000', '#FFF700', '#B0FF00',
+                    '#30D700', '#00A050', '#00D0B0', '#00B0C7',
+                    '#1040C0', '#8000C0', '#B000B0', '#E00080']
+  
     def __init__(self, title, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title = QLabel(title, self)
         self.vbox = pg.GraphicsLayoutWidget()
         fm = self.fontMetrics()
-        self.vbox.ci.setSpacing(3*fm.averageCharWidth())
+        self.vbox.ci.setSpacing(2*fm.averageCharWidth())
         self.scroll = QScrollArea(self)
         self.scroll.setWidgetResizable(True)
         self.scroll.setWidget(self.vbox)
@@ -1338,22 +1343,36 @@ class Plot(QWidget):
         self.time = QElapsedTimer();
 
     def addSensor(self, name, unit):
+        # color:
+        ns = len(self.sensors)
+        nc = len(self.colors_vivid)
+        i = (ns % (nc // 2))*2      # every second color
+        i += (ns // (nc // 2)) % 2  # start at index 1 for odd cycles
+        color = self.colors_vivid[i]
+        text_color = self.palette().color(QPalette.WindowText)
+        # add plot:
         plot = self.vbox.addPlot(row=len(self.sensors), col=0,
-                                 labels=dict(left=(name, unit),
-                                             bottom=('time', 's')),
                                  enableMenu=False)
         fm = self.fontMetrics()
+        plot.showGrid(True, True, 0.5)
         plot.getAxis('left').setWidth(10*fm.averageCharWidth())
+        plot.getAxis('left').setLabel(name, unit, color=text_color)
+        plot.getAxis('left').setPen('white')
+        plot.getAxis('left').setTextPen(text_color)
         plot.getAxis('bottom').enableAutoSIPrefix(True)
+        plot.getAxis('bottom').setLabel('time', 's', color=text_color)
+        plot.getAxis('bottom').setPen('white')
+        plot.getAxis('bottom').setTextPen(text_color)
         plot.getViewBox().setMouseMode(pg.ViewBox.PanMode)
+        plot.getViewBox().setBackgroundColor('black')
         plot.setMenuEnabled(False)
-        plot.addItem(pg.PlotDataItem(pen=dict(color='#DD0000', width=2)))
+        plot.addItem(pg.PlotDataItem(pen=dict(color=color, width=3)))
         for p, _, _ in self.sensors.values():
             p.getAxis('bottom').setStyle(showValues=False)
             p.setLabel('bottom', '', '')
             p.setXLink(plot.getViewBox())
         self.sensors[name] = [plot, [], []]
-        self.vbox.setMinimumHeight(len(self.sensors)*20*fm.averageCharWidth())
+        self.vbox.setMinimumHeight(len(self.sensors)*18*fm.averageCharWidth())
         self.time.start()
 
     def addData(self, name, value):
@@ -1362,7 +1381,8 @@ class Plot(QWidget):
         plot, time, data = self.sensors[name]
         time.append(0.001*self.time.elapsed())
         data.append(value)
-        plot.listDataItems()[0].setData(time, data)
+        if len(data) > 1:
+            plot.listDataItems()[0].setData(time, data)
 
     def display(self, title, stream):
         self.done.setEnabled(True)
@@ -2498,6 +2518,11 @@ class LoggerConf(QMainWindow):
         quit.triggered.connect(QApplication.quit)
         self.addAction(quit)
         self.logger = None
+        # default colors:
+        back_color = self.palette().color(QPalette.Window)
+        text_color = self.palette().color(QPalette.WindowText)
+        pg.setConfigOption('background', back_color)
+        pg.setConfigOption('foreground', text_color)
 
     def activate(self, device, model, serial_number):
         self.logger = Logger(self)
