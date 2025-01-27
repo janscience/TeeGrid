@@ -25,6 +25,7 @@
 #define REFERENCE     ADC_REFERENCE::REF_3V3
 int8_t channels0 [] = {A4, A5, A6, A7, -1, A4, A5, A6, A7, A8, A9};      // input pins for ADC0
 int8_t channels1 [] = {A2, A3, A20, A22, -1, A20, A22, A12, A13};  // input pins for ADC1
+#define PREGAIN       1
 
 #define PATH          "recordings"       // folder where to store the recordings
 #define DEVICEID      1                  // may be used for naming files
@@ -37,7 +38,7 @@ int signalPins[] = {9, 8, 7, 6, 5, 4, 3, 2, -1}; // pins where to put out test s
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid 8channel-logger v2.8"
+#define SOFTWARE      "TeeGrid 8channel-logger v2.10"
 
 DATA_BUFFER(AIBuffer, NAIBuffer, 256*256)
 InputADC aidata(AIBuffer, NAIBuffer, channels0, channels1);
@@ -51,11 +52,12 @@ Configurator config;
 Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
 	          INITIAL_DELAY, false, PULSE_FREQUENCY);
 InputADCSettings aisettings(SAMPLING_RATE, BITS, AVERAGING,
-			    CONVERSION, SAMPLING, REFERENCE);
+			    CONVERSION, SAMPLING, REFERENCE, PREGAIN);
 DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard);
 SDCardMenu sdcard_menu(sdcard, settings);
 FirmwareMenu firmware_menu(sdcard);
+InputMenu input_menu(aidata, aisettings);
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &aidata, &rtclock);
 HelpAction help_act(config, "Help");
 
@@ -76,6 +78,8 @@ void setup() {
   rtclock.setFromFile(sdcard);
   settings.enable("InitialDelay");
   settings.enable("PulseFreq");
+  aisettings.disable("Reference");
+  aisettings.enable("Pregain");
   config.setConfigFile("teegrid.cfg");
   config.load(sdcard);
   if (Serial)

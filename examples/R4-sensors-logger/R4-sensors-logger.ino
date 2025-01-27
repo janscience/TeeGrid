@@ -46,7 +46,7 @@
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid R4-sensors-logger v2.0"
+#define SOFTWARE      "TeeGrid R4-sensors-logger v2.2"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -81,6 +81,7 @@ DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard);
 SDCardMenu sdcard_menu(sdcard, settings);
 FirmwareMenu firmware_menu(sdcard);
+InputMenu input_menu(aidata, aisettings);
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 ESensorDevicesAction esensordevs_act(diagnostic_menu, "Sensor devices", sensors);
 ESensorSensorsAction esensors_act(diagnostic_menu, "Environmental sensors", sensors);

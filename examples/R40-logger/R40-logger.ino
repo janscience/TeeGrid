@@ -34,7 +34,7 @@
 
 #define LED_PIN       31
 
-#define SOFTWARE      "TeeGrid R40-logger v2.0"
+#define SOFTWARE      "TeeGrid R40-logger v2.2"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -58,6 +58,7 @@ DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard);
 SDCardMenu sdcard0_menu(sdcard, settings);
 FirmwareMenu firmware_menu(sdcard0);
+InputMenu input_menu(aidata, aisettings);
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &pcm1, &pcm2, &rtclock);
 HelpAction help_act(config, "Help");
 

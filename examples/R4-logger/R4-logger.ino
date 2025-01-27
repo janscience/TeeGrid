@@ -46,7 +46,7 @@
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid R4-logger v2.0"
+#define SOFTWARE      "TeeGrid R4-logger v2.2"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -82,6 +82,7 @@ SDCardMenu sdcard0_menu(sdcard0, settings);
 SDCardMenu sdcard1_menu(sdcard1, settings);
 #endif
 FirmwareMenu firmware_menu(sdcard0);
+InputMenu input_menu(aidata, aisettings);
 #ifdef BACKUP_SDCARD
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, sdcard1, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 #else
