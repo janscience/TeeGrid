@@ -742,6 +742,36 @@ class Benchmark(ReportButton):
             self.value.setText(f'<b>{np.mean(speeds):.2f}MB/s</b>')
         self.sigDisplayTerminal.emit(title, text)
 
+                
+class InputConfiguration(ReportButton):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__('report input configuration', 'Input',
+                         *args, **kwargs)
+        
+    def read(self, ident, stream, success):
+        while len(stream) > 0 and len(stream[0].strip()) == 0:
+            del stream[0]
+        if not success:
+            return
+        if len(stream) == 0:
+            return
+        title = None
+        text = '<style type="text/css"> th, td { padding: 0 15px; }</style>'
+        text += '<table>'
+        for s in stream:
+            if len(s.strip()) == 0:
+                break
+            ss = s.split(':')
+            key = ss[0].strip()
+            value = ss[1].strip()
+            if len(value) == 0 and title is None:
+                title = stream[0].strip().rstrip(':')
+            else:
+                text += f'<tr><td>{key}</td><td><b>{value}</b></td></tr>'
+        text += '</table>'
+        self.sigDisplayTerminal.emit(title, text)
+
         
 class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     
@@ -767,6 +797,12 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                                      QSizePolicy.Policy.Expanding),
                          self.row, 0)
         self.row += 1
+        self.input_button = InputConfiguration(self)
+        self.input_button.setVisible(False)
+        self.input_button.sigReadRequest.connect(self.sigReadRequest)
+        self.input_button.sigDisplayTerminal.connect(self.sigDisplayTerminal)
+        key = QShortcut('Ctrl+I', self)
+        key.activated.connect(self.input_button.animateClick)
         self.sensors_start_get = None
         self.devices_start_get = None
 
@@ -775,6 +811,7 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.sensors_start_get = self.retrieve('diagnostics>sensor devices', menu)
         if self.devices_start_get is None and self.sensors_start_get is None:
             self.setVisible(False)
+        self.input_button.setup(menu)
 
     def start(self):
         self.row = 3
@@ -798,11 +835,13 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             return
         if int(stream[0].split()[0]) == 0:
             return
+        first_input = True
         for s in stream[1:]:
             if len(s.strip()) == 0:
                 break
             ss = s.split()
-            self.add(ss[0], 0)
+            dev_type = ss[0]
+            self.add(dev_type, 0)
             if 'device' in ss:
                 dev_idx = ss.index('device')
                 device = ss[dev_idx + 1]
@@ -819,6 +858,10 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 id_idx = ss.index('ID')
                 identifier = ' '.join(ss[id_idx + 1:])
                 self.add(identifier, 4)
+            if dev_type == 'input' and first_input:
+                self.input_button.setVisible(True)
+                self.box.addWidget(self.input_button, self.row, 5)
+                first_input = False
             self.box.setRowStretch(self.row, 1)
             self.row += 1
             self.box.addItem(QSpacerItem(0, 0,
@@ -1918,6 +1961,7 @@ class Logger(QWidget):
         self.loggerinfo.rtclock.sigWriteRequest.connect(self.write_request)
         self.hardwareinfo = HardwareInfo(self)
         self.hardwareinfo.sigReadRequest.connect(self.read_request)
+        self.hardwareinfo.sigDisplayTerminal.connect(self.display_terminal)
         self.sensorsinfo = SensorsInfo(self.plot, self)
         self.sensorsinfo.sigReadRequest.connect(self.read_request)
         self.sensorsinfo.sigPlot.connect(self.display_plot)
