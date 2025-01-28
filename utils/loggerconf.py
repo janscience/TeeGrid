@@ -2297,6 +2297,8 @@ class Logger(QWidget):
             if title_mid is not None:
                 s = ''
                 for l in self.input[title_start + 1:title_mid]:
+                    if len(l.strip()) == 0:
+                        continue
                     if len(s) > 0:
                         s += '\n'
                     s += l
