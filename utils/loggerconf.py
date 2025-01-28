@@ -772,10 +772,145 @@ class InputConfiguration(ReportButton):
         text += '</table>'
         self.sigDisplayTerminal.emit(title, text)
 
+                
+class InputData(ReportButton):
+    
+    def __init__(self, plot, *args, **kwargs):
+        super().__init__('record some data', 'Data',
+                         *args, **kwargs)
+        self.plot = plot
+        self.plot.plot.clicked.connect(self.run)
+        
+    def read(self, ident, stream, success):
+        while len(stream) > 0 and len(stream[0].strip()) == 0:
+            del stream[0]
+        if not success:
+            return
+        if len(stream) == 0:
+            return
+        rate = None
+        bits = 16
+        while len(stream) > 0 and (':' in stream[0] or '...' in stream[0]):
+            ss = stream[0].split(':')
+            if 'rate' in ss[0].lower():
+                rate = float(ss[1].strip().replace('Hz', ''))
+            elif 'resolution' in ss[0].lower():
+                bits = int(ss[1].strip().replace('bits', ''))
+            del stream[0]
+        if rate is None:
+            return
+        data = []
+        for s in stream:
+            if len(s.strip()) == 0:
+                break
+            frame = [int(c.strip()) for c in s.split(';')]
+            data.append(frame)
+        self.plot.plot_data(rate, bits, np.array(data))
+
+
+class PlotRecording(QWidget):
+
+    # from https://github.com/bendalab/plottools/blob/master/src/plottools/colors.py :
+    colors_vivid = ['#D71000', '#FF9000', '#FFF700', '#B0FF00',
+                    '#30D700', '#00A050', '#00D0B0', '#00B0C7',
+                    '#1040C0', '#8000C0', '#B000B0', '#E00080']
+  
+    def __init__(self, title, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title = QLabel(title, self)
+        self.vbox = pg.GraphicsLayoutWidget()
+        fm = self.fontMetrics()
+        self.vbox.ci.setSpacing(fm.averageCharWidth())
+        self.scroll = QScrollArea(self)
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setWidget(self.vbox)
+        self.done = QPushButton(self)
+        self.done.setText('&Done')
+        self.done.setToolTip('Close the plot (Escape, Return)')
+        self.plot = QPushButton(self)
+        self.plot.setText('&Plot')
+        self.plot.setToolTip('Record and plot new data (Space, P)')
+        hbox = QHBoxLayout()
+        hbox.setContentsMargins(0, 0, 0, 0)
+        hbox.addWidget(self.plot)
+        hbox.addWidget(self.done)
+        key = QShortcut(QKeySequence.Cancel, self)
+        key.activated.connect(self.done.animateClick)
+        key = QShortcut(Qt.Key_Return, self)
+        key.activated.connect(self.done.animateClick)
+        key = QShortcut(Qt.Key_Space, self)
+        key.activated.connect(self.plot.animateClick)
+        key = QShortcut(Qt.Key_P, self)
+        key.activated.connect(self.plot.animateClick)
+        vbox = QVBoxLayout(self)
+        vbox.addWidget(self.title)
+        vbox.addWidget(self.scroll)
+        vbox.addLayout(hbox)
+
+    def plot_trace(self, channel, time, data, amax):
+        # color:
+        ns = channel + 1
+        nc = len(self.colors_vivid)
+        i = (ns % (nc // 2))*2      # every second color
+        i += (ns // (nc // 2)) % 2  # start at index 1 for odd cycles
+        color = self.colors_vivid[i]
+        text_color = self.palette().color(QPalette.WindowText)
+        # add plot:
+        plot = self.vbox.getItem(channel, 0)
+        if plot is None:
+            plot = self.vbox.addPlot(row=channel, col=0,
+                                     enableMenu=False)
+            fm = self.fontMetrics()
+            plot.showGrid(True, True, 0.5)
+            plot.getAxis('left').setWidth(10*fm.averageCharWidth())
+            plot.getAxis('left').setLabel(f'channel {channel}', color=text_color)
+            plot.getAxis('left').setPen('white')
+            plot.getAxis('left').setTextPen(text_color)
+            plot.getAxis('bottom').enableAutoSIPrefix(True)
+            plot.getAxis('bottom').setLabel('time', 'ms', color=text_color)
+            plot.getAxis('bottom').setPen('white')
+            plot.getAxis('bottom').setTextPen(text_color)
+            plot.getViewBox().setMouseMode(pg.ViewBox.PanMode)
+            plot.getViewBox().setBackgroundColor('black')
+            plot.getViewBox().setLimits(xMin=0, xMax=time[-1] + time[1],
+                                        yMin=-amax, yMax=amax,
+                                        minXRange=time[11],
+                                        maxXRange=time[-1] + time[1],
+                                        minYRange=10,
+                                        maxYRange=2*amax)
+            plot.setMenuEnabled(False)
+            plot.addItem(pg.PlotDataItem(pen=dict(color=color, width=2)))
+        plot.setVisible(True)
+        plot.listDataItems()[0].setData(time, data)
+        plot.getViewBox().setRange(xRange=(0, time[-1] + time[1]),
+                                   yRange=(-amax, amax),
+                                   padding=0)
+
+    def plot_data(self, rate, bits, data):
+        time = np.arange(len(data))*1000/rate
+        for channel in range(data.shape[1]):
+            self.plot_trace(channel, time, data[:, channel], 2**bits)
+        plot = self.vbox.getItem(data.shape[1] - 1, 0)
+        for channel in range(data.shape[1] - 1):
+            p = self.vbox.getItem(channel, 0)
+            p.getAxis('bottom').setStyle(showValues=False)
+            p.setLabel('bottom', '', '')
+            p.setXLink(plot.getViewBox())
+            p.setYLink(plot.getViewBox())
+        for row in range(data.shape[1], data.shape[1] + 1000):
+            plot = self.vbox.getItem(row, 0)
+            if plot is None:
+                break
+            plot.setVisible(False)
+        fm = self.fontMetrics()
+        self.vbox.setMinimumHeight(data.shape[1]*18*fm.averageCharWidth())
+    
         
 class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     
-    def __init__(self, *args, **kwargs):
+    sigPlot = Signal()
+    
+    def __init__(self, plot, *args, **kwargs):
         super(QFrame, self).__init__(*args, **kwargs)
         self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.box = QGridLayout(self)
@@ -803,6 +938,12 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.input_button.sigDisplayTerminal.connect(self.sigDisplayTerminal)
         key = QShortcut('Ctrl+I', self)
         key.activated.connect(self.input_button.animateClick)
+        self.data_button = InputData(plot, self)
+        self.data_button.setVisible(False)
+        self.data_button.sigReadRequest.connect(self.sigReadRequest)
+        self.data_button.clicked.connect(self.sigPlot)
+        key = QShortcut('Ctrl+D', self)
+        key.activated.connect(self.data_button.animateClick)
         self.sensors_start_get = None
         self.devices_start_get = None
 
@@ -812,6 +953,7 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         if self.devices_start_get is None and self.sensors_start_get is None:
             self.setVisible(False)
         self.input_button.setup(menu)
+        self.data_button.setup(menu)
 
     def start(self):
         self.row = 3
@@ -859,8 +1001,13 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 identifier = ' '.join(ss[id_idx + 1:])
                 self.add(identifier, 4)
             if dev_type == 'input' and first_input:
+                hbox = QHBoxLayout()
+                hbox.setContentsMargins(0, 0, 0, 0)
+                hbox.addWidget(self.input_button)
+                hbox.addWidget(self.data_button)
+                self.box.addLayout(hbox, self.row, 4)
                 self.input_button.setVisible(True)
-                self.box.addWidget(self.input_button, self.row, 5)
+                self.data_button.setVisible(True)
                 first_input = False
             self.box.setRowStretch(self.row, 1)
             self.row += 1
@@ -870,6 +1017,81 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                              self.row, 0)
             self.row += 1
         
+
+class PlotSensors(QWidget):
+
+    # from https://github.com/bendalab/plottools/blob/master/src/plottools/colors.py :
+    colors_vivid = ['#D71000', '#FF9000', '#FFF700', '#B0FF00',
+                    '#30D700', '#00A050', '#00D0B0', '#00B0C7',
+                    '#1040C0', '#8000C0', '#B000B0', '#E00080']
+  
+    def __init__(self, title, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.title = QLabel(title, self)
+        self.vbox = pg.GraphicsLayoutWidget()
+        fm = self.fontMetrics()
+        self.vbox.ci.setSpacing(2*fm.averageCharWidth())
+        self.scroll = QScrollArea(self)
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setWidget(self.vbox)
+        self.sensors = {}
+        self.done = QPushButton(self)
+        self.done.setText('&Done')
+        self.done.setToolTip('Close the plot (Return, Escape, Space)')
+        key = QShortcut(QKeySequence.Cancel, self)
+        key.activated.connect(self.done.animateClick)
+        key = QShortcut(Qt.Key_Space, self)
+        key.activated.connect(self.done.animateClick)
+        key = QShortcut(Qt.Key_Return, self)
+        key.activated.connect(self.done.animateClick)
+        vbox = QVBoxLayout(self)
+        vbox.addWidget(self.title)
+        vbox.addWidget(self.scroll)
+        vbox.addWidget(self.done)
+        self.time = QElapsedTimer();
+
+    def addSensor(self, name, unit):
+        # color:
+        ns = len(self.sensors)
+        nc = len(self.colors_vivid)
+        i = (ns % (nc // 2))*2      # every second color
+        i += (ns // (nc // 2)) % 2  # start at index 1 for odd cycles
+        color = self.colors_vivid[i]
+        text_color = self.palette().color(QPalette.WindowText)
+        # add plot:
+        plot = self.vbox.addPlot(row=len(self.sensors), col=0,
+                                 enableMenu=False)
+        fm = self.fontMetrics()
+        plot.showGrid(True, True, 0.5)
+        plot.getAxis('left').setWidth(10*fm.averageCharWidth())
+        plot.getAxis('left').setLabel(name, unit, color=text_color)
+        plot.getAxis('left').setPen('white')
+        plot.getAxis('left').setTextPen(text_color)
+        plot.getAxis('bottom').enableAutoSIPrefix(True)
+        plot.getAxis('bottom').setLabel('time', 's', color=text_color)
+        plot.getAxis('bottom').setPen('white')
+        plot.getAxis('bottom').setTextPen(text_color)
+        plot.getViewBox().setMouseMode(pg.ViewBox.PanMode)
+        plot.getViewBox().setBackgroundColor('black')
+        plot.setMenuEnabled(False)
+        plot.addItem(pg.PlotDataItem(pen=dict(color=color, width=3)))
+        for p, _, _ in self.sensors.values():
+            p.getAxis('bottom').setStyle(showValues=False)
+            p.setLabel('bottom', '', '')
+            p.setXLink(plot.getViewBox())
+        self.sensors[name] = [plot, [], []]
+        self.vbox.setMinimumHeight(len(self.sensors)*18*fm.averageCharWidth())
+        self.time.start()
+
+    def addData(self, name, value):
+        if not name in self.sensors:
+            return
+        plot, time, data = self.sensors[name]
+        time.append(0.001*self.time.elapsed())
+        data.append(value)
+        if len(data) > 1:
+            plot.listDataItems()[0].setData(time, data)
+
         
 class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     
@@ -1040,8 +1262,8 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.root.setToolTip('List files in root directory (Ctrl+O)')
         self.recordings = ListFiles()
         self.recordings.setToolTip('List all recordings (Ctrl+R)')
-        self.eraserecordings = ListFiles('&Delete')
-        self.eraserecordings.setToolTip('Delete all recordings (Ctrl+D)')
+        self.eraserecordings = ListFiles('Delete')
+        self.eraserecordings.setToolTip('Delete all recordings (Ctrl+U)')
         self.bench = Benchmark()
         self.bench.setToolTip('Write and read data rates of SD card (Ctrl+W)')
 
@@ -1076,7 +1298,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         key.activated.connect(self.root.animateClick)
         key = QShortcut('Ctrl+R', self)
         key.activated.connect(self.recordings.animateClick)
-        key = QShortcut('Ctrl+D', self)
+        key = QShortcut('Ctrl+U', self)
         key.activated.connect(self.eraserecordings.animateClick)
         key = QShortcut('Ctrl+W', self)
         key.activated.connect(self.bench.animateClick)
@@ -1351,84 +1573,6 @@ class YesNoQuestion(QWidget):
         
     def reject(self):
         self.yes = False
-
-
-class Plot(QWidget):
-
-    # from https://github.com/bendalab/plottools/blob/master/src/plottools/colors.py :
-    colors_vivid = ['#D71000', '#FF9000', '#FFF700', '#B0FF00',
-                    '#30D700', '#00A050', '#00D0B0', '#00B0C7',
-                    '#1040C0', '#8000C0', '#B000B0', '#E00080']
-  
-    def __init__(self, title, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.title = QLabel(title, self)
-        self.vbox = pg.GraphicsLayoutWidget()
-        fm = self.fontMetrics()
-        self.vbox.ci.setSpacing(2*fm.averageCharWidth())
-        self.scroll = QScrollArea(self)
-        self.scroll.setWidgetResizable(True)
-        self.scroll.setWidget(self.vbox)
-        self.sensors = {}
-        self.done = QPushButton(self)
-        self.done.setText('&Done')
-        self.done.setToolTip('Close the plot (Return, Escape, Space)')
-        key = QShortcut(QKeySequence.Cancel, self)
-        key.activated.connect(self.done.animateClick)
-        key = QShortcut(Qt.Key_Space, self)
-        key.activated.connect(self.done.animateClick)
-        key = QShortcut(Qt.Key_Return, self)
-        key.activated.connect(self.done.animateClick)
-        vbox = QVBoxLayout(self)
-        vbox.addWidget(self.title)
-        vbox.addWidget(self.scroll)
-        vbox.addWidget(self.done)
-        self.time = QElapsedTimer();
-
-    def addSensor(self, name, unit):
-        # color:
-        ns = len(self.sensors)
-        nc = len(self.colors_vivid)
-        i = (ns % (nc // 2))*2      # every second color
-        i += (ns // (nc // 2)) % 2  # start at index 1 for odd cycles
-        color = self.colors_vivid[i]
-        text_color = self.palette().color(QPalette.WindowText)
-        # add plot:
-        plot = self.vbox.addPlot(row=len(self.sensors), col=0,
-                                 enableMenu=False)
-        fm = self.fontMetrics()
-        plot.showGrid(True, True, 0.5)
-        plot.getAxis('left').setWidth(10*fm.averageCharWidth())
-        plot.getAxis('left').setLabel(name, unit, color=text_color)
-        plot.getAxis('left').setPen('white')
-        plot.getAxis('left').setTextPen(text_color)
-        plot.getAxis('bottom').enableAutoSIPrefix(True)
-        plot.getAxis('bottom').setLabel('time', 's', color=text_color)
-        plot.getAxis('bottom').setPen('white')
-        plot.getAxis('bottom').setTextPen(text_color)
-        plot.getViewBox().setMouseMode(pg.ViewBox.PanMode)
-        plot.getViewBox().setBackgroundColor('black')
-        plot.setMenuEnabled(False)
-        plot.addItem(pg.PlotDataItem(pen=dict(color=color, width=3)))
-        for p, _, _ in self.sensors.values():
-            p.getAxis('bottom').setStyle(showValues=False)
-            p.setLabel('bottom', '', '')
-            p.setXLink(plot.getViewBox())
-        self.sensors[name] = [plot, [], []]
-        self.vbox.setMinimumHeight(len(self.sensors)*18*fm.averageCharWidth())
-        self.time.start()
-
-    def addData(self, name, value):
-        if not name in self.sensors:
-            return
-        plot, time, data = self.sensors[name]
-        time.append(0.001*self.time.elapsed())
-        data.append(value)
-        if len(data) > 1:
-            plot.listDataItems()[0].setData(time, data)
-
-    def display(self, title, stream):
-        self.done.setEnabled(True)
 
 
 class SpinBox(QAbstractSpinBox):
@@ -1950,8 +2094,10 @@ class Logger(QWidget):
         vbox.addWidget(self.configuration)
         vbox.addWidget(self.cstack)
         
-        self.plot = Plot('Environmental sensors', self)
-        self.plot.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
+        self.plot_recording = PlotRecording('Recording from analog input', self)
+        self.plot_recording.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
+        self.plot_sensors = PlotSensors('Environmental sensors', self)
+        self.plot_sensors.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
         
         self.loggerinfo = LoggerInfo(self)
         self.loggerinfo.sigReadRequest.connect(self.read_request)
@@ -1959,12 +2105,14 @@ class Logger(QWidget):
         self.loggerinfo.psramtest.sigDisplayTerminal.connect(self.display_terminal)
         self.loggerinfo.rtclock.sigReadRequest.connect(self.read_request)
         self.loggerinfo.rtclock.sigWriteRequest.connect(self.write_request)
-        self.hardwareinfo = HardwareInfo(self)
+        self.hardwareinfo = HardwareInfo(self.plot_recording, self)
+        self.hardwareinfo.sigPlot.connect(self.display_recording_plot)
         self.hardwareinfo.sigReadRequest.connect(self.read_request)
         self.hardwareinfo.sigDisplayTerminal.connect(self.display_terminal)
-        self.sensorsinfo = SensorsInfo(self.plot, self)
+        self.hardwareinfo.sigPlot.connect(self.display_recording_plot)
+        self.sensorsinfo = SensorsInfo(self.plot_sensors, self)
         self.sensorsinfo.sigReadRequest.connect(self.read_request)
-        self.sensorsinfo.sigPlot.connect(self.display_plot)
+        self.sensorsinfo.sigPlot.connect(self.display_sensors_plot)
         self.sdcardinfo = SDCardInfo(self)
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.sigDisplayTerminal.connect(self.display_terminal)
@@ -1987,7 +2135,8 @@ class Logger(QWidget):
         self.stack.addWidget(self.msg)
         self.stack.addWidget(self.boxw)
         self.stack.addWidget(self.term)
-        self.stack.addWidget(self.plot)
+        self.stack.addWidget(self.plot_recording)
+        self.stack.addWidget(self.plot_sensors)
         self.stack.setCurrentWidget(self.msg)
         vbox = QVBoxLayout(self)
         vbox.addWidget(logoboxw)
@@ -2052,8 +2201,11 @@ class Logger(QWidget):
         self.message.display(text)
         self.cstack.setCurrentWidget(self.message)
 
-    def display_plot(self):
-        self.stack.setCurrentWidget(self.plot)
+    def display_recording_plot(self):
+        self.stack.setCurrentWidget(self.plot_recording)
+
+    def display_sensors_plot(self):
+        self.stack.setCurrentWidget(self.plot_sensors)
 
     def close_question(self):
         if self.last_focus is not None:
@@ -2433,8 +2585,9 @@ class Logger(QWidget):
                         self.request_stop_index = k
                         self.read_state += 1
                         break
-            if self.request_ident[:3] == 'run':
-                if self.request_target is not None:
+            if self.request_ident[:3] == 'run' and \
+               self.request_target is not None and \
+               self.request_stop_index != 0:
                     self.request_target.read(self.request_ident,
                                              self.input,
                                              self.request_stop_index == 0)
