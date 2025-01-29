@@ -95,12 +95,17 @@ bool R4SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
 }
 
 
-void R4SetupPCMs(InputTDM &aidata, ControlPCM186x **pcms, size_t ncontrols,
-		 const InputTDMSettings &aisettings, Stream &stream) {
-  aidata.setSwapLR();
+void R4SetupPCMs(Input &aidata, const InputSettings &aisettings,
+		 Device **controls, size_t ncontrols, Stream &stream) {
+  aidata.clearChannels();
+  ControlPCM186x **pcms = reinterpret_cast<ControlPCM186x**>(controls);
+  static_cast<InputTDM&>(aidata).setSwapLR();
   for (size_t k=0; k<ncontrols; k++) {
     stream.printf("Setup PCM186x %d on TDM %d: ", k, pcms[k]->TDMBus());
-    R4SetupPCM(aidata, *pcms[k], k%2==1, aisettings);
+    R4SetupPCM(static_cast<InputTDM&>(aidata),
+	       static_cast<ControlPCM186x&>(*pcms[k]), k%2==1,
+	       static_cast<const InputTDMSettings&>(aisettings));
   }
+  stream.println();
 }
 

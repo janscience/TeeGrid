@@ -21,8 +21,9 @@ bool R4SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
 		uint32_t rate, int nchannels, float gain);
 bool R4SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
 		const InputTDMSettings &aisettings);
-void R4SetupPCMs(InputTDM &aidata, ControlPCM186x **pcms, size_t ncontrols,
-		 const InputTDMSettings &aisettings, Stream &stream=Serial);
+void R4SetupPCMs(Input &aidata, const InputSettings &aisettings,
+		 Device **controls, size_t ncontrols,
+		 Stream &stream=Serial);
 
 
 #endif

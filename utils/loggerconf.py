@@ -761,12 +761,16 @@ class InputConfiguration(ReportButton):
         text += '<table>'
         for s in stream:
             if len(s.strip()) == 0:
-                break
+                if title is None:
+                    text += '</table><br/><table>'
+                    continue
+                else:
+                    break
             ss = s.split(':')
             key = ss[0].strip()
             value = ss[1].strip()
-            if len(value) == 0 and title is None:
-                title = stream[0].strip().rstrip(':')
+            if len(value) == 0 and 'settings' in key and title is None:
+                title = key.strip()
             else:
                 text += f'<tr><td>{key}</td><td><b>{value}</b></td></tr>'
         text += '</table>'
@@ -788,6 +792,8 @@ class InputData(ReportButton):
             return
         if len(stream) == 0:
             return
+        while not '...' in stream[0]:
+            del stream[0]
         rate = None
         bits = 16
         while len(stream) > 0 and (':' in stream[0] or '...' in stream[0]):
@@ -805,7 +811,8 @@ class InputData(ReportButton):
                 break
             frame = [int(c.strip()) for c in s.split(';')]
             data.append(frame)
-        self.plot.plot_data(rate, bits, np.array(data))
+        if len(data) > 0:
+            self.plot.plot_data(rate, bits, np.array(data))
 
 
 class PlotRecording(QWidget):

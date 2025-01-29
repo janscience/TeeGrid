@@ -55,8 +55,7 @@ ControlPCM186x pcm1(Wire, PCM186x_I2C_ADDR1, InputTDM::TDM1);
 ControlPCM186x pcm2(Wire, PCM186x_I2C_ADDR2, InputTDM::TDM1);
 ControlPCM186x pcm3(Wire1, PCM186x_I2C_ADDR1, InputTDM::TDM2);
 ControlPCM186x pcm4(Wire1, PCM186x_I2C_ADDR2, InputTDM::TDM2);
-ControlPCM186x *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
-Device *pcmdevs[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
+Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 uint32_t SamplingRates[3] = {24000, 48000, 96000};
 
 R41CAN can;
@@ -83,7 +82,7 @@ SDCardMenu sdcard0_menu(sdcard0, settings);
 SDCardMenu sdcard1_menu(sdcard1, settings);
 #endif
 FirmwareMenu firmware_menu(sdcard0);
-InputMenu input_menu(aidata, aisettings, pcmdevs, NPCMS);
+InputMenu input_menu(aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 #ifdef BACKUP_SDCARD
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, sdcard1, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 #else
@@ -132,8 +131,7 @@ void setup() {
   Serial.println();
   deviceid.setID(settings.deviceID());
   files.setCPUSpeed(aisettings.rate());
-  R4SetupPCMs(aidata, pcms, NPCMS, aisettings);
-  Serial.println();
+  R4SetupPCMs(aidata, aisettings, pcms, NPCMS);
   blink.switchOff();
   aidata.begin();
   if (!aidata.check(aisettings.nchannels())) {
