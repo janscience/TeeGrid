@@ -81,7 +81,7 @@ DateTimeMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard);
 SDCardMenu sdcard_menu(sdcard, settings);
 FirmwareMenu firmware_menu(sdcard);
-InputMenu input_menu(aidata, aisettings);
+InputMenu input_menu(aidata, aisettings, pcms, NPCMS);
 DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 ESensorDevicesAction esensordevs_act(diagnostic_menu, "Sensor devices", sensors);
 ESensorSensorsAction esensors_act(diagnostic_menu, "Environmental sensors", sensors);
