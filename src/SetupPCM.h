@@ -12,13 +12,17 @@
 #include <InputTDMSettings.h>
 
 
-bool R40SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
+bool R40SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
 		 const InputTDMSettings &aisettings);
 
-bool R4SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
+// This variant is still in R41-CAN-recorder-controller.ino,
+// but should be changed for the second variant taking aisettings:
+bool R4SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
 		uint32_t rate, int nchannels, float gain);
-bool R4SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
+bool R4SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
 		const InputTDMSettings &aisettings);
+void R4SetupPCMs(InputTDM &aidata, ControlPCM186x **pcms, size_t ncontrols,
+		 const InputTDMSettings &aisettings, Stream &stream=Serial);
 
 
 #endif

@@ -132,12 +132,8 @@ void setup() {
   Serial.println();
   files.startSensors(settings.sensorsInterval());
   deviceid.setID(settings.deviceID());
-  aidata.setSwapLR();
   files.setCPUSpeed(aisettings.rate());
-  for (int k=0; k<NPCMS; k++) {
-    Serial.printf("Setup PCM186x %d on TDM %d: ", k, pcms[k]->TDMBus());
-    R4SetupPCM(aidata, *pcms[k], k%2==1, aisettings);
-  }
+  R4SetupPCMs(aidata, pcms, NPCMS, aisettings);
   Serial.println();
   blink.switchOff();
   aidata.begin();

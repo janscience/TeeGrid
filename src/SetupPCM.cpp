@@ -1,7 +1,7 @@
 #include <SetupPCM.h>
 
 
-bool R40SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
+bool R40SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
 		 const InputTDMSettings &aisettings) {
   cpcm.begin();
   bool r = cpcm.setMicBias(false, true);
@@ -9,16 +9,16 @@ bool R40SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
     Serial.println("not available");
     return false;
   }
-  cpcm.setRate(tdm, aisettings.rate());
-  if (tdm.nchannels() < aisettings.nchannels()) {
-    if (aisettings.nchannels() - tdm.nchannels() == 2) {
+  cpcm.setRate(aidata, aisettings.rate());
+  if (aidata.nchannels() < aisettings.nchannels()) {
+    if (aisettings.nchannels() - aidata.nchannels() == 2) {
       if (aisettings.pregain() == 1.0) {
-        cpcm.setupTDM(tdm, ControlPCM186x::CH3L, ControlPCM186x::CH3R,
+        cpcm.setupTDM(aidata, ControlPCM186x::CH3L, ControlPCM186x::CH3R,
 	              offs, ControlPCM186x::INVERTED);
         Serial.println("configured for 2 channels without preamplifier");
       }
       else {
-        cpcm.setupTDM(tdm, ControlPCM186x::CH1L, ControlPCM186x::CH1R,
+        cpcm.setupTDM(aidata, ControlPCM186x::CH1L, ControlPCM186x::CH1R,
 	              offs, ControlPCM186x::INVERTED);
         Serial.printf("configured for 2 channels with preamplifier x%.0f\n",
 		      aisettings.pregain());
@@ -26,13 +26,13 @@ bool R40SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
     }
     else {
       if (aisettings.pregain() == 1.0) {
-        cpcm.setupTDM(tdm, ControlPCM186x::CH3L, ControlPCM186x::CH3R,
+        cpcm.setupTDM(aidata, ControlPCM186x::CH3L, ControlPCM186x::CH3R,
                       ControlPCM186x::CH4L, ControlPCM186x::CH4R,
 		      offs, ControlPCM186x::INVERTED);
         Serial.println("configured for 4 channels without preamplifier");
       }
       else {
-        cpcm.setupTDM(tdm, ControlPCM186x::CH1L, ControlPCM186x::CH1R,
+        cpcm.setupTDM(aidata, ControlPCM186x::CH1L, ControlPCM186x::CH1R,
                       ControlPCM186x::CH2L, ControlPCM186x::CH2R,
 		      offs, ControlPCM186x::INVERTED);
         Serial.printf("configured for 4 channels with preamplifier x%.0f\n",
@@ -53,7 +53,7 @@ bool R40SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
 }
 
 
-bool R4SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
+bool R4SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
 		uint32_t rate, int nchannels, float gain) {
   cpcm.begin();
   bool r = cpcm.setMicBias(false, true);
@@ -61,15 +61,15 @@ bool R4SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
     Serial.println("not available");
     return false;
   }
-  cpcm.setRate(tdm, rate);
-  if (tdm.nchannels() < nchannels) {
-    if (nchannels - tdm.nchannels() == 2) {
-      cpcm.setupTDM(tdm, ControlPCM186x::CH2L, ControlPCM186x::CH2R,
+  cpcm.setRate(aidata, rate);
+  if (aidata.nchannels() < nchannels) {
+    if (nchannels - aidata.nchannels() == 2) {
+      cpcm.setupTDM(aidata, ControlPCM186x::CH2L, ControlPCM186x::CH2R,
                     offs, ControlPCM186x::INVERTED);
       Serial.println("configured for 2 channels");
     }
     else {
-      cpcm.setupTDM(tdm, ControlPCM186x::CH2L, ControlPCM186x::CH2R,
+      cpcm.setupTDM(aidata, ControlPCM186x::CH2L, ControlPCM186x::CH2R,
                     ControlPCM186x::CH3L, ControlPCM186x::CH3R,
                     offs, ControlPCM186x::INVERTED);
       Serial.println("configured for 4 channels");
@@ -88,10 +88,19 @@ bool R4SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
 }
 
 
-bool R4SetupPCM(InputTDM &tdm, ControlPCM186x &cpcm, bool offs,
+bool R4SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
 		const InputTDMSettings &aisettings) {
-  return R4SetupPCM(tdm, cpcm, offs, aisettings.rate(),
+  return R4SetupPCM(aidata, cpcm, offs, aisettings.rate(),
 		    aisettings.nchannels(), aisettings.gain());
 }
 
+
+void R4SetupPCMs(InputTDM &aidata, ControlPCM186x **pcms, size_t ncontrols,
+		 const InputTDMSettings &aisettings, Stream &stream) {
+  aidata.setSwapLR();
+  for (size_t k=0; k<ncontrols; k++) {
+    stream.printf("Setup PCM186x %d on TDM %d: ", k, pcms[k]->TDMBus());
+    R4SetupPCM(aidata, *pcms[k], k%2==1, aisettings);
+  }
+}
 
