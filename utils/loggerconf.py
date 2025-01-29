@@ -998,10 +998,6 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 pin_idx = ss.index('at')
                 pin = ss[pin_idx + 2]
                 self.add(pin, 3)
-            if 'with' in ss and 'ID' in ss:
-                id_idx = ss.index('ID')
-                identifier = ' '.join(ss[id_idx + 1:])
-                self.add(identifier, 4)
             if dev_type == 'input' and first_input:
                 hbox = QHBoxLayout()
                 hbox.setContentsMargins(0, 0, 0, 0)
@@ -1011,6 +1007,10 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 self.input_button.setVisible(True)
                 self.data_button.setVisible(True)
                 first_input = False
+            elif 'with' in ss and 'ID' in ss:
+                id_idx = ss.index('ID')
+                identifier = ' '.join(ss[id_idx + 1:])
+                self.add(identifier, 4)
             self.box.setRowStretch(self.row, 1)
             self.row += 1
             self.box.addItem(QSpacerItem(0, 0,
