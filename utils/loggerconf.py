@@ -18,6 +18,7 @@ except ImportError:
     
 import sys
 import numpy as np
+from scipy.signal import welch
 from abc import ABC, abstractmethod
 try:
     from PyQt5.QtCore import Signal
@@ -828,6 +829,8 @@ class PlotRecording(QWidget):
         self.vbox = pg.GraphicsLayoutWidget()
         fm = self.fontMetrics()
         self.vbox.ci.setSpacing(fm.averageCharWidth())
+        self.vbox.ci.layout.setColumnStretchFactor(0, 2)
+        self.vbox.ci.layout.setColumnStretchFactor(1, 1)
         self.scroll = QScrollArea(self)
         self.scroll.setWidgetResizable(True)
         self.scroll.setWidget(self.vbox)
@@ -866,17 +869,19 @@ class PlotRecording(QWidget):
         text_color = self.palette().color(QPalette.WindowText)
         # add plot:
         plot = self.vbox.getItem(channel, 0)
+        spec = self.vbox.getItem(channel, 1)
         if plot is None:
+            fm = self.fontMetrics()
+            # initialize trace plot:
             plot = self.vbox.addPlot(row=channel, col=0,
                                      enableMenu=False)
-            fm = self.fontMetrics()
             plot.showGrid(True, True, 0.5)
             plot.getAxis('left').setWidth(10*fm.averageCharWidth())
             plot.getAxis('left').setLabel(f'channel {channel}', color=text_color)
             plot.getAxis('left').setPen('white')
             plot.getAxis('left').setTextPen(text_color)
             plot.getAxis('bottom').enableAutoSIPrefix(True)
-            plot.getAxis('bottom').setLabel('time', 'ms', color=text_color)
+            plot.getAxis('bottom').setLabel('time', 's', color=text_color)
             plot.getAxis('bottom').setPen('white')
             plot.getAxis('bottom').setTextPen(text_color)
             plot.getViewBox().setMouseMode(pg.ViewBox.PanMode)
@@ -889,23 +894,58 @@ class PlotRecording(QWidget):
                                         maxYRange=2*amax)
             plot.setMenuEnabled(False)
             plot.addItem(pg.PlotDataItem(pen=dict(color=color, width=2)))
+            # initialize power spectrum plot:
+            spec = self.vbox.addPlot(row=channel, col=1,
+                                     enableMenu=False)
+            spec.showGrid(True, True, 0.5)
+            spec.getAxis('left').setWidth(7*fm.averageCharWidth())
+            spec.getAxis('left').setLabel('power (dB)', color=text_color)
+            spec.getAxis('left').setPen('white')
+            spec.getAxis('left').setTextPen(text_color)
+            spec.getAxis('bottom').enableAutoSIPrefix(True)
+            spec.getAxis('bottom').setLabel('frequency', 'Hz', color=text_color)
+            spec.getAxis('bottom').setPen('white')
+            spec.getAxis('bottom').setTextPen(text_color)
+            spec.getViewBox().setMouseMode(pg.ViewBox.PanMode)
+            spec.getViewBox().setBackgroundColor('black')
+            spec.getViewBox().setLimits(xMin=0, xMax=0.5/time[1],
+                                        yMin=-200, yMax=0,
+                                        minXRange=1/(time[-1] + time[1]),
+                                        maxXRange=0.5/time[1],
+                                        minYRange=1,
+                                        maxYRange=200)
+            spec.setMenuEnabled(False)
+            spec.addItem(pg.PlotDataItem(pen=dict(color=color, width=2)))
         plot.setVisible(True)
         plot.listDataItems()[0].setData(time, data)
         plot.getViewBox().setRange(xRange=(0, time[-1] + time[1]),
                                    yRange=(-amax, amax),
                                    padding=0)
+        spec.setVisible(True)
+        freqs, power = welch(data.astype(float)/amax, 1/time[1], nperseg=2**12)
+        power = 10*np.log10(power*freqs[1])
+        spec.listDataItems()[0].setData(freqs, power)
+        spec.getViewBox().setRange(xRange=(0, 0.5/time[1]),
+                                   yRange=(-100, 0),
+                                   padding=0)
 
     def plot_data(self, rate, bits, data):
-        time = np.arange(len(data))*1000/rate
+        time = np.arange(len(data))/rate
         for channel in range(data.shape[1]):
             self.plot_trace(channel, time, data[:, channel], 2**bits)
         plot = self.vbox.getItem(data.shape[1] - 1, 0)
+        spec = self.vbox.getItem(data.shape[1] - 1, 1)
         for channel in range(data.shape[1] - 1):
             p = self.vbox.getItem(channel, 0)
             p.getAxis('bottom').setStyle(showValues=False)
             p.setLabel('bottom', '', '')
             p.setXLink(plot.getViewBox())
             p.setYLink(plot.getViewBox())
+            s = self.vbox.getItem(channel, 1)
+            s.getAxis('bottom').setStyle(showValues=False)
+            s.setLabel('bottom', '', '')
+            s.setXLink(spec.getViewBox())
+            s.setYLink(spec.getViewBox())
         for row in range(data.shape[1], data.shape[1] + 1000):
             plot = self.vbox.getItem(row, 0)
             if plot is None:
