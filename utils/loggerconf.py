@@ -861,7 +861,7 @@ class PlotRecording(QWidget):
 
     def plot_trace(self, channel, time, data, amax):
         # color:
-        ns = channel + 1
+        ns = channel
         nc = len(self.colors_vivid)
         i = (ns % (nc // 2))*2      # every second color
         i += (ns // (nc // 2)) % 2  # start at index 1 for odd cycles
@@ -930,6 +930,7 @@ class PlotRecording(QWidget):
                                    padding=0)
 
     def plot_data(self, rate, bits, data):
+        fm = self.fontMetrics()
         time = np.arange(len(data))/rate
         for channel in range(data.shape[1]):
             self.plot_trace(channel, time, data[:, channel], 2**bits)
@@ -941,17 +942,20 @@ class PlotRecording(QWidget):
             p.setLabel('bottom', '', '')
             p.setXLink(plot.getViewBox())
             p.setYLink(plot.getViewBox())
+            p.setMinimumHeight(14*fm.averageCharWidth())
             s = self.vbox.getItem(channel, 1)
             s.getAxis('bottom').setStyle(showValues=False)
             s.setLabel('bottom', '', '')
             s.setXLink(spec.getViewBox())
             s.setYLink(spec.getViewBox())
+            s.setMinimumHeight(14*fm.averageCharWidth())
+        plot.setMinimumHeight(19*fm.averageCharWidth())
+        spec.setMinimumHeight(19*fm.averageCharWidth())
         for row in range(data.shape[1], data.shape[1] + 1000):
             plot = self.vbox.getItem(row, 0)
             if plot is None:
                 break
             plot.setVisible(False)
-        fm = self.fontMetrics()
         self.vbox.setMinimumHeight(data.shape[1]*18*fm.averageCharWidth())
     
         
