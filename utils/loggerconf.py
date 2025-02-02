@@ -784,7 +784,7 @@ class InputData(ReportButton):
         super().__init__('record some data', 'Data',
                          *args, **kwargs)
         self.plot = plot
-        self.plot.plot.clicked.connect(self.run)
+        self.plot.sigReplot.connect(self.run)
         
     def read(self, ident, stream, success):
         while len(stream) > 0 and len(stream[0].strip()) == 0:
@@ -817,6 +817,8 @@ class InputData(ReportButton):
 
 
 class PlotRecording(QWidget):
+    
+    sigReplot = Signal()
 
     # from https://github.com/bendalab/plottools/blob/master/src/plottools/colors.py :
     colors_vivid = ['#D71000', '#FF9000', '#FFF700', '#B0FF00',
@@ -825,7 +827,18 @@ class PlotRecording(QWidget):
   
     def __init__(self, title, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.title = QLabel(title, self)
+        utext = QLabel('update every')
+        utext.setFixedSize(utext.sizeHint())
+        self.utime = SpinBox()
+        self.utime.setSuffix('s')
+        self.utime.setValue(1)
+        titlew = QWidget()
+        tbox = QHBoxLayout(titlew)
+        tbox.setContentsMargins(0, 0, 0, 0)
+        tbox.addWidget(QLabel(title))
+        tbox.addWidget(QLabel())
+        tbox.addWidget(utext)
+        tbox.addWidget(self.utime)
         self.vbox = pg.GraphicsLayoutWidget()
         fm = self.fontMetrics()
         self.vbox.ci.setSpacing(fm.averageCharWidth())
@@ -840,6 +853,10 @@ class PlotRecording(QWidget):
         self.plot = QPushButton(self)
         self.plot.setText('Replot')
         self.plot.setToolTip('Record and plot new data (Space, D, Ctrl+D)')
+        self.plot.setCheckable(True)
+        self.plot.toggled.connect(self.replot)
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.sigReplot)
         hbox = QHBoxLayout()
         hbox.setContentsMargins(0, 0, 0, 0)
         hbox.addWidget(self.plot)
@@ -855,9 +872,16 @@ class PlotRecording(QWidget):
         key = QShortcut('Ctrl+D', self)
         key.activated.connect(self.plot.animateClick)
         vbox = QVBoxLayout(self)
-        vbox.addWidget(self.title)
+        vbox.addWidget(titlew)
         vbox.addWidget(self.scroll)
         vbox.addLayout(hbox)
+
+    def replot(self, checked):
+        if checked:
+            self.sigReplot.emit()
+            self.timer.start(int(1000*self.utime.value()))
+        else:
+            self.timer.stop()
 
     def plot_trace(self, channel, time, data, amax):
         # color:
@@ -922,7 +946,10 @@ class PlotRecording(QWidget):
                                    yRange=(-amax, amax),
                                    padding=0)
         spec.setVisible(True)
-        freqs, power = welch(data.astype(float)/amax, 1/time[1], nperseg=2**12)
+        nfft = 2**12
+        if nfft > len(data)//2:
+            nfft = len(data)
+        freqs, power = welch(data.astype(float)/amax, 1/time[1], nperseg=nfft)
         power = 10*np.log10(power*freqs[1])
         spec.listDataItems()[0].setData(freqs, power)
         spec.getViewBox().setRange(xRange=(0, 0.5/time[1]),
@@ -1644,7 +1671,7 @@ class SpinBox(QAbstractSpinBox):
         self.setGroupSeparatorShown(False)
         self.setWrapping(False)
         self._minimum = None
-        self._maxmimum = None
+        self._maximum = None
         self._decimals = 0
         self._value = 0
         self._unit = ''
@@ -1677,6 +1704,9 @@ class SpinBox(QAbstractSpinBox):
         except AttributeError:  # why does it not know self._minimum initially?
             pass
         return steps
+
+    def value(self):
+        return self._value
 
     def setValue(self, value):
         self._value = value
