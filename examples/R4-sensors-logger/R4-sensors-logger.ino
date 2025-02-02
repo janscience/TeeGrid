@@ -56,7 +56,6 @@ ControlPCM186x pcm2(Wire, PCM186x_I2C_ADDR2, InputTDM::TDM1);
 ControlPCM186x pcm3(Wire1, PCM186x_I2C_ADDR1, InputTDM::TDM2);
 ControlPCM186x pcm4(Wire1, PCM186x_I2C_ADDR2, InputTDM::TDM2);
 Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
-uint32_t SamplingRates[3] = {24000, 48000, 96000};
 
 R41CAN can;
 
@@ -122,7 +121,8 @@ void setup() {
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
   settings.enable("SensorsInterval");
-  aisettings.setRateSelection(SamplingRates, 3);
+  aisettings.setRateSelection(ControlPCM186x::SamplingRates,
+                              ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
   config.setConfigFile("logger.cfg");
   config.load(sdcard);

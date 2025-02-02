@@ -42,7 +42,6 @@ InputTDM aidata(AIBuffer, NAIBuffer);
 ControlPCM186x pcm1(Wire, PCM186x_I2C_ADDR1, InputTDM::TDM1);
 ControlPCM186x pcm2(Wire, PCM186x_I2C_ADDR2, InputTDM::TDM1);
 ControlPCM186x *pcms[NPCMS] = {&pcm1, &pcm2};
-uint32_t SamplingRates[3] = {24000, 48000, 96000};
 
 RTClock rtclock;
 DeviceID deviceid(DEVICEID);
@@ -80,7 +79,8 @@ void setup() {
   rtclock.setFromFile(sdcard);
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
-  aisettings.setRateSelection(SamplingRates, 3);
+  aisettings.setRateSelection(ControlPCM186x::SamplingRates,
+                              ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
   config.setConfigFile("logger.cfg");
   config.load(sdcard);
