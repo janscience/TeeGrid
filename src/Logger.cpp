@@ -114,19 +114,17 @@ void Logger::initialDelay(float initial_delay,
 
 
 void Logger::setup(SDWriter &sdfile, float filetime,
-		   const char *software, char *gainstr) {
+		   const char *software) {
   sdfile.setWriteInterval(2*AIInput.DMABufferTime());
   sdfile.setMaxFileTime(filetime);
   sdfile.header().setSoftware(software);
   sdfile.header().setCPUSpeed();
-  if (gainstr != 0)
-    sdfile.header().setGain(gainstr);
 }
 
 
 void Logger::start(const char *path, const char *filename,
 		   float filetime, const char *software,
-		   char *gainstr, bool randomblinks) {
+		   bool randomblinks) {
   RandomBlinks = randomblinks;
   Filename = filename;
   PrevFilename = "";
@@ -140,10 +138,10 @@ void Logger::start(const char *path, const char *filename,
   if (File0.sdcard()->dataDir(path))
     Serial.printf("Save recorded data in folder \"%s\" on %sSD card.\n\n",
 		  path, File0.sdcard()->name());
-  setup(File0, filetime, software, gainstr);
+  setup(File0, filetime, software);
   if (File1.sdcard() != NULL) {
     File1.sdcard()->dataDir(path);
-    setup(File1, filetime, software, gainstr);
+    setup(File1, filetime, software);
   }
   BlinkLED.clearSwitchTimes();
   File0.start();

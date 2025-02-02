@@ -144,7 +144,6 @@ void setup() {
   files.report();
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
-  // TODO: provide gain string!
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
               SOFTWARE);
 }

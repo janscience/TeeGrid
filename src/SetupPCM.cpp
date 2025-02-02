@@ -40,7 +40,7 @@ bool R40SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
       }
     }
     cpcm.setSmoothGainChange(false);
-    cpcm.setGain(aisettings.gain());
+    cpcm.setGainDecibel(aidata, aisettings.gainDecibel());
     cpcm.setFilters(ControlPCM186x::FIR, false);
   }
   else {
@@ -75,7 +75,7 @@ bool R4SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
       Serial.println("configured for 4 channels");
     }
     cpcm.setSmoothGainChange(false);
-    cpcm.setGain(gain);
+    cpcm.setGainDecibel(aidata, gain);
     cpcm.setFilters(ControlPCM186x::FIR, false);
   }
   else {
@@ -91,7 +91,7 @@ bool R4SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
 bool R4SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
 		const InputTDMSettings &aisettings) {
   return R4SetupPCM(aidata, cpcm, offs, aisettings.rate(),
-		    aisettings.nchannels(), aisettings.gain());
+		    aisettings.nchannels(), aisettings.gainDecibel());
 }
 
 

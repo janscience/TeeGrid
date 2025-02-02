@@ -10,10 +10,10 @@
 #include <R41CAN.h>
 
 #define NCHANNELS      16       // number of channels (even, from 2 to 16)
-#define PREGAIN        10.0     // gain factor of preamplifier
 #define GRID              "grid1"    // unique name of the grid
 #define SAMPLING_RATE     48000      // sampling rate in Hz
 #define GAIN              40.0       // gain in dB
+#define PREGAIN        10.0     // gain factor of preamplifier
 float   FileTime        = 30.0;      // seconds
 #define INITIAL_DELAY     20.0       // seconds
 
@@ -88,9 +88,7 @@ void setup() {
   aidata.check(NCHANNELS);
   aidata.start();
   aidata.report();
-  char gs[16];
-  pcm->gainStr(gs, PREGAIN);
-  setupGridStorage(PATH, SOFTWARE, aidata, gs);
+  setupGridStorage(PATH, SOFTWARE, aidata);
   blink.switchOff();
   if (INITIAL_DELAY >= 2.0) {
     delay(1000);

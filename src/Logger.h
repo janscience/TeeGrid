@@ -44,7 +44,7 @@ public:
 
   // Initialize recording directory and firt files.
   void start(const char *path, const char *filename, float filetime,
-	     const char *software, char *gainstr=0, bool randomblinks=false);
+	     const char *software, bool randomblinks=false);
 
   // Call this in loop() for writing data to files.
   void update();
@@ -56,7 +56,7 @@ protected:
 
   // Provide timing and metadata to file.
   void setup(SDWriter &sdfile, float filetime,
-	     const char *software, char *gainstr);
+	     const char *software);
   
   // Generate file name, open main file and write first chunk of data.
   void open(bool backup);

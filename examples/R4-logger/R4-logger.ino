@@ -143,10 +143,8 @@ void setup() {
   files.report();
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
-  char gs[16];
-  pcm1.gainStr(gs, aisettings.pregain());
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
-              SOFTWARE, gs, settings.randomBlinks());
+              SOFTWARE, settings.randomBlinks());
 }
 
 

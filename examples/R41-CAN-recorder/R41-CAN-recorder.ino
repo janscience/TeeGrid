@@ -99,8 +99,8 @@ void setupCAN() {
   }
   float gain = can.receiveGain();
   if (gain > -1000 || can.id() > 0) {
-    aisettings.setGain(gain);
-    Serial.printf("  got gain of %.1fdB\n", aisettings.gain());
+    aisettings.setGainDecibel(gain);
+    Serial.printf("  got gain of %.1fdB\n", aisettings.gainDecibel());
   }
   // TODO: PREGAIN!
   float time = can.receiveFileTime();
@@ -149,7 +149,8 @@ void setup() {
     config.configure(Serial, 10000);
   config.report();
   Serial.println();
-  setupCAN();  
+  setupCAN();
+  // TODO: aidata.configure(aisettings) ????
   aidata.setSwapLR();
   Wire.begin();
   Wire1.begin();
@@ -174,10 +175,8 @@ void setup() {
     blink.switchOff();
     files.initialDelay(settings.initialDelay());
   }
-  char gs[16];
-  pcm->gainStr(gs, aisettings.pregain());
   files.start(settings.path(), settings.fileName(), settings.fileTime(),
-              SOFTWARE, gs);
+              SOFTWARE);
 }
 
 

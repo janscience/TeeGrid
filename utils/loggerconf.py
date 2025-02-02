@@ -797,12 +797,19 @@ class InputData(ReportButton):
             del stream[0]
         rate = None
         bits = 16
+        gain = 1
+        unit = None
         while len(stream) > 0 and (':' in stream[0] or '...' in stream[0]):
             ss = stream[0].split(':')
             if 'rate' in ss[0].lower():
                 rate = float(ss[1].strip().replace('Hz', ''))
             elif 'resolution' in ss[0].lower():
                 bits = int(ss[1].strip().replace('bits', ''))
+            elif 'gain' in ss[0].lower():
+                vs = ss[1].strip()
+                i = max([i for i in range(len(vs)) if vs[i].isdigit()]) + 1
+                gain = float(vs[:i])
+                unit = vs[i:]
             del stream[0]
         if rate is None:
             return
@@ -819,6 +826,7 @@ class InputData(ReportButton):
 class PlotRecording(QWidget):
     
     sigReplot = Signal()
+    sigClose = Signal()
 
     # from https://github.com/bendalab/plottools/blob/master/src/plottools/colors.py :
     colors_vivid = ['#D71000', '#FF9000', '#FFF700', '#B0FF00',
@@ -850,6 +858,7 @@ class PlotRecording(QWidget):
         self.done = QPushButton(self)
         self.done.setText('Done')
         self.done.setToolTip('Close the plot (Escape, Return)')
+        self.done.clicked.connect(self.close)
         self.plot = QPushButton(self)
         self.plot.setText('Replot')
         self.plot.setToolTip('Record and plot new data (Space, D, Ctrl+D)')
@@ -882,6 +891,11 @@ class PlotRecording(QWidget):
             self.timer.start(int(1000*self.utime.value()))
         else:
             self.timer.stop()
+
+    def close(self):
+        self.timer.stop()
+        self.plot.setChecked(False)
+        self.sigClose.emit()
 
     def plot_trace(self, channel, time, data, amax):
         # color:
@@ -983,6 +997,8 @@ class PlotRecording(QWidget):
             if plot is None:
                 break
             plot.setVisible(False)
+            spec = self.vbox.getItem(row, 1)
+            spec.setVisible(False)
         self.vbox.setMinimumHeight(data.shape[1]*18*fm.averageCharWidth())
     
         
@@ -2178,7 +2194,7 @@ class Logger(QWidget):
         vbox.addWidget(self.cstack)
         
         self.plot_recording = PlotRecording('Recording from analog input', self)
-        self.plot_recording.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
+        self.plot_recording.sigClose.connect(lambda: self.stack.setCurrentWidget(self.boxw))
         self.plot_sensors = PlotSensors('Environmental sensors', self)
         self.plot_sensors.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
         

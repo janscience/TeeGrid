@@ -32,9 +32,8 @@ void SensorsLogger::startSensors(float interval) {
 
 void SensorsLogger::start(const char *path, const char *filename,
 			  float filetime, const char *software,
-			  char *gainstr, bool randomblinks) {
-  Logger::start(path, filename, filetime, software,
-			   gainstr, randomblinks);
+			  bool randomblinks) {
+  Logger::start(path, filename, filetime, software, randomblinks);
   openSensorsFile();
 }
 
