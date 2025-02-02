@@ -820,7 +820,7 @@ class InputData(ReportButton):
             frame = [int(c.strip()) for c in s.split(';')]
             data.append(frame)
         if len(data) > 0:
-            self.plot.plot_data(rate, bits, np.array(data))
+            self.plot.plot_data(rate, bits, gain, unit, np.array(data))
 
 
 class PlotRecording(QWidget):
@@ -897,7 +897,7 @@ class PlotRecording(QWidget):
         self.plot.setChecked(False)
         self.sigClose.emit()
 
-    def plot_trace(self, channel, time, data, amax):
+    def plot_trace(self, channel, time, data, amax, gain, unit):
         # color:
         ns = channel
         nc = len(self.colors_vivid)
@@ -970,11 +970,12 @@ class PlotRecording(QWidget):
                                    yRange=(-100, 0),
                                    padding=0)
 
-    def plot_data(self, rate, bits, data):
+    def plot_data(self, rate, bits, gain, unit, data):
         fm = self.fontMetrics()
         time = np.arange(len(data))/rate
         for channel in range(data.shape[1]):
-            self.plot_trace(channel, time, data[:, channel], 2**bits)
+            self.plot_trace(channel, time, data[:, channel],
+                            2**bits, gain, unit)
         plot = self.vbox.getItem(data.shape[1] - 1, 0)
         spec = self.vbox.getItem(data.shape[1] - 1, 1)
         for channel in range(data.shape[1] - 1):
