@@ -864,7 +864,9 @@ class PlotRecording(QWidget):
         self.plot.setToolTip('Record and plot new data (Space, D, Ctrl+D)')
         self.plot.setCheckable(True)
         self.plot.toggled.connect(self.replot)
+        self.repeat_plot = False
         self.timer = QTimer(self)
+        self.timer.setSingleShot(True);
         self.timer.timeout.connect(self.sigReplot)
         hbox = QHBoxLayout()
         hbox.setContentsMargins(0, 0, 0, 0)
@@ -886,9 +888,9 @@ class PlotRecording(QWidget):
         vbox.addLayout(hbox)
 
     def replot(self, checked):
+        self.repeat_plot = checked
         if checked:
             self.sigReplot.emit()
-            self.timer.start(int(1000*self.utime.value()))
         else:
             self.timer.stop()
 
@@ -1001,6 +1003,8 @@ class PlotRecording(QWidget):
             spec = self.vbox.getItem(row, 1)
             spec.setVisible(False)
         self.vbox.setMinimumHeight(data.shape[1]*18*fm.averageCharWidth())
+        if self.repeat_plot:
+            self.timer.start(int(1000*self.utime.value()))
     
         
 class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
