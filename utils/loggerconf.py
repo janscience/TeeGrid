@@ -847,7 +847,8 @@ class PlotRecording(QWidget):
         self.gains.currentIndexChanged.connect(self.update_plots)
         self.utime = SpinBox()
         self.utime.setSuffix('s')
-        self.utime.setValue(1)
+        self.utime.setValue(5)
+        self.utime.setMinimum(1)
         titlew = QWidget()
         tbox = QHBoxLayout(titlew)
         tbox.setContentsMargins(0, 0, 0, 0)
@@ -938,6 +939,12 @@ class PlotRecording(QWidget):
                 plot.getViewBox().setRange(yRange=(-self.gain, self.gain))
                 plot.listDataItems()[0].setData(self.time,
                                                 self.data[:, channel]*self.gain/self.amax)
+        plot = self.vbox.getItem(self.data.shape[1] - 1, 0)
+        plot.getAxis('bottom').setLabel('time', 's')
+        plot.getAxis('bottom').setStyle(showValues=True)
+        spec = self.vbox.getItem(self.data.shape[1] - 1, 1)
+        spec.getAxis('bottom').setLabel('frequency', 'Hz')
+        spec.getAxis('bottom').setStyle(showValues=True)
 
     def plot_trace(self, channel):
         # color:
@@ -1018,6 +1025,7 @@ class PlotRecording(QWidget):
         fm = self.fontMetrics()
         for channel in range(self.data.shape[1]):
             self.plot_trace(channel)
+        self.update_plots(self.gains.currentIndex())
         plot = self.vbox.getItem(data.shape[1] - 1, 0)
         spec = self.vbox.getItem(data.shape[1] - 1, 1)
         for channel in range(data.shape[1] - 1):
@@ -1035,7 +1043,6 @@ class PlotRecording(QWidget):
             s.setMinimumHeight(14*fm.averageCharWidth())
         plot.setMinimumHeight(19*fm.averageCharWidth())
         spec.setMinimumHeight(19*fm.averageCharWidth())
-        self.update_plots(self.gains.currentIndex())
         for row in range(data.shape[1], data.shape[1] + 1000):
             plot = self.vbox.getItem(row, 0)
             if plot is None:
