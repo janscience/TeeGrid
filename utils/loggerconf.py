@@ -837,6 +837,14 @@ class PlotRecording(QWidget):
         super().__init__(*args, **kwargs)
         utext = QLabel('update every')
         utext.setFixedSize(utext.sizeHint())
+        self.gains = QComboBox()
+        self.gains.addItem('raw')
+        self.gains.addItem('normalized')
+        self.gains.addItem('gain')
+        self.gains.setCurrentIndex(0)
+        self.gains.setEditable(False)
+        self.gains.setMaximumWidth(self.gains.sizeHint().width())
+        self.gains.currentIndexChanged.connect(self.update_plots)
         self.utime = SpinBox()
         self.utime.setSuffix('s')
         self.utime.setValue(1)
@@ -845,6 +853,7 @@ class PlotRecording(QWidget):
         tbox.setContentsMargins(0, 0, 0, 0)
         tbox.addWidget(QLabel(title))
         tbox.addWidget(QLabel())
+        tbox.addWidget(self.gains)
         tbox.addWidget(utext)
         tbox.addWidget(self.utime)
         self.vbox = pg.GraphicsLayoutWidget()
@@ -886,6 +895,11 @@ class PlotRecording(QWidget):
         vbox.addWidget(titlew)
         vbox.addWidget(self.scroll)
         vbox.addLayout(hbox)
+        self.time = None
+        self.data = None
+        self.unit = None
+        self.amax = None
+        self.gain = None
 
     def replot(self, checked):
         self.repeat_plot = checked
@@ -899,7 +913,33 @@ class PlotRecording(QWidget):
         self.plot.setChecked(False)
         self.sigClose.emit()
 
-    def plot_trace(self, channel, time, data, amax, gain, unit):
+    def update_plots(self, gains):
+        for channel in range(self.data.shape[1]):
+            plot = self.vbox.getItem(channel, 0)
+            if gains == 0:
+                plot.getAxis('left').setLabel(f'channel {channel}')
+                plot.getViewBox().setLimits(yMin=-self.amax, yMax=self.amax,
+                                            minYRange=10,
+                                            maxYRange=2*self.amax)
+                plot.getViewBox().setRange(yRange=(-self.amax, self.amax))
+                plot.listDataItems()[0].setData(self.time, self.data[:, channel])
+            elif gains == 1:
+                plot.getAxis('left').setLabel(f'channel {channel}')
+                plot.getViewBox().setLimits(yMin=-1, yMax=1,
+                                            minYRange=0.001, maxYRange=2)
+                plot.getViewBox().setRange(yRange=(-1, 1))
+                plot.listDataItems()[0].setData(self.time,
+                                                self.data[:, channel]/self.amax)
+            elif gains == 2:
+                plot.getAxis('left').setLabel(f'channel {channel}', self.unit)
+                plot.getViewBox().setLimits(yMin=-self.gain, yMax=self.gain,
+                                            minYRange=0.001*self.gain,
+                                            maxYRange=2*self.gain)
+                plot.getViewBox().setRange(yRange=(-self.gain, self.gain))
+                plot.listDataItems()[0].setData(self.time,
+                                                self.data[:, channel]*self.gain/self.amax)
+
+    def plot_trace(self, channel):
         # color:
         ns = channel
         nc = len(self.colors_vivid)
@@ -926,12 +966,10 @@ class PlotRecording(QWidget):
             plot.getAxis('bottom').setTextPen(text_color)
             plot.getViewBox().setMouseMode(pg.ViewBox.PanMode)
             plot.getViewBox().setBackgroundColor('black')
-            plot.getViewBox().setLimits(xMin=0, xMax=time[-1] + time[1],
-                                        yMin=-amax, yMax=amax,
-                                        minXRange=time[11],
-                                        maxXRange=time[-1] + time[1],
-                                        minYRange=10,
-                                        maxYRange=2*amax)
+            plot.getViewBox().setLimits(xMin=0,
+                                        xMax=self.time[-1] + self.time[1],
+                                        minXRange=self.time[11],
+                                        maxXRange=self.time[-1] + self.time[1])
             plot.setMenuEnabled(False)
             plot.addItem(pg.PlotDataItem(pen=dict(color=color, width=2)))
             # initialize power spectrum plot:
@@ -948,36 +986,38 @@ class PlotRecording(QWidget):
             spec.getAxis('bottom').setTextPen(text_color)
             spec.getViewBox().setMouseMode(pg.ViewBox.PanMode)
             spec.getViewBox().setBackgroundColor('black')
-            spec.getViewBox().setLimits(xMin=0, xMax=0.5/time[1],
+            spec.getViewBox().setLimits(xMin=0, xMax=0.5/self.time[1],
                                         yMin=-200, yMax=0,
-                                        minXRange=1/(time[-1] + time[1]),
-                                        maxXRange=0.5/time[1],
+                                        minXRange=1/(self.time[-1] + self.time[1]),
+                                        maxXRange=0.5/self.time[1],
                                         minYRange=1,
                                         maxYRange=200)
             spec.setMenuEnabled(False)
             spec.addItem(pg.PlotDataItem(pen=dict(color=color, width=2)))
         plot.setVisible(True)
-        plot.listDataItems()[0].setData(time, data)
-        plot.getViewBox().setRange(xRange=(0, time[-1] + time[1]),
-                                   yRange=(-amax, amax),
+        plot.getViewBox().setRange(xRange=(0, self.time[-1] + self.time[1]),
                                    padding=0)
         spec.setVisible(True)
         nfft = 2**12
-        if nfft > len(data)//2:
-            nfft = len(data)
-        freqs, power = welch(data.astype(float)/amax, 1/time[1], nperseg=nfft)
+        if nfft > len(self.data[:, channel])//2:
+            nfft = len(self.data[:, channel])
+        freqs, power = welch(self.data[:, channel].astype(float)/self.amax,
+                             1/self.time[1], nperseg=nfft)
         power = 10*np.log10(power*freqs[1])
         spec.listDataItems()[0].setData(freqs, power)
-        spec.getViewBox().setRange(xRange=(0, 0.5/time[1]),
+        spec.getViewBox().setRange(xRange=(0, 0.5/self.time[1]),
                                    yRange=(-100, 0),
                                    padding=0)
 
     def plot_data(self, rate, bits, gain, unit, data):
+        self.time = np.arange(len(data))/rate
+        self.data = data
+        self.amax = 2**bits
+        self.unit = unit
+        self.gain = gain
         fm = self.fontMetrics()
-        time = np.arange(len(data))/rate
-        for channel in range(data.shape[1]):
-            self.plot_trace(channel, time, data[:, channel],
-                            2**bits, gain, unit)
+        for channel in range(self.data.shape[1]):
+            self.plot_trace(channel)
         plot = self.vbox.getItem(data.shape[1] - 1, 0)
         spec = self.vbox.getItem(data.shape[1] - 1, 1)
         for channel in range(data.shape[1] - 1):
@@ -995,6 +1035,7 @@ class PlotRecording(QWidget):
             s.setMinimumHeight(14*fm.averageCharWidth())
         plot.setMinimumHeight(19*fm.averageCharWidth())
         spec.setMinimumHeight(19*fm.averageCharWidth())
+        self.update_plots(self.gains.currentIndex())
         for row in range(data.shape[1], data.shape[1] + 1000):
             plot = self.vbox.getItem(row, 0)
             if plot is None:
