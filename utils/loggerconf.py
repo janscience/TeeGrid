@@ -271,7 +271,7 @@ class Interactor(ABC):
     def setup(self, menu):
         pass
 
-    def retrieve(self, key, menu):
+    def retrieve(self, key, menu, verbose=True):
         
         def find(keys, menu, ids):
             found = False
@@ -306,9 +306,9 @@ class Interactor(ABC):
         ids = []
         if find(keys, menu, ids):
             return ids
-        else:
+        elif verbose:
             print(key, 'not found')
-            return None
+        return None
 
     @abstractmethod
     def read(self, ident, stream, success):
@@ -1097,8 +1097,10 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.devices_start_get = None
 
     def setup(self, menu):
-        self.devices_start_get = self.retrieve('diagnostics>input devices', menu)
-        self.sensors_start_get = self.retrieve('diagnostics>sensor devices', menu)
+        self.devices_start_get = self.retrieve('diagnostics>input devices',
+                                               menu)
+        self.sensors_start_get = self.retrieve('diagnostics>sensor devices',
+                                               menu, False)
         if self.devices_start_get is None and self.sensors_start_get is None:
             self.setVisible(False)
         self.input_button.setup(menu)
@@ -1289,9 +1291,12 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.timer.timeout.connect(self.read_sensors)
 
     def setup(self, menu):
-        self.sensors_get = self.retrieve('diagnostics>environmental sensors', menu)
-        self.request_get = self.retrieve('diagnostics>sensor request', menu)
-        self.values_get = self.retrieve('diagnostics>sensor readings', menu)
+        self.sensors_get = self.retrieve('diagnostics>environmental sensors',
+                                         menu, False)
+        self.request_get = self.retrieve('diagnostics>sensor request',
+                                         menu, False)
+        self.values_get = self.retrieve('diagnostics>sensor readings',
+                                        menu, False)
         if self.sensors_get is None:
             self.setVisible(False)
 
