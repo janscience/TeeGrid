@@ -7,7 +7,7 @@ ESensorsAction::ESensorsAction(const char *name, ESensors &sensors) :
 }
 
 
-ESensorsAction::ESensorsAction(Configurable &menu, const char *name,
+ESensorsAction::ESensorsAction(Menu &menu, const char *name,
 			       ESensors &sensors) :
   Action(menu, name, StreamInput),
   Sensors(sensors) {

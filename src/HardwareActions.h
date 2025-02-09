@@ -8,7 +8,7 @@
 
 
 #include <Action.h>
-#include <Configurable.h>
+#include <Menu.h>
 #include <ESensors.h>
 
 
@@ -20,7 +20,7 @@ class ESensorsAction : public Action {
   ESensorsAction(const char *name, ESensors &sensors);
 
   /* Initialize and add to configuration menu. */
-  ESensorsAction(Configurable &menu, const char *name, ESensors &sensors);
+  ESensorsAction(Menu &menu, const char *name, ESensors &sensors);
 
 protected:
 
