@@ -127,7 +127,7 @@ void setup() {
   config.setConfigFile("logger.cfg");
   config.load(sdcard);
   if (Serial)
-    config.configure(Serial, 10000);
+    config.execute(Serial, 10000);
   config.report();
   Serial.println();
   files.startSensors(settings.sensorsInterval());

@@ -35,8 +35,8 @@ class ESensorSensorsAction : public ESensorsAction {
   using ESensorsAction::ESensorsAction;
 
   /* Print infos about available environmental sensors. */
-  virtual void configure(Stream &stream=Serial, unsigned long timeout=0,
-			 bool echo=true, bool detailed=false);
+  virtual void execute(Stream &stream=Serial, unsigned long timeout=0,
+		       bool echo=true, bool detailed=false);
 };
 
 
@@ -47,8 +47,8 @@ class ESensorDevicesAction : public ESensorsAction {
   using ESensorsAction::ESensorsAction;
 
   /* Print infos about available environmental sensor devices. */
-  virtual void configure(Stream &stream=Serial, unsigned long timeout=0,
-			 bool echo=true, bool detailed=false);
+  virtual void execute(Stream &stream=Serial, unsigned long timeout=0,
+		       bool echo=true, bool detailed=false);
 };
 
 
@@ -59,8 +59,8 @@ class ESensorRequestAction : public ESensorsAction {
   using ESensorsAction::ESensorsAction;
 
   /* Request sensor values. */
-  virtual void configure(Stream &stream=Serial, unsigned long timeout=0,
-			 bool echo=true, bool detailed=false);
+  virtual void execute(Stream &stream=Serial, unsigned long timeout=0,
+		       bool echo=true, bool detailed=false);
 };
 
 
@@ -72,8 +72,8 @@ class ESensorValuesAction : public ESensorsAction {
 
   /* Print sensor values. If detailed, just get previously requested values.
      Otherwise request and read them. */
-  virtual void configure(Stream &stream=Serial, unsigned long timeout=0,
-			 bool echo=true, bool detailed=false);
+  virtual void execute(Stream &stream=Serial, unsigned long timeout=0,
+		       bool echo=true, bool detailed=false);
 };
 
 

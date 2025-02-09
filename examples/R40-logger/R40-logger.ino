@@ -85,7 +85,7 @@ void setup() {
   config.setConfigFile("logger.cfg");
   config.load(sdcard);
   if (Serial)
-    config.configure(Serial);
+    config.execute(Serial);
   config.report();
   Serial.println();
   deviceid.setID(settings.deviceID());
