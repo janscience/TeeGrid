@@ -1,10 +1,10 @@
 /*
-  HardwareActions - Actions for diagnosing external hardware.
+  ESensorsActions - Actions for diagnosing environmental sensors.
   Created by Jan Benda, January 5th, 2025.
 */
 
-#ifndef HardwareActions_h
-#define HardwareActions_h
+#ifndef ESensorsActions_h
+#define ESensorsActions_h
 
 
 #include <Action.h>

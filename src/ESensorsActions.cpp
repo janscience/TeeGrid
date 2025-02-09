@@ -1,5 +1,5 @@
 #include <Configurator.h>
-#include <HardwareActions.h>
+#include <ESensorsActions.h>
 
 
 ESensorsAction::ESensorsAction(const char *name, ESensors &sensors) :

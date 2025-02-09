@@ -7,12 +7,14 @@
 #include <RTClock.h>
 #include <DeviceID.h>
 #include <Blink.h>
-#include <Configurator.h>
+#include <MicroConfig.h>
 #include <Settings.h>
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
-#include <ToolMenus.h>
-#include <HardwareActions.h>
+#include <InputMenu.h>
+#include <RTClockMenu.h>
+#include <SDCardMenu.h>
+#include <DiagnosticMenu.h>
 #include <TeensyBoard.h>
 #include <PowerSave.h>
 #include <Logger.h>
@@ -74,7 +76,7 @@ Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
                   INITIAL_DELAY, RANDOM_BLINKS);
 InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
-DateTimeMenu datetime_menu(rtclock);
+RTClockMenu datetime_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard0);
 SDCardMenu sdcard0_menu(sdcard0, settings);
 #ifdef BACKUP_SDCARD

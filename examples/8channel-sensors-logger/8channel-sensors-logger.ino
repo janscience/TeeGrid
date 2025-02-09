@@ -5,11 +5,14 @@
 #include <DeviceID.h>
 #include <Blink.h>
 #include <TestSignals.h>
-#include <Configurator.h>
+#include <MicroConfig.h>
 #include <Settings.h>
 #include <InputADCSettings.h>
-#include <ToolMenus.h>
-#include <HardwareActions.h>
+#include <InputMenu.h>
+#include <RTClockMenu.h>
+#include <SDCardMenu.h>
+#include <DiagnosticMenu.h>
+#include <ESensorsActions.h>
 #include <TeensyBoard.h>
 #include <PowerSave.h>
 #include <SensorsLogger.h>
@@ -74,7 +77,7 @@ Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
 		  0.0, SENSORS_INTERVAL);
 InputADCSettings aisettings(SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE, PREGAIN);
-DateTimeMenu datetime_menu(rtclock);
+RTClockMenu rtclock_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard);
 SDCardMenu sdcard_menu(sdcard, settings);
 FirmwareMenu firmware_menu(sdcard);

@@ -6,12 +6,15 @@
 #include <RTClock.h>
 #include <DeviceID.h>
 #include <Blink.h>
-#include <Configurator.h>
+#include <MicroConfig.h>
 #include <Settings.h>
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
-#include <ToolMenus.h>
-#include <HardwareActions.h>
+#include <InputMenu.h>
+#include <RTClockMenu.h>
+#include <SDCardMenu.h>
+#include <DiagnosticMenu.h>
+#include <ESensorsActions.h>
 #include <TeensyBoard.h>
 #include <PowerSave.h>
 #include <SensorsLogger.h>
@@ -76,7 +79,7 @@ Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
                   SENSORS_INTERVAL);
 InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
-DateTimeMenu datetime_menu(rtclock);
+RTClockMenu rtclock_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard);
 SDCardMenu sdcard_menu(sdcard, settings);
 FirmwareMenu firmware_menu(sdcard);

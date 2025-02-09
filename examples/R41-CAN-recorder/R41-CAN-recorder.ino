@@ -7,11 +7,14 @@
 #include <RTClock.h>
 #include <DeviceID.h>
 #include <Blink.h>
-#include <Configurator.h>
+#include <MicroConfig.h>
 #include <Settings.h>
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
-#include <ToolMenus.h>
+#include <InputMenu.h>
+#include <RTClockMenu.h>
+#include <SDCardMenu.h>
+#include <DiagnosticMenu.h>
 #include <CANFileStorage.h>
 #include <R41CAN.h>
 
@@ -62,7 +65,7 @@ SDCard sdcard1("secondary");
 Configurator config;
 Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY);
 InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);                  
-DateTimeMenu datetime_menu(rtclock);
+RTClockMenu rtclock_menu(rtclock);
 ConfigurationMenu configuration_menu(sdcard0);
 SDCardMenu sdcard0_menu(sdcard0, settings);
 SDCardMenu sdcard1_menu(sdcard1, settings);
