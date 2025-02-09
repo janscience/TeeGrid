@@ -1,3 +1,4 @@
+#include <MicroConfigBanner.h>
 #include <TeeRecBanner.h>
 #include <TeeGridBanner.h>
 
@@ -23,6 +24,8 @@ void printTeeGridBanner(const char *software, Stream &stream) {
   stream.println(TEEGRID_SOFTWARE);
   stream.print("     and ");
   stream.println(TEEREC_SOFTWARE);
+  stream.print("     and ");
+  stream.println(MICROCONFIG_SOFTWARE);
   stream.println("--------------------------------------------------------");
   stream.println();
 }
