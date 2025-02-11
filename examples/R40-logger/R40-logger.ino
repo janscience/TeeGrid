@@ -50,17 +50,17 @@ DeviceID deviceid(DEVICEID);
 Blink blink(LED_PIN, true, LED_BUILTIN, false);
 SDCard sdcard;
 
-Configurator config;
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+Menu config("logger.cfg", &sdcard);
+Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
                   INITIAL_DELAY, RANDOM_BLINKS);
-InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
+InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
-RTClockMenu rtclock_menu(rtclock);
-ConfigurationMenu configuration_menu(sdcard);
-SDCardMenu sdcard0_menu(sdcard, settings);
-FirmwareMenu firmware_menu(sdcard0);
-InputMenu input_menu(aidata, aisettings);
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &pcm1, &pcm2, &rtclock);
+RTClockMenu rtclock_menu(config, rtclock);
+ConfigurationMenu configuration_menu(config, sdcard);
+SDCardMenu sdcard0_menu(config, sdcard, settings);
+FirmwareMenu firmware_menu(config, sdcard);
+InputMenu input_menu(config, aidata, aisettings);
+DiagnosticMenu diagnostic_menu(config, sdcard, &pcm1, &pcm2, &rtclock);
 HelpAction help_act(config, "Help");
 
 Logger files(aidata, sdcard, rtclock, deviceid, blink);
@@ -81,11 +81,10 @@ void setup() {
   rtclock.setFromFile(sdcard);
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
+  aisettings.enable("Pregain");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
-  aisettings.enable("Pregain");
-  config.setConfigFile("logger.cfg");
-  config.load(sdcard);
+  config.load();
   if (Serial)
     config.execute(Serial);
   config.report();

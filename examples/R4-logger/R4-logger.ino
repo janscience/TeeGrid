@@ -71,23 +71,23 @@ SDCard sdcard1("secondary");
 SDCard sdcard0;
 #endif
 
-Configurator config;
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+Menu config("logger.cfg", &sdcard0);
+Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
                   INITIAL_DELAY, RANDOM_BLINKS);
-InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
+InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
-RTClockMenu datetime_menu(rtclock);
-ConfigurationMenu configuration_menu(sdcard0);
-SDCardMenu sdcard0_menu(sdcard0, settings);
+RTClockMenu datetime_menu(config, rtclock);
+ConfigurationMenu configuration_menu(config, sdcard0);
+SDCardMenu sdcard0_menu(config, sdcard0, settings);
 #ifdef BACKUP_SDCARD
-SDCardMenu sdcard1_menu(sdcard1, settings);
+SDCardMenu sdcard1_menu(config, sdcard1, settings);
 #endif
-FirmwareMenu firmware_menu(sdcard0);
-InputMenu input_menu(aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
+FirmwareMenu firmware_menu(config, sdcard0);
+InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 #ifdef BACKUP_SDCARD
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, sdcard1, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
+DiagnosticMenu diagnostic_menu(config, sdcard0, sdcard1, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 #else
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
+DiagnosticMenu diagnostic_menu(config, sdcard0, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 #endif
 HelpAction help_act(config, "Help");
 
@@ -124,8 +124,7 @@ void setup() {
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
-  config.setConfigFile("logger.cfg");
-  config.load(sdcard0);
+  config.load();
   if (Serial)
     config.execute(Serial, 10000);
   config.report();

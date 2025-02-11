@@ -13,8 +13,8 @@
 #include <InputMenu.h>
 #include <RTClockMenu.h>
 #include <SDCardMenu.h>
+#include <ESensorsMenu.h>
 #include <DiagnosticMenu.h>
-#include <ESensorsActions.h>
 #include <TeensyBoard.h>
 #include <PowerSave.h>
 #include <SensorsLogger.h>
@@ -73,22 +73,19 @@ LightTSL2591 tsl;
 IRRatioTSL2591 irratio(&tsl, &sensors);
 IlluminanceTSL2591 illum(&tsl, &sensors);
 
-Configurator config;
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+Menu config("logger.cfg", &sdcard);
+Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
                   INITIAL_DELAY, RANDOM_BLINKS, 0, 0,
                   SENSORS_INTERVAL);
-InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
+InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
-RTClockMenu rtclock_menu(rtclock);
-ConfigurationMenu configuration_menu(sdcard);
-SDCardMenu sdcard_menu(sdcard, settings);
-FirmwareMenu firmware_menu(sdcard);
-InputMenu input_menu(aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
-ESensorDevicesAction esensordevs_act(diagnostic_menu, "Sensor devices", sensors);
-ESensorSensorsAction esensors_act(diagnostic_menu, "Environmental sensors", sensors);
-ESensorValuesAction esensorvals_act(diagnostic_menu, "Sensor readings", sensors);
-ESensorRequestAction esensorreqs_act(diagnostic_menu, "Sensor request", sensors);
+RTClockMenu rtclock_menu(config, rtclock);
+ConfigurationMenu configuration_menu(config, sdcard);
+SDCardMenu sdcard_menu(config, sdcard, settings);
+FirmwareMenu firmware_menu(config, sdcard);
+InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
+ESensorsMenu sensors_menu(config, sensors);
+DiagnosticMenu diagnostic_menu(config, sdcard, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 HelpAction help_act(config, "Help");
 
 SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);
@@ -127,8 +124,7 @@ void setup() {
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
-  config.setConfigFile("logger.cfg");
-  config.load(sdcard);
+  config.load();
   if (Serial)
     config.execute(Serial, 10000);
   config.report();

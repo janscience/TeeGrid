@@ -12,7 +12,7 @@
 #include <RTClockMenu.h>
 #include <SDCardMenu.h>
 #include <DiagnosticMenu.h>
-#include <ESensorsActions.h>
+#include <ESensorsMenu.h>
 #include <TeensyBoard.h>
 #include <PowerSave.h>
 #include <SensorsLogger.h>
@@ -71,22 +71,19 @@ LightTSL2591 tsl;
 IRRatioTSL2591 irratio(&tsl, &sensors);
 IlluminanceTSL2591 illum(&tsl, &sensors);
 
-Configurator config;
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+Menu config("teegrid.cfg", &sdcard);
+Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
                   INITIAL_DELAY, false, PULSE_FREQUENCY,
 		  0.0, SENSORS_INTERVAL);
-InputADCSettings aisettings(SAMPLING_RATE, BITS, AVERAGING,
+InputADCSettings aisettings(config, SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE, PREGAIN);
-RTClockMenu rtclock_menu(rtclock);
-ConfigurationMenu configuration_menu(sdcard);
-SDCardMenu sdcard_menu(sdcard, settings);
-FirmwareMenu firmware_menu(sdcard);
-InputMenu input_menu(aidata, aisettings);
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &aidata, &rtclock);
-ESensorDevicesAction esensordevs_act(diagnostic_menu, "Sensor devices", sensors);
-ESensorSensorsAction esensors_act(diagnostic_menu, "Environmental sensors", sensors);
-ESensorValuesAction esensorvals_act(diagnostic_menu, "Sensor readings", sensors);
-ESensorRequestAction esensorreqs_act(diagnostic_menu, "Sensor request", sensors);
+RTClockMenu rtclock_menu(config, rtclock);
+ConfigurationMenu configuration_menu(config, sdcard);
+SDCardMenu sdcard_menu(config, sdcard, settings);
+FirmwareMenu firmware_menu(config, sdcard);
+InputMenu input_menu(config, aidata, aisettings);
+ESensorsMenu sensors_menu(config, sensors);
+DiagnosticMenu diagnostic_menu(config, "Diagnostics", sdcard, &aidata, &rtclock);
 HelpAction help_act(config, "Help");
 
 SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);
@@ -126,8 +123,7 @@ void setup() {
   settings.enable("SensorsInterval");
   aisettings.disable("Reference");
   aisettings.enable("Pregain");
-  config.setConfigFile("teegrid.cfg");
-  config.load(sdcard);
+  config.load();
   if (Serial)
     config.execute(Serial, 10000);
   config.report();

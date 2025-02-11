@@ -1,14 +1,13 @@
 /*
-  ESensorsActions - Actions for diagnosing environmental sensors.
+  ESensorsMenu - Actions and menu for environmental sensors.
   Created by Jan Benda, January 5th, 2025.
 */
 
-#ifndef ESensorsActions_h
-#define ESensorsActions_h
+#ifndef ESensorsMenu_h
+#define ESensorsMenu_h
 
 
-#include <Action.h>
-#include <Menu.h>
+#include <MicroConfig.h>
 #include <ESensors.h>
 
 
@@ -16,10 +15,7 @@ class ESensorsAction : public Action {
 
  public:
 
-  /* Initialize and add to default menu. */
-  ESensorsAction(const char *name, ESensors &sensors);
-
-  /* Initialize and add to configuration menu. */
+  /* Initialize and add to menu. */
   ESensorsAction(Menu &menu, const char *name, ESensors &sensors);
 
 protected:
@@ -74,6 +70,21 @@ class ESensorValuesAction : public ESensorsAction {
      Otherwise request and read them. */
   virtual void execute(Stream &stream=Serial, unsigned long timeout=0,
 		       bool echo=true, bool detailed=false);
+};
+
+
+class ESensorsMenu : public Menu {
+
+public:
+
+  ESensorsMenu(Menu &menu, ESensors &sensors);
+
+protected:
+
+  ESensorDevicesAction DevicesAct;
+  ESensorSensorsAction SensorsAct;
+  ESensorValuesAction ValuesAct;
+  ESensorRequestAction RequestAct;
 };
 
 

@@ -50,17 +50,17 @@ DeviceID deviceid(DEVICEID);
 Blink blink(LED_BUILTIN);
 SDCard sdcard;
 
-Configurator config;
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+Menu config("teegrid.cfg", &sdcard);
+Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
 	          INITIAL_DELAY, false, PULSE_FREQUENCY);
-InputADCSettings aisettings(SAMPLING_RATE, BITS, AVERAGING,
+InputADCSettings aisettings(config, SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE, PREGAIN);
-RTClockMenu rtclock_menu(rtclock);
-ConfigurationMenu configuration_menu(sdcard);
-SDCardMenu sdcard_menu(sdcard, settings);
-FirmwareMenu firmware_menu(sdcard);
-InputMenu input_menu(aidata, aisettings);
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard, &aidata, &rtclock);
+RTClockMenu rtclock_menu(config, rtclock);
+ConfigurationMenu configuration_menu(config, sdcard);
+SDCardMenu sdcard_menu(config, sdcard, settings);
+FirmwareMenu firmware_menu(config, sdcard);
+InputMenu input_menu(config, aidata, aisettings);
+DiagnosticMenu diagnostic_menu(config, sdcard, &aidata, &rtclock);
 HelpAction help_act(config, "Help");
 
 Logger files(aidata, sdcard, rtclock, deviceid, blink);
@@ -82,8 +82,7 @@ void setup() {
   settings.enable("PulseFreq");
   aisettings.disable("Reference");
   aisettings.enable("Pregain");
-  config.setConfigFile("teegrid.cfg");
-  config.load(sdcard);
+  config.load();
   if (Serial)
     config.execute(Serial, 10000);
   config.report();

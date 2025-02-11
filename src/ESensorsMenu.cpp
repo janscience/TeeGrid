@@ -1,10 +1,4 @@
-#include <Configurator.h>
-#include <ESensorsActions.h>
-
-
-ESensorsAction::ESensorsAction(const char *name, ESensors &sensors) :
-  ESensorsAction(*Configurator::MainConfig->Config, name, sensors) {
-}
+#include <ESensorsMenu.h>
 
 
 ESensorsAction::ESensorsAction(Menu &menu, const char *name,
@@ -43,3 +37,13 @@ void ESensorValuesAction::execute(Stream &stream, unsigned long timeout,
     Sensors.read();
   Sensors.print(false, false, stream);
 }
+
+
+ESensorsMenu::ESensorsMenu(Menu &menu, ESensors &sensors) :
+  Menu(menu, "Sensors", Action::StreamInput),
+  DevicesAct(*this, "Sensor devices", sensors),
+  SensorsAct(*this, "Environmental sensors", sensors),
+  ValuesAct(*this, "Sensor readings", sensors),
+  RequestAct(*this, "Sensor request", sensors) {
+}
+

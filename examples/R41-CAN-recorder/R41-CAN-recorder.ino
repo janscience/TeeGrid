@@ -2,7 +2,6 @@
 #include <Wire.h>
 #include <ControlPCM186x.h>
 #include <InputTDM.h>
-#include <SPI.h>
 #include <SDWriter.h>
 #include <RTClock.h>
 #include <DeviceID.h>
@@ -36,9 +35,6 @@
 
 #define LED_PIN        26    // R4.1
 
-//#define SDCARD1_CS     10    // CS pin for second SD card on SPI bus
-#define SDCARD1_CS     38    // CS pin for second SD card on SPI1 bus
-
 
 // ----------------------------------------------------------------------------
 
@@ -59,21 +55,21 @@ R41CAN can;
 RTClock rtclock;
 DeviceID deviceid(DEVICEID);
 Blink blink(LED_PIN, true, LED_BUILTIN, false);
-SDCard sdcard0("primary");
-SDCard sdcard1("secondary");
+SDCard sdcard;
 
-Configurator config;
-Settings settings(PATH, DEVICEID, FILENAME, FILE_SAVE_TIME, INITIAL_DELAY);
-InputTDMSettings aisettings(SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);                  
-RTClockMenu rtclock_menu(rtclock);
-ConfigurationMenu configuration_menu(sdcard0);
-SDCardMenu sdcard0_menu(sdcard0, settings);
-SDCardMenu sdcard1_menu(sdcard1, settings);
-FirmwareMenu firmware_menu(sdcard0);
-DiagnosticMenu diagnostic_menu("Diagnostics", sdcard0, sdcard1);
+Menu config("logger.cfg", &sdcard);
+Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+                  INITIAL_DELAY);
+InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);                  
+RTClockMenu rtclock_menu(config, rtclock);
+ConfigurationMenu configuration_menu(config, sdcard);
+SDCardMenu sdcard_menu(config, sdcard, settings);
+FirmwareMenu firmware_menu(config, sdcard);
+DiagnosticMenu diagnostic_menu(config, sdcard,
+                               &pcm1, &pcm2, &pcm3, &pcm4, rtclock);
 HelpAction help_act(config, "Help");
 
-CANFileStorage files(aidata, sdcard0, sdcard1, can, false,
+CANFileStorage files(aidata, sdcard, can, false,
 	             rtclock, deviceid, blink);
 
 
@@ -135,19 +131,13 @@ void setup() {
   printTeeGridBanner(SOFTWARE);
   rtclock.begin();
   rtclock.check();
-  pinMode(SDCARD1_CS, OUTPUT);
-  //SPI.begin();
-  SPI1.setMISO(39);    // Use alternate MISO pin for SPI1 bus
-  SPI1.begin();
-  sdcard0.begin();
-  sdcard1.begin(SDCARD1_CS, DEDICATED_SPI, 40, &SPI1);
+  sdcard.begin();
   files.check(true);
-  rtclock.setFromFile(sdcard0);
+  rtclock.setFromFile(sdcard);
   settings.enable("InitialDelay");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
-  config.setConfigFile("logger.cfg");
-  config.load(sdcard0);
+  config.load();
   if (Serial)
     config.execute(Serial, 10000);
   config.report();
