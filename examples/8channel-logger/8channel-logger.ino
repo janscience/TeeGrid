@@ -50,7 +50,7 @@ DeviceID deviceid(DEVICEID);
 Blink blink(LED_BUILTIN);
 SDCard sdcard;
 
-Menu config("teegrid.cfg", &sdcard);
+Config config("teegrid.cfg", &sdcard);
 Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
 	          INITIAL_DELAY, false, PULSE_FREQUENCY);
 InputADCSettings aisettings(config, SAMPLING_RATE, BITS, AVERAGING,

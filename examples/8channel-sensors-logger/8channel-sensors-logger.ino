@@ -71,7 +71,7 @@ LightTSL2591 tsl;
 IRRatioTSL2591 irratio(&tsl, &sensors);
 IlluminanceTSL2591 illum(&tsl, &sensors);
 
-Menu config("teegrid.cfg", &sdcard);
+Config config("teegrid.cfg", &sdcard);
 Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
                   INITIAL_DELAY, false, PULSE_FREQUENCY,
 		  0.0, SENSORS_INTERVAL);

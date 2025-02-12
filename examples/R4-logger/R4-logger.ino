@@ -71,7 +71,7 @@ SDCard sdcard1("secondary");
 SDCard sdcard0;
 #endif
 
-Menu config("logger.cfg", &sdcard0);
+Config config("logger.cfg", &sdcard0);
 Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
                   INITIAL_DELAY, RANDOM_BLINKS);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
