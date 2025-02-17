@@ -99,6 +99,7 @@ void R4SetupPCMs(Input &aidata, const InputSettings &aisettings,
 		 Device **controls, size_t ncontrols, Stream &stream) {
   aidata.clearChannels();
   ControlPCM186x **pcms = reinterpret_cast<ControlPCM186x**>(controls);
+  aisettings.configure(&aidata);
   static_cast<InputTDM&>(aidata).setSwapLR();
   for (size_t k=0; k<ncontrols; k++) {
     stream.printf("Setup PCM186x %d on TDM %d: ", k, pcms[k]->TDMBus());
