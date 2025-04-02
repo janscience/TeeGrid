@@ -1097,10 +1097,8 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.devices_start_get = None
 
     def setup(self, menu):
-        self.devices_start_get = self.retrieve('diagnostics>input devices',
-                                               menu)
-        self.sensors_start_get = self.retrieve('diagnostics>sensor devices',
-                                               menu, False)
+        self.devices_start_get = self.retrieve('input devices', menu)
+        self.sensors_start_get = self.retrieve('sensor devices', menu, False)
         if self.devices_start_get is None and self.sensors_start_get is None:
             self.setVisible(False)
         self.input_button.setup(menu)
@@ -1291,11 +1289,11 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.timer.timeout.connect(self.read_sensors)
 
     def setup(self, menu):
-        self.sensors_get = self.retrieve('diagnostics>environmental sensors',
+        self.sensors_get = self.retrieve('environmental sensors',
                                          menu, False)
-        self.request_get = self.retrieve('diagnostics>sensor request',
+        self.request_get = self.retrieve('sensor request',
                                          menu, False)
-        self.values_get = self.retrieve('diagnostics>sensor readings',
+        self.values_get = self.retrieve('sensor readings',
                                         menu, False)
         if self.sensors_get is None:
             self.setVisible(False)
@@ -1364,6 +1362,17 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             return
         self.sensors = {}
         if int(stream[0].split()[0]) == 0:
+            label = QLabel('No sensors found')
+            label.setSizePolicy(QSizePolicy.Policy.Preferred,
+                                QSizePolicy.Policy.Fixed)
+            self.box.addWidget(label, self.row, 0, 1, 6)
+            self.row += 1
+            self.box.addItem(QSpacerItem(0, 0,
+                                         QSizePolicy.Policy.Minimum,
+                                         QSizePolicy.Policy.Expanding),
+                             self.row, 0)
+            self.row += 1
+            self.plotb.setEnabled(False)
             return
         for s in stream[1:]:
             if len(s.strip()) == 0:
