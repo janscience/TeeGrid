@@ -835,6 +835,8 @@ class PlotRecording(QWidget):
   
     def __init__(self, title, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        gtext = QLabel('y-axis')
+        gtext.setFixedSize(gtext.sizeHint())
         utext = QLabel('update every')
         utext.setFixedSize(utext.sizeHint())
         self.gains = QComboBox()
@@ -847,14 +849,17 @@ class PlotRecording(QWidget):
         self.gains.currentIndexChanged.connect(self.update_plots)
         self.utime = SpinBox()
         self.utime.setSuffix('s')
-        self.utime.setValue(5)
+        self.utime.setValue(2)
         self.utime.setMinimum(1)
         titlew = QWidget()
         tbox = QHBoxLayout(titlew)
         tbox.setContentsMargins(0, 0, 0, 0)
         tbox.addWidget(QLabel(title))
         tbox.addWidget(QLabel())
+        tbox.addWidget(QLabel())
+        tbox.addWidget(gtext)
         tbox.addWidget(self.gains)
+        tbox.addWidget(QLabel())
         tbox.addWidget(utext)
         tbox.addWidget(self.utime)
         self.vbox = pg.GraphicsLayoutWidget()
@@ -887,11 +892,15 @@ class PlotRecording(QWidget):
         key = QShortcut(Qt.Key_Return, self)
         key.activated.connect(self.done.animateClick)
         key = QShortcut(Qt.Key_Space, self)
-        key.activated.connect(self.plot.animateClick)
+        key.activated.connect(self.plot.toggle)
         key = QShortcut(Qt.Key_D, self)
-        key.activated.connect(self.plot.animateClick)
+        key.activated.connect(self.plot.toggle)
         key = QShortcut('Ctrl+D', self)
-        key.activated.connect(self.plot.animateClick)
+        key.activated.connect(self.plot.toggle)
+        key = QShortcut('Y', self)
+        key.activated.connect(self.zoom_out)
+        key = QShortcut('Shift+Y', self)
+        key.activated.connect(self.zoom_in)
         vbox = QVBoxLayout(self)
         vbox.addWidget(titlew)
         vbox.addWidget(self.scroll)
@@ -903,6 +912,7 @@ class PlotRecording(QWidget):
         self.gain = None
 
     def replot(self, checked):
+        self.scroll.setFocus(Qt.OtherFocusReason)
         self.repeat_plot = checked
         if checked:
             self.sigReplot.emit()
@@ -1053,6 +1063,32 @@ class PlotRecording(QWidget):
         self.vbox.setMinimumHeight(data.shape[1]*18*fm.averageCharWidth())
         if self.repeat_plot:
             self.timer.start(int(1000*self.utime.value()))
+
+    def zoom_in(self):
+        plot = self.vbox.getItem(0, 0)
+        if plot is None:
+            return
+        plot = plot.getViewBox()
+        ymin, ymax = plot.viewRange()[1]
+        dy = 0.5*(ymax - ymin)
+        ay = 0.5*(ymin + ymax)
+        dy *= 0.5
+        ymin = ay - dy
+        ymax = ay + dy
+        plot.setYRange(ymin, ymax)
+
+    def zoom_out(self):
+        plot = self.vbox.getItem(0, 0)
+        if plot is None:
+            return
+        plot = plot.getViewBox()
+        ymin, ymax = plot.viewRange()[1]
+        dy = 0.5*(ymax - ymin)
+        ay = 0.5*(ymin + ymax)
+        dy *= 2.0
+        ymin = ay - dy
+        ymax = ay + dy
+        plot.setYRange(ymin, ymax)
     
         
 class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
@@ -1085,12 +1121,14 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.input_button.setVisible(False)
         self.input_button.sigReadRequest.connect(self.sigReadRequest)
         self.input_button.sigDisplayTerminal.connect(self.sigDisplayTerminal)
+        self.input_button.setToolTip('Check and report input configuration (Ctrl+I)')
         key = QShortcut('Ctrl+I', self)
         key.activated.connect(self.input_button.animateClick)
         self.data_button = InputData(plot, self)
         self.data_button.setVisible(False)
         self.data_button.sigReadRequest.connect(self.sigReadRequest)
         self.data_button.clicked.connect(self.sigPlot)
+        self.data_button.setToolTip('Record some data (Ctrl+D)')
         key = QShortcut('Ctrl+D', self)
         key.activated.connect(self.data_button.animateClick)
         self.sensors_start_get = None
