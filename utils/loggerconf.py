@@ -785,6 +785,10 @@ class InputData(ReportButton):
                          *args, **kwargs)
         self.plot = plot
         self.plot.sigReplot.connect(self.run)
+
+    def run(self):
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        super().run()
         
     def read(self, ident, stream, success):
         while len(stream) > 0 and len(stream[0].strip()) == 0:
@@ -912,7 +916,7 @@ class PlotRecording(QWidget):
         self.gain = None
 
     def replot(self, checked):
-        self.scroll.setFocus(Qt.OtherFocusReason)
+        self.scroll.setFocus()
         self.repeat_plot = checked
         if checked:
             self.sigReplot.emit()
@@ -921,10 +925,12 @@ class PlotRecording(QWidget):
 
     def close(self):
         self.timer.stop()
+        self.repeat_plot = False
         self.plot.setChecked(False)
         self.sigClose.emit()
 
     def update_plots(self, gains):
+        self.scroll.setFocus()
         for channel in range(self.data.shape[1]):
             plot = self.vbox.getItem(channel, 0)
             if gains == 0:
@@ -932,13 +938,15 @@ class PlotRecording(QWidget):
                 plot.getViewBox().setLimits(yMin=-self.amax, yMax=self.amax,
                                             minYRange=10,
                                             maxYRange=2*self.amax)
-                plot.getViewBox().setRange(yRange=(-self.amax, self.amax))
+                if not self.repeat_plot:
+                    plot.getViewBox().setRange(yRange=(-self.amax, self.amax))
                 plot.listDataItems()[0].setData(self.time, self.data[:, channel])
             elif gains == 1:
                 plot.getAxis('left').setLabel(f'channel {channel}')
                 plot.getViewBox().setLimits(yMin=-1, yMax=1,
                                             minYRange=0.001, maxYRange=2)
-                plot.getViewBox().setRange(yRange=(-1, 1))
+                if not self.repeat_plot:
+                    plot.getViewBox().setRange(yRange=(-1, 1))
                 plot.listDataItems()[0].setData(self.time,
                                                 self.data[:, channel]/self.amax)
             elif gains == 2:
@@ -946,7 +954,8 @@ class PlotRecording(QWidget):
                 plot.getViewBox().setLimits(yMin=-self.gain, yMax=self.gain,
                                             minYRange=0.001*self.gain,
                                             maxYRange=2*self.gain)
-                plot.getViewBox().setRange(yRange=(-self.gain, self.gain))
+                if not self.repeat_plot:
+                    plot.getViewBox().setRange(yRange=(-self.gain, self.gain))
                 plot.listDataItems()[0].setData(self.time,
                                                 self.data[:, channel]*self.gain/self.amax)
         plot = self.vbox.getItem(self.data.shape[1] - 1, 0)
@@ -973,6 +982,7 @@ class PlotRecording(QWidget):
             plot = self.vbox.addPlot(row=channel, col=0,
                                      enableMenu=False)
             plot.showGrid(True, True, 0.5)
+            plot.getAxis('left').enableAutoSIPrefix(False)
             plot.getAxis('left').setWidth(10*fm.averageCharWidth())
             plot.getAxis('left').setLabel(f'channel {channel}', color=text_color)
             plot.getAxis('left').setPen('white')
@@ -993,6 +1003,7 @@ class PlotRecording(QWidget):
             spec = self.vbox.addPlot(row=channel, col=1,
                                      enableMenu=False)
             spec.showGrid(True, True, 0.5)
+            spec.getAxis('left').enableAutoSIPrefix(False)
             spec.getAxis('left').setWidth(7*fm.averageCharWidth())
             spec.getAxis('left').setLabel('power (dB)', color=text_color)
             spec.getAxis('left').setPen('white')
@@ -1061,6 +1072,7 @@ class PlotRecording(QWidget):
             spec = self.vbox.getItem(row, 1)
             spec.setVisible(False)
         self.vbox.setMinimumHeight(data.shape[1]*18*fm.averageCharWidth())
+        QApplication.restoreOverrideCursor()
         if self.repeat_plot:
             self.timer.start(int(1000*self.utime.value()))
 
@@ -2372,6 +2384,7 @@ class Logger(QWidget):
 
     def activate(self, device, model, serial_number):
         #self.title.setText(f'Teensy{model} with serial number {serial_number} on {device}')
+        QApplication.restoreOverrideCursor()
         self.device = device
         self.loggerinfo.set(device, model, serial_number)
         self.msg.setText('Reading configuration ...')
