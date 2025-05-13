@@ -324,7 +324,7 @@ void Logger::openBlinkFiles() {
   String fname = File0.name();
   fname.replace(".wav", "-blinks.dat");
   BlinkFile0 = SDCard0->openWrite(fname.c_str());
-  BlinkFile0.write("time;on\n");
+  BlinkFile0.write("time/ms;on\n");
   if (SDCard1 != NULL && SDCard1->available()) {
     BlinkFile1 = SDCard1->openWrite(fname.c_str());
     BlinkFile1.write("time;on\n");
