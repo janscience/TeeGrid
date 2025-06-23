@@ -227,7 +227,7 @@ def discover_teensy_ports():
         if port.manufacturer == 'Teensyduino':
             teensy_model = get_teensy_model(port.vid, port.pid,
                                             port.serial_number)
-            # we should also check for permissions!
+            # TODO: we should also check for permissions!
             devices.append(port.device)
             serial_numbers.append(port.serial_number)
             models.append(teensy_model)
@@ -2041,7 +2041,7 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
 
     def transmit_bool(self, check_state):
         start = list(self.ids)
-        start.append("yes" if check_state > 0 else "no")
+        start.append('2' if check_state > 0 else '1')
         self.sigTransmitRequest.emit(self, self.name, start)
 
     def transmit_str(self, text):
