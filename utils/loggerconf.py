@@ -361,7 +361,8 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
         self.start_set = self.retrieve('date & time>set', menu)
 
     def start(self):
-        self.set_count = 50
+        self.set_state = -1
+        self.set_count = 40  # wait 2 secs before setting the clock
         if self.start_get is not None:
             self.timer.start(50)
 
@@ -392,16 +393,19 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
                     self.time.setText('<b>' + time.replace('T', '  ') + '</b>')
                     if time == next_time or time == self.prev_time:
                         self.state.setText('&#x2705;')
+                        if self.set_state >= 0:
+                            self.set_count = 0
                     else:
                         self.state.setText('&#x274C;')
-                        self.set_count = 1
+                        if self.set_state >= 0:
+                            self.set_count = 1
                     break
 
     def set_time(self):
         if self.start_set is None:
-                self.set_state = 0
-                self.prev_time = None
-                return
+            self.set_state = 0
+            self.prev_time = None
+            return
         if self.set_state == 1:
             self.prev_time = QDateTime.currentDateTime().toString(Qt.ISODate)
             self.set_state = 2
