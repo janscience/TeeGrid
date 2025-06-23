@@ -2149,6 +2149,10 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.erase_button.setToolTip('Erase configuration file on SD card (Alt+E)')
         self.check_button = QPushButton('&Check', self)
         self.check_button.setToolTip('Check the configuration on the logger (Alt+C)')
+        self.firmware_button = QPushButton('Firmware', self)
+        self.firmware_button.setToolTip('Upload new firmware (Alt+U)')
+        key = QShortcut('Alt+U', self)
+        key.activated.connect(self.firmware_button.animateClick)
         self.reboot_button = QPushButton('Re&boot', self)
         self.reboot_button.setToolTip('Reboot logger (Alt+B)')
         self.run_button = QPushButton('&Run', self)
@@ -2157,6 +2161,7 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.load_button.clicked.connect(self.load)
         self.erase_button.clicked.connect(self.erase)
         self.check_button.clicked.connect(self.check)
+        self.firmware_button.clicked.connect(self.firmware)
         self.reboot_button.clicked.connect(self.reboot)
         self.run_button.clicked.connect(self.run)
         box = QGridLayout(self)
@@ -2166,11 +2171,14 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         box.addWidget(self.erase_button, 0, 2)
         box.addWidget(self.check_button, 0, 3)
         box.addWidget(self.reboot_button, 1, 0)
+        box.addWidget(self.firmware_button, 1, 1)
         box.addWidget(self.run_button, 1, 3)
         self.start_check = None
         self.start_load = None
         self.start_save = None
         self.start_erase = None
+        self.start_list_firmware = None
+        self.start_update_firmware = None
         self.matches = False
         self.stream_len = 0
     
@@ -2179,6 +2187,13 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.start_load = self.retrieve('configuration>load', menu)
         self.start_save = self.retrieve('configuration>save', menu)
         self.start_erase = self.retrieve('configuration>erase', menu)
+        self.start_list_firmware = self.retrieve('firmware>list', menu)
+        self.start_update_firmware = self.retrieve('firmware>update', menu)
+        if self.start_list_firmware is None:
+            self.firmware_button.setVisible(False)
+        else:
+            self.sigReadRequest.emit(self, 'firmwarecheck',
+                                     self.start_list_firmware, 'select')
 
     def save(self):
         self.sigReadRequest.emit(self, 'confsave', self.start_save, 'select')
@@ -2195,6 +2210,10 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
     def reboot(self):
         self.sigReadRequest.emit(self, 'reboot', ['reboot'], '')
 
+    def firmware(self):
+        self.sigReadRequest.emit(self, 'firmware1',
+                                 self.start_update_firmware, 'select')
+
     def run(self):
         self.sigReadRequest.emit(self, 'run', ['q'], 'halt')
 
@@ -2205,6 +2224,32 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
             if len(stream) != self.stream_len:
                 self.sigDisplayTerminal.emit('Run logger', stream)
                 self.stream_len = len(stream)
+        elif ident.startswith('firmware'):
+            if ident == 'firmwarecheck':
+                if len(stream) > 1 and 'no firmware files' in stream[1].lower():
+                    self.firmware_button.setVisible(False)
+            elif ident.endswith('1'):
+                if len(stream) > 0 and 'available' in stream[0].lower():
+                    del stream[0]
+                for k in range(len(stream)):
+                    if len(stream[k].strip()) == 0:
+                        while k < len(stream):
+                            del stream[k]
+                        break
+                text = '<style type="text/css"> td { padding: 0 15px; } th { padding: 0 15px; }</style>'
+                text += '<table>'
+                text += f'<tr><th align="right">No</th><th align="left">Name</th></tr>'
+                for l in stream:
+                    p = l.split()
+                    number = p[1].rstrip(')')
+                    name = p[2]
+                    text += f'<tr><td align="right">{number}</td><td align="left">{name}</td></tr>'
+                text += '</table>'
+                self.sigDisplayTerminal.emit('Firmware', text)
+                self.sigReadRequest.emit(self, 'firmware2',
+                                         ['n'], 'select')
+            elif ident.endswith('2'):
+                pass
         if not ident.startswith('conf'):
             return
         if ident == 'confcheck':
