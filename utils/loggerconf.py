@@ -2149,12 +2149,15 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.erase_button.setToolTip('Erase configuration file on SD card (Alt+E)')
         self.check_button = QPushButton('&Check', self)
         self.check_button.setToolTip('Check the configuration on the logger (Alt+C)')
+        self.reboot_button = QPushButton('Re&boot', self)
+        self.reboot_button.setToolTip('Reboot logger (Alt+B)')
         self.run_button = QPushButton('&Run', self)
         self.run_button.setToolTip('Run logger (Alt+R)')
         self.save_button.clicked.connect(self.save)
         self.load_button.clicked.connect(self.load)
         self.erase_button.clicked.connect(self.erase)
         self.check_button.clicked.connect(self.check)
+        self.reboot_button.clicked.connect(self.reboot)
         self.run_button.clicked.connect(self.run)
         box = QGridLayout(self)
         box.setContentsMargins(0, 0, 0, 0)
@@ -2162,6 +2165,7 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         box.addWidget(self.load_button, 0, 1)
         box.addWidget(self.erase_button, 0, 2)
         box.addWidget(self.check_button, 0, 3)
+        box.addWidget(self.reboot_button, 1, 0)
         box.addWidget(self.run_button, 1, 3)
         self.start_check = None
         self.start_load = None
@@ -2187,6 +2191,9 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
 
     def check(self):
         self.sigReadRequest.emit(self, 'confcheck', self.start_check, 'select')
+
+    def reboot(self):
+        self.sigReadRequest.emit(self, 'reboot', ['reboot'], '')
 
     def run(self):
         self.sigReadRequest.emit(self, 'run', ['q'], 'halt')
