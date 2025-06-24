@@ -260,7 +260,7 @@ class ScanLogger(QLabel):
             
 class Interactor(ABC):
 
-    sigReadRequest = Signal(object, str, list, str)
+    sigReadRequest = Signal(object, str, list, list)
     sigWriteRequest = Signal(str, list)
     sigTransmitRequest = Signal(object, str, list)
     sigDisplayTerminal = Signal(str, object)
@@ -380,7 +380,7 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
             else:
                 self.prev_time = QDateTime.currentDateTime().toString(Qt.ISODate)
                 self.sigReadRequest.emit(self, 'rtclock',
-                                         self.start_get, 'select')
+                                         self.start_get, ['select'])
 
     def read(self, ident, stream, success):
         if ident != 'rtclock':
@@ -445,7 +445,7 @@ class ReportButton(Interactor, QPushButton, metaclass=InteractorQPushButton):
         self.start = self.retrieve(self.key, menu)
 
     def run(self):
-        self.sigReadRequest.emit(self, 'run', self.start, 'select')
+        self.sigReadRequest.emit(self, 'run', self.start, ['select'])
 
                 
 class PSRAMTest(ReportButton):
@@ -537,9 +537,9 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.row = 1
         self.add('device', self.device)
         self.sigReadRequest.emit(self, 'controller',
-                                 self.controller_start_get, 'select')
+                                 self.controller_start_get, ['select'])
         self.sigReadRequest.emit(self, 'psram',
-                                 self.psram_start_get, 'select')
+                                 self.psram_start_get, ['select'])
 
     def read(self, ident, stream, success):
         r = 0
@@ -1162,10 +1162,10 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.row = 3
         if self.devices_start_get is not None:
             self.sigReadRequest.emit(self, 'inputdevices',
-                                     self.devices_start_get, 'select')
+                                     self.devices_start_get, ['select'])
         if self.sensors_start_get is not None:
             self.sigReadRequest.emit(self, 'sensordevices',
-                                     self.sensors_start_get, 'select')
+                                     self.sensors_start_get, ['select'])
 
     def add(self, text, col):
         label = QLabel(text)
@@ -1356,7 +1356,7 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.row = 3
         if self.sensors_get is not None:
             self.sigReadRequest.emit(self, 'sensors',
-                                     self.sensors_get, 'select')
+                                     self.sensors_get, ['select'])
             if self.request_get is not None and \
                self.values_get is not None:
                 self.state = 0
@@ -1368,12 +1368,12 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     def read_sensors(self):
         if self.state == 0:
             self.sigReadRequest.emit(self, 'request',
-                                     self.request_get, 'select')
+                                     self.request_get, ['select'])
             self.state = 1
             self.timer.start(self.delay)
         else:
             self.sigReadRequest.emit(self, 'values',
-                                     self.values_get, 'select')
+                                     self.values_get, ['select'])
             self.state = 0
             self.timer.start(max(0, 2000 - self.delay))
 
@@ -1578,11 +1578,11 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     def start(self):
         self.row = 1
         self.sigReadRequest.emit(self, 'recordings',
-                                 self.recordings_start_get, 'select')
+                                 self.recordings_start_get, ['select'])
         self.sigReadRequest.emit(self, 'root',
-                                 self.root_start_get, 'select')
+                                 self.root_start_get, ['select'])
         self.sigReadRequest.emit(self, 'sdcard',
-                                 self.sdcard_start_get, 'select')
+                                 self.sdcard_start_get, ['select'])
 
     def read(self, ident, stream, success):
 
@@ -1780,7 +1780,10 @@ class YesNoQuestion(QWidget):
         for s in reversed(stream):
             if len(s.strip()) == 0:
                 break
-            text.insert(0, s)
+            if s.strip() == '.':
+                text.insert(0, '')
+            else:
+                text.insert(0, s)
         text[-1] = text[-1][:text[-1].lower().find(' [y/n] ')]
         self.msg.setText('\n'.join(text))
         self.setFocus(Qt.MouseFocusReason)
@@ -2179,6 +2182,7 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.start_erase = None
         self.start_list_firmware = None
         self.start_update_firmware = None
+        self.update_stream = []
         self.matches = False
         self.stream_len = 0
     
@@ -2193,29 +2197,31 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
             self.firmware_button.setVisible(False)
         else:
             self.sigReadRequest.emit(self, 'firmwarecheck',
-                                     self.start_list_firmware, 'select')
+                                     self.start_list_firmware, ['select'])
+        if self.start_update_firmware is not None:
+            self.start_update_firmware.append('STAY')
 
     def save(self):
-        self.sigReadRequest.emit(self, 'confsave', self.start_save, 'select')
+        self.sigReadRequest.emit(self, 'confsave', self.start_save, ['select'])
 
     def load(self):
-        self.sigReadRequest.emit(self, 'confload', self.start_load, 'select')
+        self.sigReadRequest.emit(self, 'confload', self.start_load, ['select'])
 
     def erase(self):
-        self.sigReadRequest.emit(self, 'conferase', self.start_erase, 'select')
+        self.sigReadRequest.emit(self, 'conferase', self.start_erase, ['select'])
 
     def check(self):
-        self.sigReadRequest.emit(self, 'confcheck', self.start_check, 'select')
+        self.sigReadRequest.emit(self, 'confcheck', self.start_check, ['select'])
 
     def reboot(self):
-        self.sigReadRequest.emit(self, 'reboot', ['reboot'], '')
+        self.sigReadRequest.emit(self, 'reboot', ['reboot'], [''])
 
     def firmware(self):
-        self.sigReadRequest.emit(self, 'firmware1',
-                                 self.start_update_firmware, 'select')
+        self.sigReadRequest.emit(self, 'updatefirmware',
+                                 self.start_update_firmware, ['select'])
 
     def run(self):
-        self.sigReadRequest.emit(self, 'run', ['q'], 'halt')
+        self.sigReadRequest.emit(self, 'run', ['q'], ['halt'])
 
     def read(self, ident, stream, success):
         while len(stream) > 0 and len(stream[0].strip()) == 0:
@@ -2224,11 +2230,12 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
             if len(stream) != self.stream_len:
                 self.sigDisplayTerminal.emit('Run logger', stream)
                 self.stream_len = len(stream)
-        elif ident.startswith('firmware'):
+        elif 'firmware' in ident:
             if ident == 'firmwarecheck':
                 if len(stream) > 1 and 'no firmware files' in stream[1].lower():
                     self.firmware_button.setVisible(False)
-            elif ident.endswith('1'):
+            elif ident == 'updatefirmware':
+                self.update_stream = []
                 if len(stream) > 0 and 'available' in stream[0].lower():
                     del stream[0]
                 for k in range(len(stream)):
@@ -2236,20 +2243,40 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
                         while k < len(stream):
                             del stream[k]
                         break
-                text = '<style type="text/css"> td { padding: 0 15px; } th { padding: 0 15px; }</style>'
-                text += '<table>'
-                text += f'<tr><th align="right">No</th><th align="left">Name</th></tr>'
-                for l in stream:
-                    p = l.split()
-                    number = p[1].rstrip(')')
-                    name = p[2]
-                    text += f'<tr><td align="right">{number}</td><td align="left">{name}</td></tr>'
-                text += '</table>'
-                self.sigDisplayTerminal.emit('Firmware', text)
-                self.sigReadRequest.emit(self, 'firmware2',
-                                         ['n'], 'select')
-            elif ident.endswith('2'):
-                pass
+                if len(stream) == 1:
+                    self.sigReadRequest.emit(self, 'runfirmware1',
+                                             ['1', 'STAY'],
+                                             ['select', 'enter', 'error'])
+                else:
+                    text = '<style type="text/css"> td { padding: 0 15px; } th { padding: 0 15px; }</style>'
+                    text += '<table>'
+                    text += f'<tr><th align="right">No</th><th align="left">Name</th></tr>'
+                    for l in stream:
+                        p = l.split()
+                        number = p[1].rstrip(')')
+                        name = p[2]
+                        text += f'<tr><td align="right">{number}</td><td align="left">{name}</td></tr>'
+                    text += '</table>'
+                    self.sigDisplayTerminal.emit('Firmware', text)
+                    self.sigReadRequest.emit(self, 'runfirmware1',
+                                             ['n', 'STAY'],
+                                             ['select', 'enter', 'error'])
+            elif ident == 'runfirmware1':
+                if len(stream) > 0 and 'aborted' in stream[0].lower():
+                    for k in range(len(self.start_update_firmware) - 2):
+                        self.sigWriteRequest.emit('q', [])
+                elif len(stream) > 0:
+                    self.sigDisplayTerminal.emit('Update firmware', stream)
+                    if len(stream) > 1 and \
+                       'enter' in stream[-2] and 'to flash' in stream[-2]:
+                        self.update_stream = list(stream)
+                        unlock_code = stream[-2].split()[1]
+                        self.sigReadRequest.emit(self, 'runfirmware2',
+                                                 [unlock_code, 'STAY'],
+                                                 ['reboot'])
+            elif ident == 'runfirmware2':
+                self.sigDisplayTerminal.emit('Update firmware',
+                                             self.update_stream + stream)
         if not ident.startswith('conf'):
             return
         if ident == 'confcheck':
@@ -2424,6 +2451,7 @@ class Logger(QWidget):
         self.read_func = None
         self.input = []
         self.request_stack = []
+        self.request_block = False
         self.request_type = None
         self.request_target = None
         self.request_ident = None
@@ -2791,6 +2819,8 @@ class Logger(QWidget):
             
     def parse_request_stack(self):
         if len(self.request_stack) == 0:
+            if self.request_type is None:
+                self.request_block = False
             return
         self.clear_input()
         request = self.request_stack.pop(0)
@@ -2817,11 +2847,19 @@ class Logger(QWidget):
         for req in self.request_stack:
             if req[0] == target and req[1] == ident and req[-1] == act:
                 return
-        end = len(start) - 1
-        if act == 'transmit':
-            end -= 1
-        self.request_stack.append([target, ident, start, end,
-                                   stop, act])
+        block = self.request_block
+        if start[-1] == 'STAY':
+            start.pop()
+            end = 0
+            self.request_block = True
+            block = False
+        else:
+            end = len(start) - 1
+            if act == 'transmit':
+                end -= 1
+        if not block:
+            self.request_stack.append([target, ident, start, end,
+                                       stop, act])
         if self.read_func == self.parse_request_stack:
             self.parse_request_stack()
             
@@ -2854,8 +2892,11 @@ class Logger(QWidget):
                len(self.request_stop) == 0:
                 self.read_state += 1
             elif len(self.input) > 0:
+                last_line = self.input[-1].lower()
+                if len(last_line.strip()) == 0 and len(self.input) > 1:
+                    last_line = self.input[-2].lower()
                 for k in reversed(range(len(self.request_stop))):
-                    if self.request_stop[k] in self.input[-1].lower():
+                    if self.request_stop[k] in last_line:
                         self.request_stop = None
                         self.request_stop_index = k
                         self.read_state += 1
@@ -2908,8 +2949,9 @@ class Logger(QWidget):
     def write_request(self, msg, start):
         if start is None:
             return
-        self.request_stack.append([msg, None, start,
-                                   len(start) - 1, None, 'write'])
+        if not self.request_block:
+            self.request_stack.append([msg, None, start,
+                                       len(start) - 1, None, 'write'])
         if self.read_func == self.parse_request_stack:
             self.parse_request_stack()
 
