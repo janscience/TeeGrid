@@ -8,7 +8,8 @@ Record electric fish with electrode arrays based on
 Based on the [TeeRec](https://github.com/janscience/TeeRec) library,
 inspired by Stefan Mucha's
 [EOD-Logger](https://github.com/muchaste/EOD-Logger), the
-[ESensors](https://github.com/janscience/ESensors) library, abd the
+[MicroConfig](https://github.com/janscience/MicroConfig) library, the
+[ESensors](https://github.com/janscience/ESensors) library, and the
 [Teensy_Amp](https://github.com/janscience/Teensy_Amp) amplifiers.
 
 ![teensyamp](https://github.com/janscience/Teensy_Amp/blob/main/R4.1-R4.2/images/Teensy_Amp-R41-R42.png)

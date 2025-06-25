@@ -25,18 +25,18 @@
 
 // Default settings: ----------------------------------------------------------
 // (may be overwritten by config file logger.cfg)
-#define NCHANNELS        16       // number of channels (even, from 2 to 16)
+#define NCHANNELS        8       // number of channels (even, from 2 to 16)
 #define SAMPLING_RATE    48000    // samples per second and channel in Hertz
-#define PREGAIN          10.0     // gain factor of preamplifier
-#define GAIN             20.0      // dB
+#define PREGAIN          1.0     // gain factor of preamplifier
+#define GAIN             0.0      // dB
 
 #define PATH             "recordings"   // folder where to store the recordings
 #define DEVICEID         1              // may be used for naming files
-#define FILENAME         "loggerID-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM
-#define FILE_SAVE_TIME   5*60    // seconds
+#define FILENAME         "gridID-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM
+#define FILE_SAVE_TIME   20    // seconds
 #define INITIAL_DELAY    10.0    // seconds
 #define SENSORS_INTERVAL 10.0    // interval between sensors readings in seconds
-#define RANDOM_BLINKS    false   // set to true for blinking the LED randomly
+#define RANDOM_BLINKS    false    // set to true for blinking the LED randomly
 
 
 // ----------------------------------------------------------------------------
