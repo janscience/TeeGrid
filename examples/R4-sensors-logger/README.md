@@ -7,7 +7,7 @@ Logger for 2 to 16 channels based on
   connected to a
 - [Teensy 4.1](https://www.pjrc.com/store/teensy41.html)
 
-with additional sensors.
+with additional sensors (see [Sensors-V1](../../doc/sensors/sensors-v1)).
 
 Software based on the
 
