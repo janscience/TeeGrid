@@ -113,37 +113,41 @@ void Logger::initialDelay(float initial_delay,
 }
 
 
-void Logger::setup(SDWriter &sdfile, float filetime,
-		   const char *software) {
-  sdfile.setWriteInterval(2*AIInput.DMABufferTime());
-  sdfile.setMaxFileTime(filetime);
-  sdfile.header().setSoftware(software);
-  sdfile.header().setCPUSpeed();
-}
-
-
-void Logger::start(const char *path, const char *filename,
-		   float filetime, const char *software,
-		   bool randomblinks) {
+void Logger::setup(const char *path, const char *filename,
+		   const char *software, bool randomblinks) {
   RandomBlinks = randomblinks;
   Filename = filename;
   PrevFilename = "";
   Restarts = 0;
+  if (File0.sdcard()->dataDir(path))
+    Serial.printf("Save recorded data in folder \"%s\" on %sSD card.\n\n",
+		  path, File0.sdcard()->name());
+  File0.header().setSoftware(software);
+  File0.header().setCPUSpeed();
+  if (File1.sdcard() != NULL) {
+    File1.sdcard()->dataDir(path);
+    File1.header().setSoftware(software);
+    File1.header().setCPUSpeed();
+  }
+}
+
+
+void Logger::start(float filetime) {
+  File0.setWriteInterval(2*AIInput.DMABufferTime());
+  File0.setMaxFileTime(filetime);
+  if (File1.sdcard() != NULL) {
+    File1.setWriteInterval(2*AIInput.DMABufferTime());
+    File1.setMaxFileTime(filetime);
+  }
   if (RandomBlinks)
     BlinkLED.setTiming(5000, 100, 1200);
   else if (filetime > 30)
     BlinkLED.setTiming(5000);
   else
     BlinkLED.setTiming(2000);
-  if (File0.sdcard()->dataDir(path))
-    Serial.printf("Save recorded data in folder \"%s\" on %sSD card.\n\n",
-		  path, File0.sdcard()->name());
-  setup(File0, filetime, software);
-  if (File1.sdcard() != NULL) {
-    File1.sdcard()->dataDir(path);
-    setup(File1, filetime, software);
-  }
   BlinkLED.clearSwitchTimes();
+  if (RandomBlinks)
+    openBlinkFiles();
   File0.start();
   if (File1.sdcard() != NULL)
     File1.start(File0);
@@ -151,8 +155,6 @@ void Logger::start(const char *path, const char *filename,
   open(true);
   NextStore = 0;
   NextOpen = 0;
-  if (RandomBlinks)
-    openBlinkFiles();
 }
 
 

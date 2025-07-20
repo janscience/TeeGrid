@@ -6,6 +6,7 @@
 #include <RTClock.h>
 #include <DeviceID.h>
 #include <Blink.h>
+#include <PushButtons.h>
 #include <MicroConfig.h>
 #include <Settings.h>
 #include <InputTDMSettings.h>
@@ -27,7 +28,7 @@
 
 #define PATH          "recordings"   // folder where to store the recordings
 #define DEVICEID      1              // may be used for naming files
-#define FILENAME      "loggerID-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define FILENAME      "micarrayID-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME 20   // seconds
 #define INITIAL_DELAY  10.0  // seconds
 #define RANDOM_BLINKS  false  // set to true for blinking the LED randomly
@@ -35,6 +36,8 @@
 // ----------------------------------------------------------------------------
 
 #define LED_PIN       31
+
+#define START_PIN     30
 
 #define SOFTWARE      "TeeGrid R40-recorder v1.0"
 
@@ -48,6 +51,7 @@ ControlPCM186x *pcms[NPCMS] = {&pcm1, &pcm2};
 RTClock rtclock;
 DeviceID deviceid(DEVICEID);
 Blink blink(LED_PIN, true, LED_BUILTIN, false);
+PushButtons buttons;
 SDCard sdcard;
 
 Config config("logger.cfg", &sdcard);
@@ -68,6 +72,22 @@ Logger files(aidata, sdcard, rtclock, deviceid, blink);
 
 // -----------------------------------------------------------------------------
 
+void start_write(int id) {
+  // on button press:
+  if (file.available() && !file.isOpen()) {
+    file.setMaxFileSamples(0);
+    file.start();
+    openNextFile();
+  }
+}
+
+
+void stop_write(int id) {
+  // on button release:
+  file.setMaxFileTime(settings.fileTime());
+}
+
+
 void setup() {
   blink.switchOn();
   Serial.begin(9600);
@@ -76,6 +96,7 @@ void setup() {
   Wire.begin();
   rtclock.begin();
   rtclock.check();
+  buttons.add(START_PIN, INPUT_PULLUP, start_write, stop_write);
   sdcard.begin();
   files.check();
   rtclock.setFromFile(sdcard);
@@ -106,13 +127,15 @@ void setup() {
   aidata.start();
   aidata.report();
   files.report();
+  files.setup(settings.path(), settings.fileName(),
+              SOFTWARE, settings.randomBlinks());
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
-  files.start(settings.path(), settings.fileName(), settings.fileTime(),
-              SOFTWARE, settings.randomBlinks());
+  files.start(settings.fileTime());
 }
 
 
 void loop() {
+  buttons.update();
   files.update();
 }

@@ -24,9 +24,8 @@ public:
   // Start environmental sensors.
   void startSensors(float interval);
 
-  // Initialize recording directory and first files.
-  void start(const char *path, const char *filename, float filetime,
-	     const char *software, bool randomblinks=false);
+  // Open files.
+  void start(float filetime);
 
   // Call this in loop() for writing data to files.
   // Returns true if sensors have been updated.

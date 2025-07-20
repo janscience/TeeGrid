@@ -41,10 +41,13 @@ public:
 
   // Delay with double blinks for initial_delay seconds.
   void initialDelay(float initial_delay, Stream &stream=Serial);
+  
+  // Initialize recording directory and file metadata.
+  void setup(const char *path, const char *filename,
+	     const char *software, bool randomblinks);
 
-  // Initialize recording directory and firt files.
-  void start(const char *path, const char *filename, float filetime,
-	     const char *software, bool randomblinks=false);
+  // Open files.
+  void start(float filetime);
 
   // Call this in loop() for writing data to files.
   void update();
@@ -53,10 +56,6 @@ public:
 
 
 protected:
-
-  // Provide timing and metadata to file.
-  void setup(SDWriter &sdfile, float filetime,
-	     const char *software);
   
   // Generate file name, open main file and write first chunk of data.
   void open(bool backup);

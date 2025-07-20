@@ -141,10 +141,10 @@ void setup() {
   aidata.start();
   aidata.report();
   files.report();
+  files.setup(settings.path(), settings.fileName(), SOFTWARE);
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
-  files.start(settings.path(), settings.fileName(), settings.fileTime(),
-              SOFTWARE);
+  files.start(settings.fileTime());
 }
 
 
