@@ -14,6 +14,9 @@
 
 bool R40SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
 		 const InputTDMSettings &aisettings);
+void R40SetupPCMs(Input &aidata, const InputSettings &aisettings,
+		  Device **controls, size_t ncontrols,
+		  Stream &stream=Serial);
 
 // This variant is still in R41-CAN-recorder-controller.ino,
 // but should be changed for the second variant taking aisettings:
