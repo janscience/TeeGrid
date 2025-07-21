@@ -52,11 +52,17 @@ Logger::Logger(Input &aiinput, SDCard &sdcard0,
 }
 
 
-bool Logger::check(bool check_backup, Stream &stream) {
+bool Logger::check(Config &config, bool check_backup) {
   if (!SDCard0->check(1e9)) {
     SDCard0->end();
     BlinkLED.switchOff();
-    halt(stream);
+    if (Serial) {
+      config.execute(Serial);
+      Serial.println();
+      Serial.println("Need to reboot, because SD card was not properly inserted initially.");
+      Serial.println();
+    }
+    halt(Serial);
     return false;
   }
   if (SDCard1 != NULL &&

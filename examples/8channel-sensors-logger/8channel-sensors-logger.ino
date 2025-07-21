@@ -115,7 +115,7 @@ void setup() {
   rtclock.begin();
   rtclock.check();
   sdcard.begin();
-  files.check();
+  files.check(config);
   rtclock.setFromFile(sdcard);
   setupSensors();
   settings.enable("InitialDelay");

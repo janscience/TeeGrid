@@ -76,7 +76,7 @@ void setup() {
   rtclock.begin();
   rtclock.check();
   sdcard.begin();
-  files.check(true);
+  files.check(config);
   rtclock.setFromFile(sdcard);
   settings.enable("InitialDelay");
   settings.enable("PulseFreq");

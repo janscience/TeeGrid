@@ -12,6 +12,7 @@
 #include <RTClock.h>
 #include <DeviceID.h>
 #include <Blink.h>
+#include <MicroConfig.h>
 
 
 class Logger {
@@ -26,9 +27,9 @@ public:
 	 Blink &blink);
 
   // Check accessibility of SD cards.
-  // Halt if the main SD card can not be written.
+  // Run menu and halt if the main SD card can not be written.
   // If check_backup force checking backup SD card as well.
-  bool check(bool check_backup=false, Stream &stream=Serial);
+  bool check(Config &config, bool check_backup=false);
 
   // If secondary SD card is not available, end its usage.
   void endBackup(SPIClass *spi=NULL);

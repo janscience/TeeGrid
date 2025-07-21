@@ -117,7 +117,7 @@ void setup() {
   SPI1.begin();
   sdcard1.begin(SDCARD1_CS, DEDICATED_SPI, 40, &SPI1);
 #endif
-  files.check(true);
+  files.check(config, true);
   rtclock.setFromFile(sdcard0);
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");

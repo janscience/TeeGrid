@@ -77,7 +77,7 @@ void setup() {
   rtclock.begin();
   rtclock.check();
   sdcard.begin();
-  files.check();
+  files.check(config);
   rtclock.setFromFile(sdcard);
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
