@@ -29,15 +29,14 @@
 #define PATH          "recordings"   // folder where to store the recordings
 #define DEVICEID      1              // may be used for naming files
 #define FILENAME      "micarrayID-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
-#define FILE_SAVE_TIME 20   // seconds
-#define INITIAL_DELAY  10.0  // seconds
+#define FILE_SAVE_TIME 5*60   // seconds
 #define RANDOM_BLINKS  false  // set to true for blinking the LED randomly
 
 // ----------------------------------------------------------------------------
 
 #define LED_PIN       31
 
-#define START_PIN     30
+#define BUTTON_PIN    30
 
 #define SOFTWARE      "TeeGrid R40-recorder v1.0"
 
@@ -56,7 +55,7 @@ SDCard sdcard;
 
 Config config("logger.cfg", &sdcard);
 Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
-                  INITIAL_DELAY, RANDOM_BLINKS);
+                  0, RANDOM_BLINKS);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
 RTClockMenu rtclock_menu(config, rtclock);
@@ -72,19 +71,16 @@ Logger files(aidata, sdcard, rtclock, deviceid, blink);
 
 // -----------------------------------------------------------------------------
 
-void start_write(int id) {
-  // on button press:
-  if (file.available() && !file.isOpen()) {
-    file.setMaxFileSamples(0);
-    file.start();
-    openNextFile();
+void toggle_save(int id) {
+  if (files.saving()) {
+    files.close();
+    Serial.println("Stopped recordng.");
+    Serial.println();
   }
-}
-
-
-void stop_write(int id) {
-  // on button release:
-  file.setMaxFileTime(settings.fileTime());
+  else {
+    Serial.println("Start recordng ...");
+    files.start(settings.fileTime());
+  }
 }
 
 
@@ -96,18 +92,15 @@ void setup() {
   Wire.begin();
   rtclock.begin();
   rtclock.check();
-  buttons.add(START_PIN, INPUT_PULLUP, start_write, stop_write);
   sdcard.begin();
   files.check(config);
   rtclock.setFromFile(sdcard);
-  settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
-  aisettings.enable("Pregain");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   config.load();
   if (Serial)
-    config.execute(Serial);
+    config.execute(Serial, 10000);
   config.report();
   Serial.println();
   deviceid.setID(settings.deviceID());
@@ -129,9 +122,9 @@ void setup() {
   files.report();
   files.setup(settings.path(), settings.fileName(),
               SOFTWARE, settings.randomBlinks());
+  buttons.add(BUTTON_PIN, INPUT_PULLUP, toggle_save);
   shutdown_usb();   // saves power!
-  files.initialDelay(settings.initialDelay());
-  files.start(settings.fileTime());
+  files.initialDelay(0.0);
 }
 
 

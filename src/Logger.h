@@ -50,8 +50,14 @@ public:
   // Open files.
   void start(float filetime);
 
+  // Close files.
+  void close();
+
   // Call this in loop() for writing data to files.
   void update();
+
+  // True, if data are stored in files.
+  bool saving() const { return Saving; };
 
   String baseName() const { return File0.baseName(); };
 
@@ -88,6 +94,7 @@ protected:
   
   const char *Filename;  // Template for filename
   String PrevFilename;   // Previous file name
+  bool Saving;
   int FileCounter;
   int Restarts;
   int NextStore;

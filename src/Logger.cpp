@@ -24,6 +24,7 @@ Logger::Logger(Input &aiinput, SDCard &sdcard0,
   RandomBlinks(false),
   Filename(NULL),
   PrevFilename(""),
+  Saving(false),
   FileCounter(0),
   Restarts(0),
   NextStore(0),
@@ -104,18 +105,22 @@ void Logger::report(Stream &stream) const {
 }
 
 
-void Logger::initialDelay(float initial_delay,
-				     Stream &stream) {
-  stream.printf("Delay for %.0fs ... ", initial_delay);
-  if (initial_delay >= 2.0) {
-    delay(1000);
+void Logger::initialDelay(float initial_delay, Stream &stream) {
+  if (initial_delay < 1e-8) {
     BlinkLED.setDouble();
-    BlinkLED.delay(uint32_t(1000.0*initial_delay) - 1000);
   }
-  else
-    delay(uint32_t(1000.0*initial_delay));
-  stream.println();
-  stream.println();
+  else {
+    stream.printf("Delay for %.0fs ... ", initial_delay);
+    if (initial_delay >= 2.0) {
+      delay(1000);
+      BlinkLED.setDouble();
+      BlinkLED.delay(uint32_t(1000.0*initial_delay) - 1000);
+    }
+    else
+      delay(uint32_t(1000.0*initial_delay));
+    stream.println();
+    stream.println();
+  }
 }
 
 
@@ -223,6 +228,7 @@ void Logger::open(bool backup) {
       halt();
       return;
     }
+    Saving = true;
     FileCounter++;
     ssize_t samples = File0.write();
     if (samples == -4) {   // overrun
@@ -242,6 +248,17 @@ void Logger::open(bool backup) {
     else
       Serial.println(File0.name());
   }
+}
+
+
+void Logger::close() {
+  if (! Saving)
+    return;
+  File0.closeWave();
+  if (File1.sdcard() != NULL && File1.sdcard()->available())
+    File1.closeWave();
+  Saving = false;
+  BlinkLED.setDouble();
 }
 
 
