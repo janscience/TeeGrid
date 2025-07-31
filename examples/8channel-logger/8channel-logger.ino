@@ -70,6 +70,10 @@ Logger files(aidata, sdcard, rtclock, deviceid, blink);
 
 void setup() {
   blink.switchOn();
+  settings.enable("InitialDelay");
+  settings.enable("PulseFreq");
+  aisettings.disable("Reference");
+  aisettings.enable("Pregain");
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
@@ -78,10 +82,6 @@ void setup() {
   sdcard.begin();
   files.check(config);
   rtclock.setFromFile(sdcard);
-  settings.enable("InitialDelay");
-  settings.enable("PulseFreq");
-  aisettings.disable("Reference");
-  aisettings.enable("Pregain");
   config.load();
   if (Serial)
     config.execute(Serial, 10000);

@@ -21,14 +21,14 @@
 
 // Default settings: ----------------------------------------------------------
 // (may be overwritten by config file teegrid.cfg)
-#define NCHANNELS     8        // number of channels (2, 4, 6, 8)
+#define NCHANNELS     4        // number of channels (2, 4, 6, 8)
 #define SAMPLING_RATE 96000    // samples per second and channel in Hertz
 #define PREGAIN       10.0     // gain factor of preamplifier (1 or 10).
 #define GAIN          20.0     // dB
 
 #define PATH          "recordings"   // folder where to store the recordings
 #define DEVICEID      1              // may be used for naming files
-#define FILENAME      "micarrayID-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define FILENAME      "micarray4-1-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME 5*60   // seconds
 #define RANDOM_BLINKS  false  // set to true for blinking the LED randomly
 
@@ -45,7 +45,7 @@ InputTDM aidata(AIBuffer, NAIBuffer);
 #define NPCMS 2
 ControlPCM186x pcm1(Wire, PCM186x_I2C_ADDR1, InputTDM::TDM1);
 ControlPCM186x pcm2(Wire, PCM186x_I2C_ADDR2, InputTDM::TDM1);
-ControlPCM186x *pcms[NPCMS] = {&pcm1, &pcm2};
+Device *pcms[NPCMS] = {&pcm1, &pcm2};
 
 RTClock rtclock;
 DeviceID deviceid(DEVICEID);
@@ -62,7 +62,7 @@ RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
 SDCardMenu sdcard0_menu(config, sdcard, settings);
 FirmwareMenu firmware_menu(config, sdcard);
-InputMenu input_menu(config, aidata, aisettings);
+InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R40SetupPCMs);
 DiagnosticMenu diagnostic_menu(config, sdcard, &pcm1, &pcm2, &rtclock);
 HelpAction help_act(config, "Help");
 
@@ -86,6 +86,10 @@ void toggle_save(int id) {
 
 void setup() {
   blink.switchOn();
+  settings.disable("DeviceID");
+  settings.enable("RandomBlinks");
+  aisettings.setRateSelection(ControlPCM186x::SamplingRates,
+                              ControlPCM186x::MaxSamplingRates);
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
@@ -95,9 +99,6 @@ void setup() {
   sdcard.begin();
   files.check(config);
   rtclock.setFromFile(sdcard);
-  settings.enable("RandomBlinks");
-  aisettings.setRateSelection(ControlPCM186x::SamplingRates,
-                              ControlPCM186x::MaxSamplingRates);
   config.load();
   if (Serial)
     config.execute(Serial, 10000);
@@ -106,11 +107,7 @@ void setup() {
   deviceid.setID(settings.deviceID());
   aidata.setSwapLR();
   files.setCPUSpeed(aisettings.rate());
-  for (int k=0;k < NPCMS; k++) {
-    Serial.printf("Setup PCM186x %d: ", k);
-    R40SetupPCM(aidata, *pcms[k], k%2==1, aisettings);
-  }
-  Serial.println();
+  R40SetupPCMs(aidata, aisettings, pcms, NPCMS);
   blink.switchOff();
   aidata.begin();
   if (!aidata.check(aisettings.nchannels())) {

@@ -107,6 +107,12 @@ void setupSensors() {
 void setup() {
   can.powerDown();
   blink.switchOn();
+  settings.enable("InitialDelay");
+  settings.enable("RandomBlinks");
+  settings.enable("SensorsInterval");
+  aisettings.setRateSelection(ControlPCM186x::SamplingRates,
+                              ControlPCM186x::MaxSamplingRates);
+  aisettings.enable("Pregain");
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
@@ -118,12 +124,6 @@ void setup() {
   files.check(config);
   rtclock.setFromFile(sdcard);
   setupSensors();
-  settings.enable("InitialDelay");
-  settings.enable("RandomBlinks");
-  settings.enable("SensorsInterval");
-  aisettings.setRateSelection(ControlPCM186x::SamplingRates,
-                              ControlPCM186x::MaxSamplingRates);
-  aisettings.enable("Pregain");
   config.load();
   if (Serial)
     config.execute(Serial, 10000);

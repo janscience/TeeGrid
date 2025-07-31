@@ -102,6 +102,11 @@ Logger files(aidata, sdcard0, rtclock, deviceid, blink);
 void setup() {
   can.powerDown();
   blink.switchOn();
+  settings.enable("InitialDelay");
+  settings.enable("RandomBlinks");
+  aisettings.setRateSelection(ControlPCM186x::SamplingRates,
+                              ControlPCM186x::MaxSamplingRates);
+  aisettings.enable("Pregain");
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
@@ -119,11 +124,6 @@ void setup() {
 #endif
   files.check(config, true);
   rtclock.setFromFile(sdcard0);
-  settings.enable("InitialDelay");
-  settings.enable("RandomBlinks");
-  aisettings.setRateSelection(ControlPCM186x::SamplingRates,
-                              ControlPCM186x::MaxSamplingRates);
-  aisettings.enable("Pregain");
   config.load();
   if (Serial)
     config.execute(Serial, 10000);

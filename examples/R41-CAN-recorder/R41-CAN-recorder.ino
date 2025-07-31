@@ -125,6 +125,9 @@ void setupCAN() {
 
 void setup() {
   blink.switchOn();
+  settings.enable("InitialDelay");
+  aisettings.setRateSelection(ControlPCM186x::SamplingRates,
+                              ControlPCM186x::MaxSamplingRates);
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   blink.switchOff();
@@ -134,9 +137,6 @@ void setup() {
   sdcard.begin();
   files.check(true);
   rtclock.setFromFile(sdcard);
-  settings.enable("InitialDelay");
-  aisettings.setRateSelection(ControlPCM186x::SamplingRates,
-                              ControlPCM186x::MaxSamplingRates);
   config.load();
   if (Serial)
     config.execute(Serial, 10000);
