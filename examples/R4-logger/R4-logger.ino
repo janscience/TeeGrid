@@ -4,7 +4,7 @@
 #include <InputTDM.h>
 #include <SPI.h>
 #include <SDCard.h>
-#include <RTClock.h>
+#include <RTClockDS1307.h>
 #include <DeviceID.h>
 #include <Blink.h>
 #include <MicroConfig.h>
@@ -61,7 +61,7 @@ Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 
 R41CAN can;
 
-RTClock rtclock;
+RTClockDS1307 rtclock;
 DeviceID deviceid(DEVICEID);
 Blink blink(LED_PIN, true, LED_BUILTIN, false);
 #ifdef BACKUP_SDCARD
