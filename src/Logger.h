@@ -61,6 +61,8 @@ public:
 
   String baseName() const { return File0.baseName(); };
 
+  void R41powerDownCAN();
+  
 
 protected:
   

@@ -424,3 +424,11 @@ void Logger::update() {
     storeBlinks();
   BlinkLED.update();
 }
+
+
+void Logger::R41powerDownCAN() {
+  #define CAN_SHDN_PIN 37      // R4.1 CAN shutdown pin
+  pinMode(CAN_SHDN_PIN, OUTPUT);
+  digitalWrite(CAN_SHDN_PIN, HIGH);
+}
+

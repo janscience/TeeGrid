@@ -18,7 +18,6 @@
 #include <TeensyBoard.h>
 #include <PowerSave.h>
 #include <Logger.h>
-#include <R41CAN.h>
 
 // Default settings: ----------------------------------------------------------
 // (may be overwritten by config file logger.cfg)
@@ -59,8 +58,6 @@ ControlPCM186x pcm3(Wire1, PCM186x_I2C_ADDR1, InputTDM::TDM2);
 ControlPCM186x pcm4(Wire1, PCM186x_I2C_ADDR2, InputTDM::TDM2);
 Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 
-R41CAN can;
-
 RTClockDS1307 rtclock;
 DeviceID deviceid(DEVICEID);
 Blink blink(LED_PIN, true, LED_BUILTIN, false);
@@ -100,7 +97,7 @@ Logger files(aidata, sdcard0, rtclock, deviceid, blink);
 // -----------------------------------------------------------------------------
 
 void setup() {
-  can.powerDown();
+  //files.R41powerDownCAN();
   blink.switchOn();
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");

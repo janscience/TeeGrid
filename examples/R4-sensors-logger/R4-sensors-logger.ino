@@ -3,7 +3,7 @@
 #include <ControlPCM186x.h>
 #include <InputTDM.h>
 #include <SDCard.h>
-#include <RTClock.h>
+#include <RTClockDS1307.h>
 #include <DeviceID.h>
 #include <Blink.h>
 #include <MicroConfig.h>
@@ -18,7 +18,6 @@
 #include <TeensyBoard.h>
 #include <PowerSave.h>
 #include <SensorsLogger.h>
-#include <R41CAN.h>
 #include <ESensors.h>
 #include <TemperatureDS18x20.h>
 #include <LightTSL2591.h>
@@ -44,7 +43,8 @@
 #define LED_PIN          26    // R4.1
 //#define LED_PIN        27    // R4.2
 
-#define TEMP_PIN         35    // pin for DATA line of DS18x20 themperature sensor
+// #define TEMP_PIN         35    // pin for DATA line of DS18x20 themperature sensor for R4.1
+#define TEMP_PIN         9    // pin for DATA line of DS18x20 themperature sensor for R4.1b
 
 
 // ----------------------------------------------------------------------------
@@ -59,8 +59,6 @@ ControlPCM186x pcm2(Wire, PCM186x_I2C_ADDR2, InputTDM::TDM1);
 ControlPCM186x pcm3(Wire1, PCM186x_I2C_ADDR1, InputTDM::TDM2);
 ControlPCM186x pcm4(Wire1, PCM186x_I2C_ADDR2, InputTDM::TDM2);
 Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
-
-R41CAN can;
 
 RTClock rtclock;
 DeviceID deviceid(DEVICEID);
@@ -105,7 +103,7 @@ void setupSensors() {
 // -----------------------------------------------------------------------------
 
 void setup() {
-  can.powerDown();
+  //files.R41powerDownCAN();
   blink.switchOn();
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
