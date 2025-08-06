@@ -27,8 +27,8 @@
 #define GAIN           20.0     // dB
 
 #define PATH           "recordings"   // folder where to store the recordings
-#define DEVICEID       4              // may be used for naming files
-#define FILENAME       "bigtankIDA-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define DEVICEID       0              // may be used for naming files
+#define FILENAME       "bigtankID2-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME 5*60      // seconds
 #define INITIAL_DELAY  10.0          // seconds
 #define RANDOM_BLINKS  true          // set to true for blinking the LED randomly
@@ -37,6 +37,9 @@
 
 #define LED_PIN        26    // R4.1    warning: this is the MOSI1 pin for the backup SD card
 //#define LED_PIN      27    // R4.2
+
+// Device ID pins:
+int DIPPins[] = { 34, 35, 36, 37, -1 };
 
 // Secondary backup SD card on SPI bus:
 // Not recommended, since it draws a lot more current.
@@ -98,6 +101,7 @@ Logger files(aidata, sdcard0, rtclock, deviceid, blink);
 
 void setup() {
   //files.R41powerDownCAN();
+  deviceid.setPins(DIPPins);
   blink.switchOn();
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
@@ -128,6 +132,8 @@ void setup() {
   files.endBackup(&SPI1);
   Serial.println();
   deviceid.setID(settings.deviceID());
+  if (deviceid.id() == 0)
+    deviceid.read();
   files.setCPUSpeed(aisettings.rate());
   R4SetupPCMs(aidata, aisettings, pcms, NPCMS);
   blink.switchOff();
