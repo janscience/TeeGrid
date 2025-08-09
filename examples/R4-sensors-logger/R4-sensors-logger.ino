@@ -43,6 +43,9 @@
 #define LED_PIN          26    // R4.1
 //#define LED_PIN        27    // R4.2
 
+// Device ID pins:
+int DIPPins[] = { 34, 35, 36, 37, -1 };
+
 // #define TEMP_PIN         35    // pin for DATA line of DS18x20 themperature sensor for R4.1
 #define TEMP_PIN         9    // pin for DATA line of DS18x20 themperature sensor for R4.1b
 
@@ -83,7 +86,7 @@ SDCardMenu sdcard_menu(config, sdcard, settings);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 ESensorsMenu sensors_menu(config, sensors);
-DiagnosticMenu diagnostic_menu(config, sdcard, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
+DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 HelpAction help_act(config, "Help");
 
 SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);
@@ -104,6 +107,7 @@ void setupSensors() {
 
 void setup() {
   //files.R41powerDownCAN();
+  deviceid.setPins(DIPPins);
   blink.switchOn();
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
@@ -129,6 +133,8 @@ void setup() {
   Serial.println();
   files.startSensors(settings.sensorsInterval());
   deviceid.setID(settings.deviceID());
+  if (deviceid.id() == -1)
+    deviceid.read();
   files.setCPUSpeed(aisettings.rate());
   R4SetupPCMs(aidata, aisettings, pcms, NPCMS);
   blink.switchOff();

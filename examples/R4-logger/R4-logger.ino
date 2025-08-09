@@ -26,10 +26,10 @@
 #define PREGAIN        10.0     // gain factor of preamplifier
 #define GAIN           20.0     // dB
 
-#define PATH           "recordings"   // folder where to store the recordings
-#define DEVICEID       0              // may be used for naming files
+#define PATH           "recordings"  // folder where to store the recordings
+#define DEVICEID       -1            // may be used for naming files
 #define FILENAME       "bigtankID2-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
-#define FILE_SAVE_TIME 5*60      // seconds
+#define FILE_SAVE_TIME 5*60          // seconds
 #define INITIAL_DELAY  10.0          // seconds
 #define RANDOM_BLINKS  true          // set to true for blinking the LED randomly
 
@@ -85,9 +85,9 @@ SDCardMenu sdcard1_menu(config, sdcard1, settings);
 FirmwareMenu firmware_menu(config, sdcard0);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 #ifdef BACKUP_SDCARD
-DiagnosticMenu diagnostic_menu(config, sdcard0, sdcard1, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
+DiagnosticMenu diagnostic_menu(config, sdcard0, sdcard1, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 #else
-DiagnosticMenu diagnostic_menu(config, sdcard0, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
+DiagnosticMenu diagnostic_menu(config, sdcard0, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 #endif
 HelpAction help_act(config, "Help");
 
@@ -132,7 +132,7 @@ void setup() {
   files.endBackup(&SPI1);
   Serial.println();
   deviceid.setID(settings.deviceID());
-  if (deviceid.id() == 0)
+  if (deviceid.id() == -1)
     deviceid.read();
   files.setCPUSpeed(aisettings.rate());
   R4SetupPCMs(aidata, aisettings, pcms, NPCMS);

@@ -59,7 +59,7 @@ ConfigurationMenu configuration_menu(config, sdcard);
 SDCardMenu sdcard0_menu(config, sdcard, settings);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R40SetupPCMs);
-DiagnosticMenu diagnostic_menu(config, sdcard, &pcm1, &pcm2, &rtclock);
+DiagnosticMenu diagnostic_menu(config, sdcard, 0, &pcm1, &pcm2, &rtclock);
 HelpAction help_act(config, "Help");
 
 Logger files(aidata, sdcard, rtclock, deviceid, blink);
