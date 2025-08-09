@@ -499,6 +499,8 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.serial_number = None
         self.controller_start_get = None
         self.psram_start_get = None
+        self.device_id_start_get = None
+        self.device_id = None
         self.row = 1
 
     def set(self, device, model, serial_number):
@@ -511,6 +513,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.controller_start_get = self.retrieve('teensy info', menu)
         self.psram_start_get = self.retrieve('psram memory info', menu)
         self.psramtest.setup(menu)
+        self.device_id_start_get = self.retrieve('device id', menu)
 
     def add(self, label, value, button=None):
         self.box.addItem(QSpacerItem(0, 0,
@@ -532,6 +535,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.box.addWidget(button, self.row, 2)
         self.box.setRowStretch(self.row, 1)
         self.row += 1
+        return vw
         
     def start(self):
         self.row = 1
@@ -540,8 +544,33 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                                  self.controller_start_get, ['select'])
         self.sigReadRequest.emit(self, 'psram',
                                  self.psram_start_get, ['select'])
+        self.sigReadRequest.emit(self, 'deviceidsetup',
+                                 self.device_id_start_get, ['select'])
 
     def read(self, ident, stream, success):
+        if 'deviceid' in ident:
+            for s in stream:
+                if 'device identifier' in s.lower():
+                    value = 'None'
+                    if 'read from device' in s.lower():
+                        value = s.split(':')[1].split()[0].strip()
+                    if ident == 'deviceidsetup':
+                        if value == 'None':
+                            self.device_id = self.add('Device ID', value)
+                        else:
+                            button = QPushButton('Get')
+                            bbox = self.fontMetrics().boundingRect(button.text())
+                            button.setMaximumWidth(bbox.width() + 10)
+                            button.setMaximumHeight(bbox.height() + 2)
+                            button.setToolTip('Get device ID (Ctrl+G)')
+                            button.clicked.connect(self.get_device_id)
+                            key = QShortcut('Ctrl+G', self)
+                            key.activated.connect(button.animateClick)
+                            self.device_id = self.add('Device ID', value, button)
+                    else:
+                        self.device_id.setText('<b>' + value + '</b>')
+                    break
+            return
         r = 0
         for s in stream:
             if r > 0 and len(s.strip()) == 0:
@@ -578,6 +607,10 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                                          QSizePolicy.Policy.Expanding),
                              self.row, 0)
             self.rtclock.start()
+
+    def get_device_id(self):
+        self.sigReadRequest.emit(self, 'deviceid',
+                                 self.device_id_start_get, ['select'])
 
 
 class SoftwareInfo(QLabel):
