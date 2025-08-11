@@ -30,7 +30,7 @@
 #define PREGAIN          1.0     // gain factor of preamplifier
 #define GAIN             0.0      // dB
 
-#define PATH             "recordings"   // folder where to store the recordings
+#define PATH             "recordingNUM"   // folder where to store the recordings, may include NUM
 #define DEVICEID         -1             // may be used for naming files
 #define FILENAME         "loggerID2-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM
 #define FILE_SAVE_TIME   20    // seconds
@@ -94,7 +94,7 @@ HelpAction help_act(config, "Help");
 SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);
 
 
-void setupSensors(int temp_pin) {
+void setupSensors(int tmp_pin) {
   temprtc.begin(Wire);
   temprtc.setName("logger-temperature");
   temprtc.setSymbol("Ti");
