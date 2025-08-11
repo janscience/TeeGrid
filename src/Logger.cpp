@@ -132,7 +132,7 @@ void Logger::setup(const char *path, const char *filename,
   Restarts = 0;
   if (File0.sdcard()->dataDir(path))
     Serial.printf("Save recorded data in folder \"%s\" on %sSD card.\n\n",
-		  path, File0.sdcard()->name());
+		  File0.sdcard()->workingDir(), File0.sdcard()->name());
   File0.header().setSoftware(software);
   File0.header().setCPUSpeed();
   if (File1.sdcard() != NULL) {
