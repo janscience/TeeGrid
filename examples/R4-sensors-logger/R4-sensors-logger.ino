@@ -20,6 +20,7 @@
 #include <SensorsLogger.h>
 #include <ESensors.h>
 #include <TemperatureDS18x20.h>
+#include <TemperatureDS3231.h>
 #include <LightTSL2591.h>
 
 // Default settings: ----------------------------------------------------------
@@ -31,7 +32,7 @@
 
 #define PATH             "recordings"   // folder where to store the recordings
 #define DEVICEID         -1             // may be used for naming files
-#define FILENAME         "gridID-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM
+#define FILENAME         "loggerID2-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM
 #define FILE_SAVE_TIME   20    // seconds
 #define INITIAL_DELAY    10.0    // seconds
 #define SENSORS_INTERVAL 10.0    // interval between sensors readings in seconds
@@ -70,6 +71,7 @@ SDCard sdcard;
 
 ESensors sensors;
 TemperatureDS18x20 temp(&sensors);
+TemperatureDS3231 temprtc(&sensors);
 LightTSL2591 tsl;
 IRRatioTSL2591 irratio(&tsl, &sensors);
 IlluminanceTSL2591 illum(&tsl, &sensors);
@@ -96,6 +98,9 @@ void setupSensors() {
   temp.begin(TEMP_PIN);
   temp.setName("water-temperature");
   temp.setSymbol("Tw");
+  temprtc.begin(Wire);
+  temprtc.setName("logger-temperature");
+  temprtc.setSymbol("Ti");
   tsl.begin(Wire);
   tsl.setGain(LightTSL2591::AUTO_GAIN);
   irratio.setPercent();
