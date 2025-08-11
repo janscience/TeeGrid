@@ -35,17 +35,11 @@
 
 // ----------------------------------------------------------------------------
 
-#define LED_PIN        26    // R4.1    warning: this is the MOSI1 pin for the backup SD card
+#define LED_PIN        26    // R4.1
 //#define LED_PIN      27    // R4.2
 
 // Device ID pins:
 int DIPPins[] = { 34, 35, 36, 37, -1 };
-
-// Secondary backup SD card on SPI bus:
-// Not recommended, since it draws a lot more current.
-//#define BACKUP_SDCARD 1       // define if you want to use a backup SD card
-//#define SDCARD1_CS     10    // CS pin for second SD card on SPI bus
-#define SDCARD1_CS     38    // CS pin for second SD card on SPI1 bus
 
 
 // ----------------------------------------------------------------------------
@@ -64,38 +58,24 @@ Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 RTClockDS1307 rtclock;
 DeviceID deviceid(DEVICEID);
 Blink blink(LED_PIN, true, LED_BUILTIN, false);
-#ifdef BACKUP_SDCARD
-SDCard sdcard0("primary");
-SDCard sdcard1("secondary");
-#else
-SDCard sdcard0;
-#endif
+SDCard sdcard;
 
-Config config("logger.cfg", &sdcard0);
+Config config("logger.cfg", &sdcard);
 Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
                   INITIAL_DELAY, RANDOM_BLINKS);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
 RTClockMenu datetime_menu(config, rtclock);
-ConfigurationMenu configuration_menu(config, sdcard0);
-SDCardMenu sdcard0_menu(config, sdcard0, settings);
-#ifdef BACKUP_SDCARD
-SDCardMenu sdcard1_menu(config, sdcard1, settings);
-#endif
-FirmwareMenu firmware_menu(config, sdcard0);
+ConfigurationMenu configuration_menu(config, sdcard);
+SDCardMenu sdcard0_menu(config, sdcard, settings);
+FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
-#ifdef BACKUP_SDCARD
-DiagnosticMenu diagnostic_menu(config, sdcard0, sdcard1, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
-#else
-DiagnosticMenu diagnostic_menu(config, sdcard0, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
-#endif
+DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid,
+                               &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 HelpAction help_act(config, "Help");
 
-#ifdef BACKUP_SDCARD
-Logger files(aidata, sdcard0, sdcard1, rtclock, deviceid, blink);
-#else
-Logger files(aidata, sdcard0, rtclock, deviceid, blink);
-#endif
+Logger files(aidata, sdcard, rtclock, deviceid, blink);
+
 
 // -----------------------------------------------------------------------------
 
@@ -115,16 +95,9 @@ void setup() {
   Wire1.begin();
   rtclock.begin();
   rtclock.check();
-  sdcard0.begin();
-#ifdef BACKUP_SDCARD
-  pinMode(SDCARD1_CS, OUTPUT);
-  //SPI.begin();
-  SPI1.setMISO(39);    // Use alternate MISO pin for SPI1 bus
-  SPI1.begin();
-  sdcard1.begin(SDCARD1_CS, DEDICATED_SPI, 40, &SPI1);
-#endif
+  sdcard.begin();
   files.check(config, true);
-  rtclock.setFromFile(sdcard0);
+  rtclock.setFromFile(sdcard);
   config.load();
   if (Serial)
     config.execute(Serial, 10000);
