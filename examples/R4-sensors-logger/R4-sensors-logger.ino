@@ -94,7 +94,7 @@ HelpAction help_act(config, "Help");
 SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);
 
 
-void setupSensors(int tmp_pin) {
+void setupSensors(int temp_pin) {
   temprtc.begin(Wire);
   temprtc.setName("logger-temperature");
   temprtc.setSymbol("Ti");

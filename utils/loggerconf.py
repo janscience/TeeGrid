@@ -720,11 +720,16 @@ class ListFiles(ReportButton):
                 if 'does not exist' in s.lower():
                     self.sigDisplayMessage.emit(s)
                     return
-                if s.lower().strip().startswith('files in') or s.lower().strip().startswith('erase all files in'):
+                if s.lower().strip().startswith('files on') or s.lower().strip().startswith('erase all files in'):
                     title = s
             else:
                 if ' name' in s.lower():
                     text += f'<tr><th align="right">size (bytes)</th><th align="left">name</th></tr>'
+                elif 'files in' in s.lower():
+                    path = s[9:].strip()[1:-2]
+                    if len(path) > 0 and path[-1] != '/':
+                        path += '/'
+                    text += f'<tr><td colspan=2><b>{path}</b></td></tr>'
                 elif 'found' in s.lower() or s.strip().lower().startswith('removed'):
                     text += f'<tr><td colspan=2>{s.strip()}</td></tr>'
                     break
