@@ -119,10 +119,10 @@ void setup() {
   Wire.begin();
   rtclock.begin();
   rtclock.check();
+  setupSensors();
   sdcard.begin();
   files.check(config);
   rtclock.setFromFile(sdcard);
-  setupSensors();
   config.load();
   if (Serial)
     config.execute(Serial, 10000);
