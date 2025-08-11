@@ -30,7 +30,7 @@
 #define GAIN             0.0      // dB
 
 #define PATH             "recordings"   // folder where to store the recordings
-#define DEVICEID         1              // may be used for naming files
+#define DEVICEID         -1             // may be used for naming files
 #define FILENAME         "gridID-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM
 #define FILE_SAVE_TIME   20    // seconds
 #define INITIAL_DELAY    10.0    // seconds
