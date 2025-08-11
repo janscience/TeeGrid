@@ -44,7 +44,7 @@ int DIPPins[] = { 34, 35, 36, 37, -1 };
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid R4-logger v2.2"
+#define SOFTWARE      "TeeGrid R4-logger v3.0"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -80,8 +80,6 @@ Logger files(aidata, sdcard, rtclock, deviceid, blink);
 // -----------------------------------------------------------------------------
 
 void setup() {
-  //files.R41powerDownCAN();
-  deviceid.setPins(DIPPins);
   blink.switchOn();
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
@@ -95,6 +93,11 @@ void setup() {
   Wire1.begin();
   rtclock.begin();
   rtclock.check();
+  bool R41b = (strcmp(rtclock.chip(), "DS3231/MAX31328") == 0);
+  if (R41b)
+     deviceid.setPins(DIPPins);
+  else
+     files.R41powerDownCAN();
   sdcard.begin();
   files.check(config, true);
   rtclock.setFromFile(sdcard);
@@ -102,10 +105,9 @@ void setup() {
   if (Serial)
     config.execute(Serial, 10000);
   config.report();
-  files.endBackup(&SPI1);
   Serial.println();
   deviceid.setID(settings.deviceID());
-  if (deviceid.id() == -1)
+  if (R41b && deviceid.id() == -1)
     deviceid.read();
   files.setCPUSpeed(aisettings.rate());
   R4SetupPCMs(aidata, aisettings, pcms, NPCMS);
