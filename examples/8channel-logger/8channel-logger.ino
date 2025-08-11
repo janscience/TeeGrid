@@ -1,7 +1,7 @@
 #include <TeeGridBanner.h>
 #include <InputADC.h>
 #include <SDCard.h>
-#include <RTClock.h>
+#include <RTClockDS1307.h>
 #include <DeviceID.h>
 #include <Blink.h>
 #include <TestSignals.h>
@@ -45,7 +45,7 @@ int signalPins[] = {9, 8, 7, 6, 5, 4, 3, 2, -1}; // pins where to put out test s
 DATA_BUFFER(AIBuffer, NAIBuffer, 256*256)
 InputADC aidata(AIBuffer, NAIBuffer, channels0, channels1);
 
-RTClock rtclock;
+RTClockDS1307 rtclock;
 DeviceID deviceid(DEVICEID);
 Blink blink(LED_BUILTIN);
 SDCard sdcard;

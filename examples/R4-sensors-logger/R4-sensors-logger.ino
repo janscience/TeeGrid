@@ -47,13 +47,13 @@
 // Device ID pins:
 int DIPPins[] = { 34, 35, 36, 37, -1 };
 
-// #define TEMP_PIN         35    // pin for DATA line of DS18x20 themperature sensor for R4.1
-#define TEMP_PIN         9    // pin for DATA line of DS18x20 themperature sensor for R4.1b
+#define TEMP_PIN_R41     35    // pin for DATA line of DS18x20 themperature sensor for R4.1
+#define TEMP_PIN_R41b     9    // pin for DATA line of DS18x20 themperature sensor for R4.1b
 
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid R4-sensors-logger v2.2"
+#define SOFTWARE      "TeeGrid R4-sensors-logger v3.0"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -64,7 +64,7 @@ ControlPCM186x pcm3(Wire1, PCM186x_I2C_ADDR1, InputTDM::TDM2);
 ControlPCM186x pcm4(Wire1, PCM186x_I2C_ADDR2, InputTDM::TDM2);
 Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 
-RTClock rtclock;
+RTClockDS1307 rtclock;
 DeviceID deviceid(DEVICEID);
 Blink blink(LED_PIN, true, LED_BUILTIN, false);
 SDCard sdcard;
@@ -94,13 +94,13 @@ HelpAction help_act(config, "Help");
 SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);
 
 
-void setupSensors() {
-  temp.begin(TEMP_PIN);
-  temp.setName("water-temperature");
-  temp.setSymbol("Tw");
+void setupSensors(int temp_pin) {
   temprtc.begin(Wire);
   temprtc.setName("logger-temperature");
   temprtc.setSymbol("Ti");
+  temp.begin(temp_pin);
+  temp.setName("water-temperature");
+  temp.setSymbol("Tw");
   tsl.begin(Wire);
   tsl.setGain(LightTSL2591::AUTO_GAIN);
   irratio.setPercent();
@@ -111,8 +111,6 @@ void setupSensors() {
 // -----------------------------------------------------------------------------
 
 void setup() {
-  //files.R41powerDownCAN();
-  deviceid.setPins(DIPPins);
   blink.switchOn();
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
@@ -127,7 +125,12 @@ void setup() {
   Wire1.begin();
   rtclock.begin();
   rtclock.check();
-  setupSensors();
+  bool R41b = (strcmp(rtclock.chip(), "DS3231/MAX31328") == 0);
+  if (R41b)
+     deviceid.setPins(DIPPins);
+  else
+     files.R41powerDownCAN();
+  setupSensors(R41b ? TEMP_PIN_R41b : TEMP_PIN_R41);
   sdcard.begin();
   files.check(config);
   rtclock.setFromFile(sdcard);
@@ -138,7 +141,7 @@ void setup() {
   Serial.println();
   files.startSensors(settings.sensorsInterval());
   deviceid.setID(settings.deviceID());
-  if (deviceid.id() == -1)
+  if (R41b && deviceid.id() == -1)
     deviceid.read();
   files.setCPUSpeed(aisettings.rate());
   R4SetupPCMs(aidata, aisettings, pcms, NPCMS);
