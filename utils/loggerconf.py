@@ -713,6 +713,7 @@ class ListFiles(ReportButton):
         if len(stream) == 0:
             return
         title = None
+        next_dir = False
         text = '<style type="text/css"> th, td { padding: 0 15px; }</style>'
         text += '<table>'
         for s in stream:
@@ -720,7 +721,8 @@ class ListFiles(ReportButton):
                 if 'does not exist' in s.lower():
                     self.sigDisplayMessage.emit(s)
                     return
-                if s.lower().strip().startswith('files on') or s.lower().strip().startswith('erase all files in'):
+                if s.lower().strip().startswith('files on') or \
+                   s.lower().strip().startswith('erase all files in'):
                     title = s
             else:
                 if ' name' in s.lower():
@@ -730,10 +732,16 @@ class ListFiles(ReportButton):
                     if len(path) > 0 and path[-1] != '/':
                         path += '/'
                     text += f'<tr><td colspan=2><b>{path}</b></td></tr>'
-                elif 'found' in s.lower() or s.strip().lower().startswith('removed'):
+                    next_dir = False
+                elif ' file' in s.lower() or \
+                     s.strip().lower().startswith('removed'):
                     text += f'<tr><td colspan=2>{s.strip()}</td></tr>'
-                    break
+                    next_dir = True
+                elif len(s.strip()) == 0:
+                    text += '<tr><td></td><td></td></tr>'
                 else:
+                    if next_dir:
+                        break
                     text += '<tr>'
                     cs = s.split()
                     if len(cs) > 1:
@@ -1628,7 +1636,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             for s in stream:
                 if 'does not exist' in s:
                     return 0, None
-                if 'file' in s and 'found' in s and s[:2] != 'No':
+                if ' file' in s and s[:2] != 'No':
                     nf = int(s[:s.find(' file')])
                     ns = None
                     if '(' in s and 'MB)' in s:
