@@ -728,10 +728,15 @@ class ListFiles(ReportButton):
                 if ' name' in s.lower():
                     text += f'<tr><th align="right">size (bytes)</th><th align="left">name</th></tr>'
                 elif 'files in' in s.lower():
-                    path = s[9:].strip()[1:-2]
+                    ns = ''
+                    if 'newest' in s.lower():
+                        path = s[9:].strip()[1:-11]
+                        ns = '<b>*</b> '
+                    else:
+                        path = s[9:].strip()[1:-2]
                     if len(path) > 0 and path[-1] != '/':
                         path += '/'
-                    text += f'<tr><td colspan=2><b>{path}</b></td></tr>'
+                    text += f'<tr><td colspan=2>{ns}<b>{path}</b></td></tr>'
                     next_dir = False
                 elif ' file' in s.lower() or \
                      s.strip().lower().startswith('removed'):
@@ -1633,16 +1638,14 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     def read(self, ident, stream, success):
 
         def num_files(stream):
+            nf = 0
+            ns = 0
             for s in stream:
-                if 'does not exist' in s:
-                    return 0, None
-                if ' file' in s and s[:2] != 'No':
-                    nf = int(s[:s.find(' file')])
-                    ns = None
+                if ' file (' in s or ' files (' in s:
+                    nf += int(s[:s.find(' file')])
                     if '(' in s and 'MB)' in s:
-                        ns = s[s.find('(') + 1:s.find(')')]
-                    return nf, ns
-            return 0, None
+                        ns += float(s[s.find('(') + 1:s.find(' MB)')])
+            return nf, ns
 
         if ident == 'recordings':
             self.nrecordings, self.srecordings = num_files(stream)
@@ -1680,14 +1683,14 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                             if self.nrecordings > 0:
                                 value = f'{self.nrecordings}'
                             if self.srecordings is not None:
-                                value += f' ({self.srecordings})'
+                                value += f' ({self.srecordings:.0f}MB)'
                             self.add('<u>R</u>ecorded files', value,
                                      self.recordings)
                             value = 'none'
                             if self.nroot > 0:
                                 value = f'{self.nroot}'
                             if self.sroot is not None:
-                                value += f' ({self.sroot})'
+                                value += f' ({self.sroot:.0f}MB)'
                             self.add('R<u>o</u>ot files', value, self.root)
                         else:
                             self.add(items[i][0], items[i][1])
