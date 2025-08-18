@@ -22,7 +22,7 @@ Logger::Logger(Input &aiinput, SDCard &sdcard0,
   DeviceIdent(deviceid),
   BlinkLED(blink),
   RandomBlinks(false),
-  Filename(NULL),
+  Filename(""),
   PrevFilename(""),
   Saving(false),
   FileCounter(0),
@@ -44,7 +44,7 @@ Logger::Logger(Input &aiinput, SDCard &sdcard0,
   DeviceIdent(deviceid),
   BlinkLED(blink),
   RandomBlinks(false),
-  Filename(NULL),
+  Filename(""),
   PrevFilename(""),
   FileCounter(0),
   Restarts(0),
@@ -128,15 +128,20 @@ void Logger::setup(const char *path, const char *filename,
 		   const char *software, bool randomblinks) {
   RandomBlinks = randomblinks;
   Filename = filename;
+  Filename = DeviceIdent.makeStr(Filename);
   PrevFilename = "";
   Restarts = 0;
-  if (File0.sdcard()->dataDir(path))
+  String path_name = path;
+  path_name = DeviceIdent.makeStr(path_name);
+  time_t t = now();
+  path_name = Clock.makeStr(path_name, t, true);
+  if (File0.sdcard()->dataDir(path_name.c_str()))
     Serial.printf("Save recorded data in folder \"%s\" on %sSD card.\n\n",
 		  File0.sdcard()->workingDir(), File0.sdcard()->name());
   File0.header().setSoftware(software);
   File0.header().setCPUSpeed();
   if (File1.sdcard() != NULL) {
-    File1.sdcard()->dataDir(path);
+    File1.sdcard()->dataDir(File0.sdcard()->workingDir());
     File1.header().setSoftware(software);
     File1.header().setCPUSpeed();
   }
@@ -196,7 +201,7 @@ void Logger::open(bool backup) {
       BlinkLED.setSingle();
       BlinkLED.blinkSingle(0, 2000);
     }
-    String fname = DeviceIdent.makeStr(Filename);
+    String fname(Filename);
     char cs[16];
     sprintf(cs, "%04d", FileCounter+1);
     fname.replace("COUNT", cs);

@@ -94,7 +94,7 @@ protected:
   FsFile BlinkFile0;
   FsFile BlinkFile1;
   
-  const char *Filename;  // Template for filename
+  String Filename;       // Template for filename
   String PrevFilename;   // Previous file name
   bool Saving;
   int FileCounter;

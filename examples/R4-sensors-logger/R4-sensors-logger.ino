@@ -30,9 +30,9 @@
 #define PREGAIN          1.0     // gain factor of preamplifier
 #define GAIN             0.0      // dB
 
-#define PATH             "recordingNUM"   // folder where to store the recordings, may include NUM
-#define DEVICEID         -1             // may be used for naming files
-#define FILENAME         "loggerID2-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM
+#define DEVICEID         -1                  // may be used for naming pathes and files
+#define PATH             "recID2-SDATETIMEM-NUM"   // folder where to store the recordings, may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
+#define FILENAME         "loggerID2-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
 #define FILE_SAVE_TIME   20    // seconds
 #define INITIAL_DELAY    10.0    // seconds
 #define SENSORS_INTERVAL 10.0    // interval between sensors readings in seconds
