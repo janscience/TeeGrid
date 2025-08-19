@@ -203,7 +203,7 @@ void Logger::open(bool backup) {
     }
     String fname(Filename);
     char cs[16];
-    sprintf(cs, "%04d", FileCounter+1);
+    sprintf(cs, "%04d", FileCounter + 1);
     fname.replace("COUNT", cs);
     time_t t = now();
     fname = Clock.makeStr(fname, t, true);
@@ -214,8 +214,6 @@ void Logger::open(bool backup) {
     fname = File0.sdcard()->incrementFileName(fname);
     if (fname.length() == 0) {
       BlinkLED.clear();
-      Serial.printf("WARNING: failed to increment file name on %sSD card.\n", File0.sdcard()->name());
-      Serial.println("SD card probably not inserted -> ");
       AIInput.stop();
       BlinkLED.switchOff();
       halt();

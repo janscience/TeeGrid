@@ -31,7 +31,7 @@
 #define GAIN             0.0      // dB
 
 #define DEVICEID         -1                  // may be used for naming pathes and files
-#define PATH             "recID2-SDATETIMEM-NUM"   // folder where to store the recordings, may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
+#define PATH             "recID2-SDATETIMEM-NUM1"   // folder where to store the recordings, may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
 #define FILENAME         "loggerID2-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
 #define FILE_SAVE_TIME   20    // seconds
 #define INITIAL_DELAY    10.0    // seconds
