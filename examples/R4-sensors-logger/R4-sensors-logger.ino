@@ -25,7 +25,7 @@
 
 // Default settings: ----------------------------------------------------------
 // (may be overwritten by config file logger.cfg)
-#define NCHANNELS        8       // number of channels (even, from 2 to 16)
+#define NCHANNELS        16       // number of channels (even, from 2 to 16)
 #define SAMPLING_RATE    48000    // samples per second and channel in Hertz
 #define PREGAIN          1.0     // gain factor of preamplifier
 #define GAIN             0.0      // dB

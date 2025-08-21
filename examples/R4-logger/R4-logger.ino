@@ -26,12 +26,12 @@
 #define PREGAIN        10.0     // gain factor of preamplifier
 #define GAIN           20.0     // dB
 
-#define PATH           "recordings"  // folder where to store the recordings
 #define DEVICEID       -1            // may be used for naming files
+#define PATH           "recordings"  // folder where to store the recordings, may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
 #define FILENAME       "bigtankID2-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
-#define FILE_SAVE_TIME 5*60          // seconds
+#define FILE_SAVE_TIME 20          // seconds
 #define INITIAL_DELAY  10.0          // seconds
-#define RANDOM_BLINKS  true          // set to true for blinking the LED randomly
+#define RANDOM_BLINKS  false          // set to true for blinking the LED randomly
 
 // ----------------------------------------------------------------------------
 

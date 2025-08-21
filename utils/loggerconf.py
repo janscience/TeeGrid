@@ -1593,7 +1593,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.recordings_start_get = \
             self.retrieve('sd card>list all recordings', menu)
         erase_recordings_start = \
-            self.retrieve('sd card>erase all recordings', menu)
+            self.retrieve('sd card>erase recent recordings', menu)
         self.root.setup(self.root_start_get)
         self.recordings.setup(self.recordings_start_get)
         self.eraserecordings.setup(erase_recordings_start)
