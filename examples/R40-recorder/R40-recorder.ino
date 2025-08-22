@@ -49,7 +49,7 @@ Device *pcms[NPCMS] = {&pcm1, &pcm2};
 
 RTClock rtclock;
 DeviceID deviceid(DEVICEID);
-Blink blink(LED_PIN, true, LED_BUILTIN, false);
+Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
 PushButtons buttons;
 SDCard sdcard;
 

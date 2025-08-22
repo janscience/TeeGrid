@@ -57,7 +57,7 @@ Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 
 RTClockDS1307 rtclock;
 DeviceID deviceid(DEVICEID);
-Blink blink(LED_PIN, true, LED_BUILTIN, false);
+Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
 SDCard sdcard;
 
 Config config("logger.cfg", &sdcard);

@@ -100,6 +100,7 @@ void Logger::setCPUSpeed(uint32_t rate) {
 
   
 void Logger::report(Stream &stream) const {
+  BlinkLED.report(stream);
   DeviceIdent.report(stream);
   Clock.report(stream);
 }

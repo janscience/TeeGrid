@@ -47,7 +47,7 @@ InputADC aidata(AIBuffer, NAIBuffer, channels0, channels1);
 
 RTClockDS1307 rtclock;
 DeviceID deviceid(DEVICEID);
-Blink blink(LED_BUILTIN);
+Blink blink("status", LED_BUILTIN);
 SDCard sdcard;
 
 Config config("teegrid.cfg", &sdcard);

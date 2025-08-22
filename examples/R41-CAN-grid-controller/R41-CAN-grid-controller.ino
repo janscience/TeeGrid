@@ -30,7 +30,7 @@
 
 R41CAN can;
 RTClock rtclock;
-Blink blink(LED_PIN, true, LED_BUILTIN, false);
+Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
 
 elapsedMillis Time;
 

@@ -54,7 +54,7 @@ ControlPCM186x *pcm = 0;
 R41CAN can;
 RTClock rtclock;
 DeviceID deviceid(DEVICEID);
-Blink blink(LED_PIN, true, LED_BUILTIN, false);
+Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
 SDCard sdcard;
 
 Config config("logger.cfg", &sdcard);

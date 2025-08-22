@@ -42,7 +42,7 @@ R41CAN can;
 SDCard sdcard;
 SDWriter file(sdcard, aidata);
 RTClock rtclock;
-Blink blink(LED_PIN, true, LED_BUILTIN, false);
+Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
 
 
 void setupCAN() {
