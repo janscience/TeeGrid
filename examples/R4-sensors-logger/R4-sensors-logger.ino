@@ -137,7 +137,7 @@ void setupSensors(int temp_pin) {
   light2.setSymbol("I2");
   tempsts.begin(Wire2, STS4x_ADDR);
   tempsts.setPrecision(STS4x_HIGH);
-  files.setupSensors();
+  files.setupSensors(light1.available());
 }
 
 
@@ -159,7 +159,6 @@ void setup() {
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
-  files.flashLEDs();
   rtclock.begin();
   rtclock.check();
   bool R41b = (strcmp(rtclock.chip(), "DS3231/MAX31328") == 0);

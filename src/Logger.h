@@ -63,7 +63,8 @@ public:
   void close();
 
   // Call this in loop() for writing data to files.
-  void update();
+  // If not blink, then do not update blinking.
+  void update(bool blink=true);
 
   // True, if data are stored in files.
   bool saving() const { return Saving; };

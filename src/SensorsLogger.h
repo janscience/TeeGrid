@@ -22,7 +22,7 @@ public:
 		Blink &blink, Blink &errorblink, Blink &syncblink);
 
   // Initialize environmental sensors.
-  void setupSensors();
+  void setupSensors(bool light=false);
 
   // Start environmental sensors.
   void startSensors(float interval);
@@ -47,6 +47,8 @@ protected:
   bool store(SDWriter &sdfile, bool backup);
 
   ESensors &Sensors;
+
+  bool Light;
   
 };
 

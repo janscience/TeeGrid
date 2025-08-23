@@ -8,7 +8,8 @@ SensorsLogger::SensorsLogger(Input &aiinput,
 			     const DeviceID &deviceid,
 			     Blink &blink) :
   Logger(aiinput, sdcard, rtclock, deviceid, blink),
-  Sensors(sensors) {
+  Sensors(sensors),
+  Light(false) {
 }
 
 
@@ -21,11 +22,13 @@ SensorsLogger::SensorsLogger(Input &aiinput,
 			     Blink &errorblink,
 			     Blink &syncblink) :
   Logger(aiinput, sdcard, rtclock, deviceid, blink, errorblink, syncblink),
-  Sensors(sensors) {
+  Sensors(sensors),
+  Light(false) {
 }
 
 
-void SensorsLogger::setupSensors() {
+void SensorsLogger::setupSensors(bool light) {
+  Light = light;
   Sensors.setPrintTime(ESensors::NO_TIME);
   Sensors.start();
 }
@@ -33,6 +36,7 @@ void SensorsLogger::setupSensors() {
 
 void SensorsLogger::startSensors(float interval) {
   Sensors.setInterval(interval);
+  Sensors.setBufferTime(1.0 < interval/4 ? 1.0 : interval/4);
   Sensors.setPrintTime(ESensors::ISO_TIME);
   Sensors.reportDevices();
   Sensors.report();
@@ -67,6 +71,6 @@ bool SensorsLogger::storeSensors() {
 
 
 bool SensorsLogger::update() {
-  Logger::update();
+  Logger::update(!Light || !Sensors.isBusy());
   return storeSensors();
 }
