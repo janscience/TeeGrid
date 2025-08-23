@@ -25,6 +25,7 @@
 #include <LightBH1750.h>
 #include <PCA9536DigitalIO.h>
 
+
 // Default settings: ----------------------------------------------------------
 // (may be overwritten by config file logger.cfg)
 #define NCHANNELS        16       // number of channels (even, from 2 to 16)
@@ -92,7 +93,7 @@ SDCardMenu sdcard_menu(config, sdcard, settings);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 ESensorsMenu sensors_menu(config, sensors);
-DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock, &gpio);
+DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 HelpAction help_act(config, "Help");
 
 SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);
@@ -105,36 +106,29 @@ void setupSensors(int temp_pin) {
   temp.begin(temp_pin);
   temp.setName("water-temperature");
   temp.setSymbol("Tw");
-  Wire2.begin();
-  gpio.begin(Wire2);
-  gpio.setMode(2, OUTPUT);
-  gpio.write(2, LOW);
-  delay(2);
-  gpio.write(2, HIGH);
-  /*
-  gpio.write(2, HIGH);
-  delay(5);
-  gpio.write(2, LOW);
-  delay(2);
-  gpio.write(2, HIGH);
-  */
+  gpio.setMode(2, INPUT);
   light1.begin(Wire2, BH1750_TO_GROUND);
-  light1.setAutoRanging();
+  //light1.setAutoRanging();
+  light1.setQuality(BH1750_QUALITY_HIGH);
   light1.setName("illuminance1");
   light1.setSymbol("I1");
   light2.begin(Wire2, BH1750_TO_VCC);
-  light2.setAutoRanging();
+  //light2.setAutoRanging();
+  light2.setQuality(BH1750_QUALITY_HIGH);
   light2.setName("illuminance2");
   light2.setSymbol("I2");
   tempsts.begin(Wire2, STS4x_ADDR);
   tempsts.setPrecision(STS4x_HIGH);
-  blink.setPin(gpio, 0);
+  files.setupSensors();
 }
 
 
 // -----------------------------------------------------------------------------
 
 void setup() {
+  Wire2.begin();
+  gpio.begin(Wire2);
+  blink.setPin(gpio, 0);
   blink.switchOn();
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
