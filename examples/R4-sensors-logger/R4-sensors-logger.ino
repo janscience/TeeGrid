@@ -23,7 +23,7 @@
 #include <TemperatureDS3231.h>
 #include <TemperatureSTS4x.h>
 #include <LightBH1750.h>
-#include <PCA9536DigitalIO.h>
+#include <DigitalIOPCA9536.h>
 
 
 // Default settings: ----------------------------------------------------------
@@ -39,7 +39,7 @@
 #define FILE_SAVE_TIME   20    // seconds
 #define INITIAL_DELAY    10.0    // seconds
 #define SENSORS_INTERVAL 10.0    // interval between sensors readings in seconds
-#define RANDOM_BLINKS    false    // set to true for blinking the LED randomly
+#define RANDOM_BLINKS    false   // set to true for blinking the LED randomly
 
 
 // ----------------------------------------------------------------------------
@@ -70,8 +70,10 @@ Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 
 RTClockDS1307 rtclock;
 DeviceID deviceid(DEVICEID);
-PCA9536DigitalIO gpio;
+DigitalIOPCA9536 gpio;
 Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
+Blink errorblink("error");
+Blink syncblink("sync");
 SDCard sdcard;
 
 ESensors sensors;
@@ -97,6 +99,19 @@ DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &
 HelpAction help_act(config, "Help");
 
 SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);
+
+
+void setupLEDs() {
+  Wire2.begin();
+  gpio.begin(Wire2);
+  if (gpio.available()) {
+    blink.clearPins();
+    blink.setPin(gpio, 0);
+    errorblink.setPin(gpio, 1);
+    syncblink.setPin(gpio, 3);
+  }
+  blink.switchOn();
+}
 
 
 void setupSensors(int temp_pin) {
@@ -126,11 +141,7 @@ void setupSensors(int temp_pin) {
 // -----------------------------------------------------------------------------
 
 void setup() {
-  Wire2.begin();
-  gpio.begin(Wire2);
-  blink.setPin(gpio, 0);
-  blink.setPin(gpio, 3);
-  blink.switchOn();
+  setupLEDs();
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
   settings.enable("SensorsInterval");
