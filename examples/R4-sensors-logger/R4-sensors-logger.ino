@@ -21,6 +21,7 @@
 #include <ESensors.h>
 #include <TemperatureDS18x20.h>
 #include <TemperatureDS3231.h>
+#include <TemperatureSTS4x.h>
 #include <LightBH1750.h>
 #include <PCA9536DigitalIO.h>
 
@@ -50,6 +51,7 @@ int DIPPins[] = { 34, 35, 36, 37, -1 };
 
 #define TEMP_PIN_R41     35    // pin for DATA line of DS18x20 themperature sensor for R4.1
 #define TEMP_PIN_R41b     9    // pin for DATA line of DS18x20 themperature sensor for R4.1b
+#define STS4x_ADDR  STS4x_ADDR2  // I2C address of STS4x temperature sensor
 
 
 // ----------------------------------------------------------------------------
@@ -74,6 +76,7 @@ SDCard sdcard;
 ESensors sensors;
 TemperatureDS18x20 temp(&sensors);
 TemperatureDS3231 temprtc(&sensors);
+TemperatureSTS4x tempsts(&sensors);
 LightBH1750 light1(&sensors);
 LightBH1750 light2(&sensors);
 
@@ -89,7 +92,7 @@ SDCardMenu sdcard_menu(config, sdcard, settings);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 ESensorsMenu sensors_menu(config, sensors);
-DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
+DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock, &gpio);
 HelpAction help_act(config, "Help");
 
 SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);
@@ -123,6 +126,9 @@ void setupSensors(int temp_pin) {
   light2.setAutoRanging();
   light2.setName("illuminance2");
   light2.setSymbol("I2");
+  tempsts.begin(Wire2, STS4x_ADDR);
+  tempsts.setPrecision(STS4x_HIGH);
+  blink.setPin(gpio, 0);
 }
 
 
