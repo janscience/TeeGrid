@@ -137,7 +137,7 @@ void setupSensors(int temp_pin) {
   light2.setSymbol("I2");
   tempsts.begin(Wire2, STS4x_ADDR);
   tempsts.setPrecision(STS4x_HIGH);
-  files.setupSensors(light1.available());
+  files.setupSensors();
 }
 
 

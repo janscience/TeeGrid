@@ -492,7 +492,7 @@ void Logger::storeBlinks() {
 }
 
 
-void Logger::update(bool blink) {
+void Logger::update() {
   if (NextStore == 0) {
     if (store(File0, false) && SDCard1 != NULL && SDCard1->available())
       NextStore = 1;
@@ -535,8 +535,8 @@ void Logger::update(bool blink) {
   }
   if (RandomBlinks)
     storeBlinks();
-  StatusLED.update(blink);
-  SyncLED.update(blink);
+  StatusLED.update();
+  SyncLED.update();
 }
 
 

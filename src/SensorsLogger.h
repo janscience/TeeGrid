@@ -22,7 +22,7 @@ public:
 		Blink &blink, Blink &errorblink, Blink &syncblink);
 
   // Initialize environmental sensors.
-  void setupSensors(bool light=false);
+  void setupSensors();
 
   // Start environmental sensors.
   void startSensors(float interval);
