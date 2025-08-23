@@ -17,6 +17,9 @@ public:
   SensorsLogger(Input &aiinput, ESensors &sensors, SDCard &sdcard0,
 		const RTClock &rtclock, const DeviceID &deviceid,
 		Blink &blink);
+  SensorsLogger(Input &aiinput, ESensors &sensors, SDCard &sdcard0,
+		const RTClock &rtclock, const DeviceID &deviceid,
+		Blink &blink, Blink &errorblink, Blink &syncblink);
 
   // Initialize environmental sensors.
   void setupSensors();

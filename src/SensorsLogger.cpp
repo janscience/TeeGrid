@@ -12,6 +12,19 @@ SensorsLogger::SensorsLogger(Input &aiinput,
 }
 
 
+SensorsLogger::SensorsLogger(Input &aiinput,
+			     ESensors &sensors,
+			     SDCard &sdcard,
+			     const RTClock &rtclock,
+			     const DeviceID &deviceid,
+			     Blink &blink,
+			     Blink &errorblink,
+			     Blink &syncblink) :
+  Logger(aiinput, sdcard, rtclock, deviceid, blink, errorblink, syncblink),
+  Sensors(sensors) {
+}
+
+
 void SensorsLogger::setupSensors() {
   Sensors.setPrintTime(ESensors::NO_TIME);
   Sensors.start();

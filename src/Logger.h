@@ -22,9 +22,18 @@ public:
   Logger(Input &aiinput, SDCard &sdcard0,
 	 const RTClock &rtclock, const DeviceID &deviceid,
 	 Blink &blink);
+  Logger(Input &aiinput, SDCard &sdcard0,
+	 const RTClock &rtclock, const DeviceID &deviceid,
+	 Blink &blink, Blink &errorblink, Blink &syncblink);
   Logger(Input &aiinput, SDCard &sdcard0, SDCard &sdcard1,
 	 const RTClock &rtclock, const DeviceID &deviceid,
 	 Blink &blink);
+
+  // Halt with error message and blinking.
+  void halt(int errorcode=0, Stream &stream=Serial);
+  
+  // Flash all available LEDs.
+  void flashLEDs();
 
   // Check accessibility of SD cards.
   // Run menu and halt if the main SD card can not be written.
@@ -88,7 +97,10 @@ protected:
   SDWriter File1;
   const RTClock &Clock;
   const DeviceID &DeviceIdent;
-  Blink &BlinkLED;
+  Blink NoBlink;
+  Blink &StatusLED;
+  Blink &ErrorLED;
+  Blink &SyncLED;
   
   bool RandomBlinks;
   FsFile BlinkFile0;

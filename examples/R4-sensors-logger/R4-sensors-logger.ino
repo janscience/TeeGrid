@@ -98,7 +98,8 @@ ESensorsMenu sensors_menu(config, sensors);
 DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 HelpAction help_act(config, "Help");
 
-SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);
+SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid,
+                    blink, errorblink, syncblink);
 
 
 void setupLEDs() {
@@ -109,6 +110,8 @@ void setupLEDs() {
     blink.setPin(gpio, 0);
     errorblink.setPin(gpio, 1);
     syncblink.setPin(gpio, 3);
+    errorblink.switchOff();
+    syncblink.switchOff();
   }
   blink.switchOn();
 }
@@ -143,7 +146,12 @@ void setupSensors(int temp_pin) {
 void setup() {
   setupLEDs();
   settings.enable("InitialDelay");
-  settings.enable("RandomBlinks");
+  if (syncblink.available()) {
+    settings.disable("RandomBlinks");
+    settings.setRandomBlinks(true);
+  }
+  else
+    settings.enable("RandomBlinks");
   settings.enable("SensorsInterval");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
@@ -151,8 +159,7 @@ void setup() {
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
-  Wire.begin();
-  Wire1.begin();
+  files.flashLEDs();
   rtclock.begin();
   rtclock.check();
   bool R41b = (strcmp(rtclock.chip(), "DS3231/MAX31328") == 0);
@@ -179,7 +186,7 @@ void setup() {
   aidata.begin();
   if (!aidata.check(aisettings.nchannels())) {
     Serial.println("Fix ADC settings and check your hardware.");
-    halt();
+    files.halt(2);
   }
   aidata.start();
   aidata.report();
