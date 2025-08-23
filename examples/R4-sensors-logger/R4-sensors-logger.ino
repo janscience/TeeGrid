@@ -129,6 +129,7 @@ void setup() {
   Wire2.begin();
   gpio.begin(Wire2);
   blink.setPin(gpio, 0);
+  blink.setPin(gpio, 3);
   blink.switchOn();
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
