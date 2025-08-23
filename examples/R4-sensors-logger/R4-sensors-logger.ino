@@ -21,7 +21,8 @@
 #include <ESensors.h>
 #include <TemperatureDS18x20.h>
 #include <TemperatureDS3231.h>
-#include <LightTSL2591.h>
+#include <LightBH1750.h>
+#include <PCA9536DigitalIO.h>
 
 // Default settings: ----------------------------------------------------------
 // (may be overwritten by config file logger.cfg)
@@ -66,15 +67,15 @@ Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 
 RTClockDS1307 rtclock;
 DeviceID deviceid(DEVICEID);
+PCA9536DigitalIO gpio;
 Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
 SDCard sdcard;
 
 ESensors sensors;
 TemperatureDS18x20 temp(&sensors);
 TemperatureDS3231 temprtc(&sensors);
-LightTSL2591 tsl;
-IRRatioTSL2591 irratio(&tsl, &sensors);
-IlluminanceTSL2591 illum(&tsl, &sensors);
+LightBH1750 light1(&sensors);
+LightBH1750 light2(&sensors);
 
 Config config("logger.cfg", &sdcard);
 Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
@@ -101,10 +102,27 @@ void setupSensors(int temp_pin) {
   temp.begin(temp_pin);
   temp.setName("water-temperature");
   temp.setSymbol("Tw");
-  tsl.begin(Wire);
-  tsl.setGain(LightTSL2591::AUTO_GAIN);
-  irratio.setPercent();
-  files.setupSensors();
+  Wire2.begin();
+  gpio.begin(Wire2);
+  gpio.setMode(2, OUTPUT);
+  gpio.write(2, LOW);
+  delay(2);
+  gpio.write(2, HIGH);
+  /*
+  gpio.write(2, HIGH);
+  delay(5);
+  gpio.write(2, LOW);
+  delay(2);
+  gpio.write(2, HIGH);
+  */
+  light1.begin(Wire2, BH1750_TO_GROUND);
+  light1.setAutoRanging();
+  light1.setName("illuminance1");
+  light1.setSymbol("I1");
+  light2.begin(Wire2, BH1750_TO_VCC);
+  light2.setAutoRanging();
+  light2.setName("illuminance2");
+  light2.setSymbol("I2");
 }
 
 
