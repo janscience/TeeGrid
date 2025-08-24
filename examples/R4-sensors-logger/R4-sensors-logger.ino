@@ -40,6 +40,7 @@
 #define INITIAL_DELAY    10.0    // seconds
 #define SENSORS_INTERVAL 10.0    // interval between sensors readings in seconds
 #define RANDOM_BLINKS    false   // set to true for blinking the LED randomly
+#define BLINK_TIMEOUT    30.0    // time after which internal LEDs are switched off in seconds
 
 
 // ----------------------------------------------------------------------------
@@ -71,7 +72,7 @@ Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 RTClockDS1307 rtclock;
 DeviceID deviceid(DEVICEID);
 DigitalIOPCA9536 gpio;
-Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
+Blink blink("status", LED_BUILTIN, false, LED_PIN, true);
 Blink errorblink("error");
 Blink syncblink("sync");
 SDCard sdcard;
@@ -106,7 +107,6 @@ void setupLEDs() {
   Wire2.begin();
   gpio.begin(Wire2);
   if (gpio.available()) {
-    blink.clearPins();
     blink.setPin(gpio, 0);
     errorblink.setPin(gpio, 1);
     syncblink.setPin(gpio, 3);
@@ -191,7 +191,7 @@ void setup() {
   aidata.report();
   files.report();
   files.setup(settings.path(), settings.fileName(),
-              SOFTWARE, settings.randomBlinks());
+              SOFTWARE, settings.randomBlinks(), BLINK_TIMEOUT);
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
   files.start(settings.fileTime());

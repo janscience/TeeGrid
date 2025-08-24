@@ -25,6 +25,7 @@ Logger::Logger(Input &aiinput, SDCard &sdcard0,
   ErrorLED(NoBlink),
   SyncLED(NoBlink),
   RandomBlinks(false),
+  BlinkTimeout(0),
   Filename(""),
   PrevFilename(""),
   Saving(false),
@@ -50,6 +51,7 @@ Logger::Logger(Input &aiinput, SDCard &sdcard0,
   ErrorLED(errorblink),
   SyncLED(syncblink),
   RandomBlinks(false),
+  BlinkTimeout(0),
   Filename(""),
   PrevFilename(""),
   Saving(false),
@@ -75,6 +77,7 @@ Logger::Logger(Input &aiinput, SDCard &sdcard0,
   ErrorLED(NoBlink),
   SyncLED(NoBlink),
   RandomBlinks(false),
+  BlinkTimeout(0),
   Filename(""),
   PrevFilename(""),
   FileCounter(0),
@@ -216,8 +219,10 @@ void Logger::initialDelay(float initial_delay, Stream &stream) {
 
 
 void Logger::setup(const char *path, const char *filename,
-		   const char *software, bool randomblinks) {
+		   const char *software, bool randomblinks,
+		   float blinktimeout) {
   RandomBlinks = randomblinks;
+  BlinkTimeout = (unsigned long)(1000*blinktimeout);
   Filename = filename;
   Filename = DeviceIdent.makeStr(Filename);
   PrevFilename = "";
@@ -535,6 +540,10 @@ void Logger::update() {
   }
   if (RandomBlinks)
     storeBlinks();
+  if ((BlinkTimeout > 0) && (millis() > BlinkTimeout))
+    StatusLED.disablePin(0);
+  if ((BlinkTimeout > 0) && (millis() > 2*BlinkTimeout))
+    StatusLED.disablePin(2);
   StatusLED.update();
   SyncLED.update();
 }

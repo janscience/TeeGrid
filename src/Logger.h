@@ -54,7 +54,8 @@ public:
   
   // Initialize recording directory and file metadata.
   void setup(const char *path, const char *filename,
-	     const char *software, bool randomblinks);
+	     const char *software, bool randomblinks,
+	     float blinktimeout=0.0);
 
   // Open files.
   void start(float filetime);
@@ -105,6 +106,7 @@ protected:
   bool RandomBlinks;
   FsFile BlinkFile0;
   FsFile BlinkFile1;
+  unsigned long BlinkTimeout;
   
   String Filename;       // Template for filename
   String PrevFilename;   // Previous file name
