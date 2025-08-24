@@ -2007,10 +2007,14 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                 special = s.split('"')
                 self.special_str = special[1]
                 special = special[2]
-                self.special_val = int(special[special.find('[') + 1:special.find(']')])
+                special = special[special.find('[') + 1:special.find(']')]
+                if self.unit:
+                    special = special[:-len(self.unit)]
+                self.special_val = int(special)
         if self.type_str in ['float', 'integer'] and self.num_value is None:
             if self.value == self.special_str:
                 self.num_value = self.special_val
+                self.out_unit = self.unit
 
     def set_selection(self, stream):
         self.selection = []

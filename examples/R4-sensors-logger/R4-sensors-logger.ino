@@ -40,7 +40,7 @@
 #define INITIAL_DELAY    10.0    // seconds
 #define SENSORS_INTERVAL 10.0    // interval between sensors readings in seconds
 #define RANDOM_BLINKS    false   // set to true for blinking the LED randomly
-#define BLINK_TIMEOUT    30.0    // time after which internal LEDs are switched off in seconds
+#define BLINK_TIMEOUT    0.0     // time after which internal LEDs are switched off in seconds
 
 
 // ----------------------------------------------------------------------------
@@ -87,7 +87,7 @@ LightBH1750 light2(&sensors);
 Config config("logger.cfg", &sdcard);
 Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
                   INITIAL_DELAY, RANDOM_BLINKS, 0, 0,
-                  SENSORS_INTERVAL);
+                  SENSORS_INTERVAL, BLINK_TIMEOUT);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
 RTClockMenu rtclock_menu(config, rtclock);
@@ -153,6 +153,7 @@ void setup() {
   else
     settings.enable("RandomBlinks");
   settings.enable("SensorsInterval");
+  settings.enable("BlinkTimeout");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
@@ -191,7 +192,8 @@ void setup() {
   aidata.report();
   files.report();
   files.setup(settings.path(), settings.fileName(),
-              SOFTWARE, settings.randomBlinks(), BLINK_TIMEOUT);
+              SOFTWARE, settings.randomBlinks(),
+	      settings.blinkTimeout());
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
   files.start(settings.fileTime());
