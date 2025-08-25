@@ -39,7 +39,7 @@
 #define FILE_SAVE_TIME   20    // seconds
 #define INITIAL_DELAY    10.0    // seconds
 #define SENSORS_INTERVAL 10.0    // interval between sensors readings in seconds
-#define RANDOM_BLINKS    false   // set to true for blinking the LED randomly
+#define RANDOM_BLINKS    true    // set to true for blinking the LED randomly
 #define BLINK_TIMEOUT    0.0     // time after which internal LEDs are switched off in seconds
 
 
@@ -72,9 +72,9 @@ Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 RTClockDS1307 rtclock;
 DeviceID deviceid(DEVICEID);
 DigitalIOPCA9536 gpio;
-Blink blink("status", LED_BUILTIN, false, LED_PIN, true);
+Blink blink("status", LED_BUILTIN);
 Blink errorblink("error");
-Blink syncblink("sync");
+Blink syncblink("sync", LED_PIN, true);
 SDCard sdcard;
 
 ESensors sensors;
@@ -96,7 +96,7 @@ SDCardMenu sdcard_menu(config, sdcard, settings);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 ESensorsMenu sensors_menu(config, sensors);
-DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
+DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock, &gpio);
 HelpAction help_act(config, "Help");
 
 SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid,
