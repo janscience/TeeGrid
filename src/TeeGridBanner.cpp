@@ -5,8 +5,7 @@
 
 void printTeeGridBanner(const char *software, Stream &stream) {
   stream.println("\n========================================================");
-  // Generated with https://www.ascii-art-generator.org/
-  // Using font "Standard".
+  // Generated with figlet http://www.figlet.org
   stream.println(R"( _____          ____      _     _ )");
   stream.println(R"(|_   _|__  ___ / ___|_ __(_) __| |)");
   stream.println(R"(  | |/ _ \/ _ \ |  _| '__| |/ _` |)");
