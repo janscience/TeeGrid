@@ -146,7 +146,7 @@ void setupSensors(int temp_pin) {
 void setup() {
   setupLEDs();
   settings.enable("InitialDelay");
-  if (syncblink.available()) {
+  if (syncblink.nPins() > 1) {
     settings.disable("RandomBlinks");
     settings.setRandomBlinks(true);
   }
