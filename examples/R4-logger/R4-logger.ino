@@ -2,7 +2,6 @@
 #include <Wire.h>
 #include <ControlPCM186x.h>
 #include <InputTDM.h>
-#include <SPI.h>
 #include <SDCard.h>
 #include <RTClockDS1307.h>
 #include <DeviceID.h>
@@ -31,7 +30,7 @@
 #define FILENAME       "bigtankID2-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME 20          // seconds
 #define INITIAL_DELAY  10.0          // seconds
-#define RANDOM_BLINKS  false          // set to true for blinking the LED randomly
+#define RANDOM_BLINKS  true          // set to true for blinking the LED randomly
 
 // ----------------------------------------------------------------------------
 
