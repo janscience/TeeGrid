@@ -36,11 +36,11 @@
 #define DEVICEID         -1                  // may be used for naming pathes and files
 #define PATH             "recID2-SDATETIMEM-NUM1"   // folder where to store the recordings, may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
 #define FILENAME         "loggerID2-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
-#define FILE_SAVE_TIME   20    // seconds
-#define INITIAL_DELAY    10.0    // seconds
+#define FILE_SAVE_TIME   5*60    // seconds
+#define INITIAL_DELAY    60.0    // seconds
 #define SENSORS_INTERVAL 10.0    // interval between sensors readings in seconds
 #define RANDOM_BLINKS    true    // set to true for blinking the LED randomly
-#define BLINK_TIMEOUT    0.0     // time after which internal LEDs are switched off in seconds
+#define BLINK_TIMEOUT    7*60    // time after which internal LEDs are switched off in seconds
 
 
 // ----------------------------------------------------------------------------
@@ -78,8 +78,8 @@ Blink syncblink("sync", LED_PIN, true);
 SDCard sdcard;
 
 ESensors sensors;
-TemperatureDS18x20 temp(&sensors);
 TemperatureDS3231 temprtc(&sensors);
+TemperatureDS18x20 temp(&sensors);
 TemperatureSTS4x tempsts(&sensors);
 LightBH1750 light1(&sensors);
 LightBH1750 light2(&sensors);
@@ -193,7 +193,7 @@ void setup() {
   files.report();
   files.setup(settings.path(), settings.fileName(),
               SOFTWARE, settings.randomBlinks(),
-	      settings.blinkTimeout());
+	            settings.blinkTimeout());
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
   files.start(settings.fileTime());
