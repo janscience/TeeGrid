@@ -543,7 +543,7 @@ void Logger::update() {
   if ((BlinkTimeout > 0) && (millis() > BlinkTimeout))
     StatusLED.disablePin(0);
   if ((BlinkTimeout > 0) && (millis() > 2*BlinkTimeout))
-    StatusLED.disablePin(2);
+    StatusLED.disablePin(1);
   StatusLED.update();
   SyncLED.update();
 }
