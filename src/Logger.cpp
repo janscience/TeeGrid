@@ -462,12 +462,12 @@ bool Logger::store(SDWriter &sdfile, bool backup) {
 
 void Logger::openBlinkFiles() {
   String fname = File0.name();
-  fname.replace(".wav", "-blinks.dat");
+  fname.replace(".wav", "-blinks.csv");
   BlinkFile0 = SDCard0->openWrite(fname.c_str());
-  BlinkFile0.write("time/ms;on\n");
+  BlinkFile0.write("time/ms,on\n");
   if (SDCard1 != NULL && SDCard1->available()) {
     BlinkFile1 = SDCard1->openWrite(fname.c_str());
-    BlinkFile1.write("time/ms;on\n");
+    BlinkFile1.write("time/ms,on\n");
   }
   Serial.print("Store blink times in ");
   Serial.println(fname);
@@ -487,7 +487,7 @@ void Logger::storeBlinks() {
   char buffer[Blink::MaxTimes*14];
   size_t m = 0;
   for (size_t k=0; k<n; k++)
-    m += sprintf(buffer + m, "%lu;%u\n", times[k] - tstart, states[k]);
+    m += sprintf(buffer + m, "%lu,%u\n", times[k] - tstart, states[k]);
   BlinkFile0.write(buffer, m);
   BlinkFile0.flush();
   if (SDCard1 != NULL && SDCard1->available()) {
