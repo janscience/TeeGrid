@@ -28,32 +28,30 @@
 
 // Default settings: ----------------------------------------------------------
 // (may be overwritten by config file logger.cfg)
-#define NCHANNELS        16       // number of channels (even, from 2 to 16)
+#define NCHANNELS           16    // number of channels (even, from 2 to 16)
 #define SAMPLING_RATE    48000    // samples per second and channel in Hertz
-#define PREGAIN          1.0     // gain factor of preamplifier
-#define GAIN             0.0      // dB
+#define PREGAIN            1.0    // gain factor of preamplifier
+#define GAIN              40.0    // dB
 
-#define DEVICEID         -1                  // may be used for naming pathes and files
-#define PATH             "recID2-SDATETIMEM-NUM1"   // folder where to store the recordings, may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
-#define FILENAME         "loggerID2-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
-#define FILE_SAVE_TIME   5*60    // seconds
-#define INITIAL_DELAY    60.0    // seconds
-#define SENSORS_INTERVAL 10.0    // interval between sensors readings in seconds
-#define RANDOM_BLINKS    true    // set to true for blinking the LED randomly
-#define BLINK_TIMEOUT    7*60    // time after which internal LEDs are switched off in seconds
+#define DEVICEID         -1       // may be used for naming pathes and files
+#define PATH             "novaID2-SDATETIMEM-NUM1"   // folder where to store the recordings, may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
+#define FILENAME         "loggerID2-SDATETIME.wav"   // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
+#define FILE_SAVE_TIME   5*60     // seconds
+#define INITIAL_DELAY    60.0     // seconds
+#define SENSORS_INTERVAL 10.0     // interval between sensors readings in seconds
+#define RANDOM_BLINKS    true     // set to true for blinking the LED randomly
+#define BLINK_TIMEOUT    7*60     // time after which internal LEDs are switched off in seconds
 
 
 // ----------------------------------------------------------------------------
 
-#define LED_PIN          26    // R4.1
-//#define LED_PIN        27    // R4.2
+#define LED_PIN          26       // R4.1
 
-// Device ID pins:
-int DIPPins[] = { 34, 35, 36, 37, -1 };
+int DIPPins[] = { 34, 35, 36, 37, -1 }; // Device ID pins:
 
-#define TEMP_PIN_R41     35    // pin for DATA line of DS18x20 themperature sensor for R4.1
-#define TEMP_PIN_R41b     9    // pin for DATA line of DS18x20 themperature sensor for R4.1b
-#define STS4x_ADDR  STS4x_ADDR2  // I2C address of STS4x temperature sensor
+#define TEMP_PIN_R41     35       // pin for DATA line of DS18x20 themperature sensor for R4.1
+#define TEMP_PIN_R41b     9       // pin for DATA line of DS18x20 themperature sensor for R4.1b
+#define STS4x_ADDR  STS4x_ADDR2   // I2C address of STS4x temperature sensor
 
 
 // ----------------------------------------------------------------------------
