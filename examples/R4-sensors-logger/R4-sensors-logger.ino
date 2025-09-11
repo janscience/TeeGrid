@@ -31,16 +31,16 @@
 #define NCHANNELS           16    // number of channels (even, from 2 to 16)
 #define SAMPLING_RATE    48000    // samples per second and channel in Hertz
 #define PREGAIN            1.0    // gain factor of preamplifier
-#define GAIN              40.0    // dB
+#define GAIN              20.0    // dB
 
 #define DEVICEID         -1       // may be used for naming pathes and files
-#define PATH             "novaID2-SDATETIMEM-NUM1"   // folder where to store the recordings, may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
+#define PATH             "catalaoID2-SDATETIMEM-NUM1"   // folder where to store the recordings, may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
 #define FILENAME         "loggerID2-SDATETIME.wav"   // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
 #define FILE_SAVE_TIME   5*60     // seconds
 #define INITIAL_DELAY    60.0     // seconds
-#define SENSORS_INTERVAL 10.0     // interval between sensors readings in seconds
+#define SENSORS_INTERVAL 30.0     // interval between sensors readings in seconds
 #define RANDOM_BLINKS    true     // set to true for blinking the LED randomly
-#define BLINK_TIMEOUT    7*60     // time after which internal LEDs are switched off in seconds
+#define BLINK_TIMEOUT    2*60     // time after which internal LEDs are switched off in seconds
 
 
 // ----------------------------------------------------------------------------
@@ -125,12 +125,12 @@ void setupSensors(int temp_pin) {
   gpio.setMode(2, INPUT);
   light1.begin(Wire2, BH1750_TO_GROUND);
   //light1.setAutoRanging();
-  light1.setQuality(BH1750_QUALITY_HIGH);
+  light1.setQuality(BH1750_QUALITY_HIGH2);
   light1.setName("illuminance1");
   light1.setSymbol("I1");
   light2.begin(Wire2, BH1750_TO_VCC);
   //light2.setAutoRanging();
-  light2.setQuality(BH1750_QUALITY_HIGH);
+  light2.setQuality(BH1750_QUALITY_HIGH2);
   light2.setName("illuminance2");
   light2.setSymbol("I2");
   tempsts.begin(Wire2, STS4x_ADDR);
