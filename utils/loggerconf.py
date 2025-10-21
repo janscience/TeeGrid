@@ -41,7 +41,7 @@ except ImportError:
     exit()
 
 
-__version__ = '1.0'
+__version__ = '1.1'
 
 
 def parse_number(s):
@@ -836,23 +836,40 @@ class InputConfiguration(ReportButton):
 class InputData(ReportButton):
     
     def __init__(self, plot, *args, **kwargs):
-        super().__init__('record some data', 'Data',
+        super().__init__('start recording', 'Data',
                          *args, **kwargs)
         self.plot = plot
-        self.plot.sigReplot.connect(self.run)
+        self.plot.sigReplot.connect(self.get_data)
+        self.plot.sigClose.connect(self.stop)
+        self.start_data = None
+        self.get_data = None
+        self.stop_data = None
+     
+    def setup(self, menu):
+        super().setup(menu)
+        self.retrieve('record some data', menu)  # not needed
+        self.get_data = self.retrieve('get data from running recording', menu)
+        self.stop_data = self.retrieve('stop recording', menu)
 
     def run(self):
         QApplication.setOverrideCursor(Qt.WaitCursor)
-        super().run()
+        self.sigReadRequest.emit(self, 'start', self.start, ['select'])
+        self.sigReadRequest.emit(self, 'getdata', self.get_data, ['select'])
+
+    def get_data(self):
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        self.sigReadRequest.emit(self, 'getdata', self.get_data, ['select'])
         
     def read(self, ident, stream, success):
+        if ident != 'getdata':
+            return
         while len(stream) > 0 and len(stream[0].strip()) == 0:
             del stream[0]
         if not success:
             return
         if len(stream) == 0:
             return
-        while not '...' in stream[0]:
+        while len(stream) > 0 and not '...' in stream[0]:
             del stream[0]
         rate = None
         bits = 16
@@ -876,10 +893,16 @@ class InputData(ReportButton):
         for s in stream:
             if len(s.strip()) == 0:
                 break
-            frame = [int(c.strip()) for c in s.split(';')]
-            data.append(frame)
+            try:
+                frame = [int(c.strip()) for c in s.split(';')]
+                data.append(frame)
+            except ValueError:
+                print('Error in parsing line', s)
         if len(data) > 0:
             self.plot.plot_data(rate, bits, gain, unit, np.array(data))
+
+    def stop(self):
+        self.sigReadRequest.emit(self, 'run', self.stop_data, ['select'])
 
 
 class PlotRecording(QWidget):
@@ -908,7 +931,7 @@ class PlotRecording(QWidget):
         self.gains.currentIndexChanged.connect(self.update_plots)
         self.utime = SpinBox()
         self.utime.setSuffix('s')
-        self.utime.setValue(2)
+        self.utime.setValue(1)
         self.utime.setMinimum(1)
         titlew = QWidget()
         tbox = QHBoxLayout(titlew)
@@ -999,7 +1022,7 @@ class PlotRecording(QWidget):
             elif gains == 1:
                 plot.getAxis('left').setLabel(f'channel {channel}')
                 plot.getViewBox().setLimits(yMin=-1, yMax=1,
-                                            minYRange=0.001, maxYRange=2)
+                                            minYRange=0.0001, maxYRange=2)
                 if not self.repeat_plot:
                     plot.getViewBox().setRange(yRange=(-1, 1))
                 plot.listDataItems()[0].setData(self.time,
@@ -1007,7 +1030,7 @@ class PlotRecording(QWidget):
             elif gains == 2:
                 plot.getAxis('left').setLabel(f'channel {channel}', self.unit)
                 plot.getViewBox().setLimits(yMin=-self.gain, yMax=self.gain,
-                                            minYRange=0.001*self.gain,
+                                            minYRange=0.0001*self.gain,
                                             maxYRange=2*self.gain)
                 if not self.repeat_plot:
                     plot.getViewBox().setRange(yRange=(-self.gain, self.gain))
@@ -1042,10 +1065,12 @@ class PlotRecording(QWidget):
             plot.getAxis('left').setLabel(f'channel {channel}', color=text_color)
             plot.getAxis('left').setPen('white')
             plot.getAxis('left').setTextPen(text_color)
+            plot.getAxis('left').setStyle(textFillLimits=[(3, 1.0)], maxTickLevel=0)
             plot.getAxis('bottom').enableAutoSIPrefix(True)
             plot.getAxis('bottom').setLabel('time', 's', color=text_color)
             plot.getAxis('bottom').setPen('white')
             plot.getAxis('bottom').setTextPen(text_color)
+            plot.getAxis('bottom').setStyle(maxTickLevel=0)
             plot.getViewBox().setMouseMode(pg.ViewBox.PanMode)
             plot.getViewBox().setBackgroundColor('black')
             plot.getViewBox().setLimits(xMin=0,
@@ -1063,10 +1088,12 @@ class PlotRecording(QWidget):
             spec.getAxis('left').setLabel('power (dB)', color=text_color)
             spec.getAxis('left').setPen('white')
             spec.getAxis('left').setTextPen(text_color)
+            spec.getAxis('left').setStyle(maxTickLevel=0)
             spec.getAxis('bottom').enableAutoSIPrefix(True)
             spec.getAxis('bottom').setLabel('frequency', 'Hz', color=text_color)
             spec.getAxis('bottom').setPen('white')
             spec.getAxis('bottom').setTextPen(text_color)
+            spec.getAxis('bottom').setStyle(maxTickLevel=0)
             spec.getViewBox().setMouseMode(pg.ViewBox.PanMode)
             spec.getViewBox().setBackgroundColor('black')
             spec.getViewBox().setLimits(xMin=0, xMax=0.5/self.time[1],
@@ -1086,11 +1113,13 @@ class PlotRecording(QWidget):
             nfft = len(self.data[:, channel])
         freqs, power = welch(self.data[:, channel].astype(float)/self.amax,
                              1/self.time[1], nperseg=nfft)
-        power = 10*np.log10(power*freqs[1])
-        spec.listDataItems()[0].setData(freqs, power)
+        power *= freqs[1]
+        dbpower = np.zeros(len(power)) - 200
+        mask = power > 1e-20
+        dbpower[mask] = 10*np.log10(power[mask])
+        spec.listDataItems()[0].setData(freqs, dbpower)
         spec.getViewBox().setRange(xRange=(0, 0.5/self.time[1]),
-                                   yRange=(-100, 0),
-                                   padding=0)
+                                   yRange=(-100, 0), padding=0)
 
     def plot_data(self, rate, bits, gain, unit, data):
         self.time = np.arange(len(data))/rate
