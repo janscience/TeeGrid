@@ -2568,6 +2568,15 @@ class Logger(QWidget):
         self.read_func = self.parse_logo
         self.read_timer.start(2)
 
+    def write(self, text):
+        if self.ser is not None:
+            try:
+                self.ser.write(text.encode('latin1'))
+                self.ser.write(b'\n')
+                self.ser.flush()
+            except (OSError, serial.serialutil.SerialException):
+                self.stop()
+
     def stop(self):
         self.read_timer.stop()
         self.loggerinfo.rtclock.stop()
@@ -2692,8 +2701,7 @@ class Logger(QWidget):
             self.read_func = self.parse_configfile
         elif self.read_count > 100:
             self.read_count = 0
-            self.ser.write('reboot\n'.encode('latin1'))
-            self.ser.flush()
+            self.write('reboot')
         else:
             self.read_count += 1
 
@@ -2718,12 +2726,10 @@ class Logger(QWidget):
 
     def configure_menu(self):
         if self.read_state == 0:
-            self.ser.write(b'detailed on\n')
-            self.ser.flush()
+            self.write('detailed on')
             self.read_state += 1
         elif self.read_state == 1:
-            self.ser.write(b'echo off\n')
-            self.ser.flush()
+            self.write('echo off')
             self.read_state = 0
             self.read_func = self.parse_mainmenu
 
@@ -2766,8 +2772,7 @@ class Logger(QWidget):
     def parse_mainmenu(self):
         if self.read_state == 0:
             self.clear_input()
-            self.ser.write(b'print\n')
-            self.ser.flush()
+            self.write('print')
             self.read_state += 1
         elif self.read_state == 1:
             self.menu = self.parse_menu('Menu')
@@ -2797,14 +2802,11 @@ class Logger(QWidget):
                     self.clear_input()
                     self.read_func = self.parse_request_stack
                 else:
-                    self.ser.write('q\n'.encode('latin1'))
-                    self.ser.flush()
+                    self.write('q')
         elif self.read_state == 10:
             # request submenu:
             self.clear_input()
-            self.ser.write(self.menu_item[0].encode('latin1'))
-            self.ser.write(b'\n')
-            self.ser.flush()
+            self.write(self.menu_item[0])
             self.read_state += 1
         elif self.read_state == 11:
             # parse submenu:
@@ -2819,9 +2821,7 @@ class Logger(QWidget):
         elif self.read_state == 20:
             # request parameter:
             self.clear_input()
-            self.ser.write(self.menu_item[0].encode('latin1'))
-            self.ser.write(b'\n')
-            self.ser.flush()
+            self.write(self.menu_item[0])
             self.read_state += 1
         elif self.read_state == 21:
             # parse parameter:
@@ -2845,8 +2845,7 @@ class Logger(QWidget):
             param.set_selection(self.input[list_start:list_end])
             param.sigTransmitRequest.connect(self.transmit_request)
             self.menu_item[2] = param
-            self.ser.write(b'keepthevalue\n')
-            self.ser.flush()
+            self.write('keepthevalue')
             self.read_state = 0
             
 
@@ -2957,9 +2956,7 @@ class Logger(QWidget):
     def parse_read_request(self):
         if self.read_state == 0:
             self.clear_input()
-            self.ser.write(self.request_start[0].encode('latin1'))
-            self.ser.write(b'\n')
-            self.ser.flush()
+            self.write(self.request_start[0])
             self.request_start.pop(0)
             if len(self.request_start) > 0:
                 self.read_state = 4
@@ -3001,14 +2998,12 @@ class Logger(QWidget):
                                          self.request_stop_index == 0)
                 self.request_target = None
             if self.request_type == 'transmit' and self.request_stop_index == 1:
-                self.ser.write(b'keepthevalue\n')
-                self.ser.flush()
+                self.write('keepthevalue')
             self.read_state += 1
         elif self.read_state == 3:
             self.clear_input()
             if self.request_end > 0:
-                self.ser.write(b'q\n')
-                self.ser.flush()
+                self.write('q')
                 self.request_end -= 1
             else:
                 self.request_end = None
@@ -3025,10 +3020,9 @@ class Logger(QWidget):
             if self.question.yes is not None:
                 self.clear_input()
                 if self.question.yes:
-                    self.ser.write(b'y\n')
+                    self.write('y')
                 else:
-                    self.ser.write(b'n\n')
-                self.ser.flush()
+                    self.write('n')
                 self.question.clear()
                 self.cstack.setCurrentWidget(self.message)
                 self.read_state = 1
@@ -3046,25 +3040,20 @@ class Logger(QWidget):
         if self.read_state == 0:
             self.clear_input()
             if len(self.request_start) > 0:
-                self.ser.write(self.request_start[0].encode('latin1'))
-                self.ser.write(b'\n')
-                self.ser.flush()
+                self.write(self.request_start[0])
                 self.request_start.pop(0)
             else:
                 self.request_start = None
                 self.read_state += 1
         elif self.read_state == 1:
             self.clear_input()
-            self.ser.write(self.request_target.encode('latin1'))
-            self.ser.write(b'\n')
-            self.ser.flush()
+            self.write(self.request_target)
             self.request_target = None
             self.read_state += 1
         elif self.read_state == 2:
             self.clear_input()
             if self.request_end > 0:
-                self.ser.write(b'q\n')
-                self.ser.flush()
+                self.write('q')
                 self.request_end -= 1
             else:
                 self.request_end = None
@@ -3100,7 +3089,11 @@ class Logger(QWidget):
             self.stop()
             
     def clear_input(self):
-        self.ser.reset_input_buffer()
+        if self.ser is not None:
+            try:
+                self.ser.reset_input_buffer()
+            except (OSError, serial.serialutil.SerialException):
+                self.stop()
         self.input = []
         
 
