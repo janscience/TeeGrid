@@ -1077,6 +1077,8 @@ class PlotRecording(QWidget):
                                         xMax=self.time[-1] + self.time[1],
                                         minXRange=self.time[11],
                                         maxXRange=self.time[-1] + self.time[1])
+            plot.getViewBox().setRange(xRange=(0, self.time[-1] + self.time[1]),
+                                       padding=0)
             plot.setMenuEnabled(False)
             plot.addItem(pg.PlotDataItem(pen=dict(color=color, width=2)))
             # initialize power spectrum plot:
@@ -1102,11 +1104,11 @@ class PlotRecording(QWidget):
                                         maxXRange=0.5/self.time[1],
                                         minYRange=1,
                                         maxYRange=200)
+            spec.getViewBox().setRange(xRange=(0, 0.5/self.time[1]),
+                                       yRange=(-100, 0), padding=0)
             spec.setMenuEnabled(False)
             spec.addItem(pg.PlotDataItem(pen=dict(color=color, width=2)))
         plot.setVisible(True)
-        plot.getViewBox().setRange(xRange=(0, self.time[-1] + self.time[1]),
-                                   padding=0)
         spec.setVisible(True)
         nfft = 2**12
         if nfft > len(self.data[:, channel])//2:
@@ -1118,8 +1120,6 @@ class PlotRecording(QWidget):
         mask = power > 1e-20
         dbpower[mask] = 10*np.log10(power[mask])
         spec.listDataItems()[0].setData(freqs, dbpower)
-        spec.getViewBox().setRange(xRange=(0, 0.5/self.time[1]),
-                                   yRange=(-100, 0), padding=0)
 
     def plot_data(self, rate, bits, gain, unit, data):
         self.time = np.arange(len(data))/rate
