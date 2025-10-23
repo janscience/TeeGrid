@@ -56,7 +56,7 @@ int DIPPins[] = { 34, 35, 36, 37, -1 }; // Device ID pins:
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid R4-sensors-logger v3.0"
+#define SOFTWARE      "TeeGrid R4-sensors-logger v3.1"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
