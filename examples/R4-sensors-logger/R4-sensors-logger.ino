@@ -95,6 +95,7 @@ FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 ESensorsMenu sensors_menu(config, sensors);
 DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock, &gpio);
+InfoAction ampl_info(diagnostic_menu, "Amplifier board");
 HelpAction help_act(config, "Help");
 
 SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid,
@@ -161,10 +162,14 @@ void setup() {
   rtclock.begin();
   rtclock.check();
   bool R41b = (strcmp(rtclock.chip(), "DS3231/MAX31328") == 0);
-  if (R41b)
+  if (R41b) {
      deviceid.setPins(DIPPins);
-  else
+     ampl_info.add("Version", "R4.1b");
+  }
+  else {
      files.R41powerDownCAN();
+     ampl_info.add("Version", "R4.1");
+  }
   setupSensors(R41b ? TEMP_PIN_R41b : TEMP_PIN_R41);
   sdcard.begin();
   files.check(config);
@@ -173,6 +178,18 @@ void setup() {
   if (Serial)
     config.execute(Serial, 10000);
   config.report();
+  for (size_t k=0; ; k++) {
+    Device *dev = diagnostic_menu.DevicesAct.device(k);
+    if (dev == 0)
+      break;
+    if (dev->available())
+      ampl_info.add(dev->deviceType(), dev->chip());
+  }
+  for (uint8_t k=0; k<sensors.size(); k++) {
+    ESensor &sensor = sensors[k];
+    if (sensor.available())
+      ampl_info.add(sensor.name(), sensor.chip());
+  }
   Serial.println();
   files.startSensors(settings.sensorsInterval());
   deviceid.setID(settings.deviceID());

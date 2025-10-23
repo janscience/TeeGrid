@@ -501,6 +501,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.psram_start_get = None
         self.device_id_start_get = None
         self.device_id = None
+        self.ampl_start_get = None
         self.row = 1
 
     def set(self, device, model, serial_number):
@@ -514,6 +515,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.psram_start_get = self.retrieve('psram memory info', menu)
         self.psramtest.setup(menu)
         self.device_id_start_get = self.retrieve('device id', menu)
+        self.ampl_start_get = self.retrieve('amplifier board', menu)
 
     def add(self, label, value, button=None):
         self.box.addItem(QSpacerItem(0, 0,
@@ -539,7 +541,9 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         
     def start(self):
         self.row = 1
-        self.add('device', self.device)
+        self.sigReadRequest.emit(self, 'amplifier',
+                                 self.ampl_start_get, ['select'])
+        #self.add('Device', self.device)
         self.sigReadRequest.emit(self, 'controller',
                                  self.controller_start_get, ['select'])
         self.sigReadRequest.emit(self, 'psram',
@@ -587,7 +591,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                     self.add('<u>P</u>SRAM size', value, self.psramtest)
                 else:
                     continue
-            else:
+            elif label.lower() != 'mac address':
                 self.add(label, value)
         if ident == 'psram':
             self.box.addItem(QSpacerItem(0, 0,
