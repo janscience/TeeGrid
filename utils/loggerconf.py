@@ -541,15 +541,19 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         
     def start(self):
         self.row = 1
-        self.sigReadRequest.emit(self, 'amplifier',
-                                 self.ampl_start_get, ['select'])
+        if self.ampl_start_get is not None:
+            self.sigReadRequest.emit(self, 'amplifier',
+                                     self.ampl_start_get, ['select'])
         #self.add('Device', self.device)
-        self.sigReadRequest.emit(self, 'controller',
-                                 self.controller_start_get, ['select'])
-        self.sigReadRequest.emit(self, 'psram',
-                                 self.psram_start_get, ['select'])
-        self.sigReadRequest.emit(self, 'deviceidsetup',
-                                 self.device_id_start_get, ['select'])
+        if self.controller_start_get is not None:
+            self.sigReadRequest.emit(self, 'controller',
+                                     self.controller_start_get, ['select'])
+        if self.psram_start_get is not None:
+            self.sigReadRequest.emit(self, 'psram',
+                                     self.psram_start_get, ['select'])
+        if self.device_id_start_get is not None:
+            self.sigReadRequest.emit(self, 'deviceidsetup',
+                                     self.device_id_start_get, ['select'])
 
     def read(self, ident, stream, success):
         if 'deviceid' in ident:
