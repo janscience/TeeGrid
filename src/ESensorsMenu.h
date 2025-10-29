@@ -16,7 +16,8 @@ class ESensorsAction : public Action {
  public:
 
   /* Initialize and add to menu. */
-  ESensorsAction(Menu &menu, const char *name, ESensors &sensors);
+  ESensorsAction(Menu &menu, const char *name, ESensors &sensors,
+		 unsigned int roles=StreamInput);
 
 protected:
 
@@ -24,25 +25,30 @@ protected:
 };
 
 
-class ESensorSensorsAction : public ESensorsAction {
+class ESensorDevicesAction : public ESensorsAction {
 
  public:
-
+  
   using ESensorsAction::ESensorsAction;
 
-  /* Print infos about available environmental sensors. */
+  /* Print infos about available environmental sensor devices. */
   virtual void execute(Stream &stream=Serial, unsigned long timeout=0,
 		       bool echo=true, bool detailed=false);
 };
 
 
-class ESensorDevicesAction : public ESensorsAction {
+class ESensorSensorsAction : public ESensorsAction {
 
  public:
 
-  using ESensorsAction::ESensorsAction;
+  /* Initialize and add to menu. */
+  ESensorSensorsAction(Menu &menu, const char *name, ESensors &sensors);
 
-  /* Print infos about available environmental sensor devices. */
+  /* Print infos about available environmental sensors. */
+  virtual void report(Stream &stream=Serial, unsigned int roles=AllRoles,
+		      size_t indent=0, size_t w=0, bool descend=true) const;
+
+  /* Print infos about available environmental sensors. */
   virtual void execute(Stream &stream=Serial, unsigned long timeout=0,
 		       bool echo=true, bool detailed=false);
 };

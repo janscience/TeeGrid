@@ -28,7 +28,7 @@ public:
   void startSensors(float interval);
 
   // Open files.
-  void start(float filetime);
+  void start(float filetime, Config &config);
 
   // Call this in loop() for writing data to files.
   // Returns true if sensors have been updated.

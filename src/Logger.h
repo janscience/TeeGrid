@@ -58,7 +58,7 @@ public:
 	     float blinktimeout=0.0);
 
   // Open files.
-  void start(float filetime);
+  void start(float filetime, Config &config);
 
   // Close files.
   void close();
@@ -78,6 +78,9 @@ protected:
   
   // Generate file name, open main file and write first chunk of data.
   void open(bool backup);
+
+  // Write all metadata into file.
+  void writeMetadata(Config &config);
   
   // Open file that stores blink times.
   void openBlinkFiles();

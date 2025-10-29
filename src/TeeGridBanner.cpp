@@ -18,7 +18,7 @@ void printTeeGridBanner(const char *software, Stream &stream) {
     stream.print(software);
     stream.print(" ");
   }
-  stream.println("by Benda-Lab");
+  stream.println("by ThunderLab");
   stream.print("based on ");
   stream.println(TEEGRID_SOFTWARE);
   stream.print("     and ");

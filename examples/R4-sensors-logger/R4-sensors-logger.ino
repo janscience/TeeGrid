@@ -161,7 +161,7 @@ void setup() {
   printTeeGridBanner(SOFTWARE);
   rtclock.begin();
   rtclock.check();
-  bool R41b = (strcmp(rtclock.chip(), "DS3231/MAX31328") == 0);
+  bool R41b = (strncmp(rtclock.chip(), "DS", 2) == 0);
   if (R41b) {
      deviceid.setPins(DIPPins);
      ampl_info.add("Version", "R4.1b");
@@ -178,18 +178,6 @@ void setup() {
   if (Serial)
     config.execute(Serial, 10000);
   config.report();
-  for (size_t k=0; ; k++) {
-    Device *dev = diagnostic_menu.DevicesAct.device(k);
-    if (dev == 0)
-      break;
-    if (dev->available())
-      ampl_info.add(dev->deviceType(), dev->chip());
-  }
-  for (uint8_t k=0; k<sensors.size(); k++) {
-    ESensor &sensor = sensors[k];
-    if (sensor.available())
-      ampl_info.add(sensor.name(), sensor.chip());
-  }
   Serial.println();
   files.startSensors(settings.sensorsInterval());
   deviceid.setID(settings.deviceID());
@@ -211,7 +199,8 @@ void setup() {
 	            settings.blinkTimeout());
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
-  files.start(settings.fileTime());
+  diagnostic_menu.updateCPUSpeed();
+  files.start(settings.fileTime(), config);
 }
 
 

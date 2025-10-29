@@ -196,6 +196,7 @@ void Logger::report(Stream &stream) const {
     SyncLED.report(stream);
   DeviceIdent.report(stream);
   Clock.report(stream);
+  stream.println();
 }
 
 
@@ -244,7 +245,7 @@ void Logger::setup(const char *path, const char *filename,
 }
 
 
-void Logger::start(float filetime) {
+void Logger::start(float filetime, Config &config) {
   File0.setWriteInterval(2*AIInput.DMABufferTime());
   File0.setMaxFileTime(filetime);
   if (File1.sdcard() != NULL) {
@@ -275,6 +276,7 @@ void Logger::start(float filetime) {
   open(true);
   NextStore = 0;
   NextOpen = 0;
+  writeMetadata(config);
   if (RandomBlinks)
     openBlinkFiles();
 }
@@ -457,6 +459,22 @@ bool Logger::store(SDWriter &sdfile, bool backup) {
     open(backup);
   }
   return true;
+}
+
+
+void Logger::writeMetadata(Config &config) {
+  String fname = File0.name();
+  fname.replace(".wav", "-metadata.yml");
+  FsFile file0 = SDCard0->openWrite(fname.c_str());
+  config.report(file0, config.FileOutput | config.Report);
+  file0.close();
+  if (SDCard1 != NULL && SDCard1->available()) {
+    FsFile file1 = SDCard1->openWrite(fname.c_str());
+    config.report(file1, config.FileOutput | config.Report);
+    file1.close();
+  }
+  Serial.print("Wrote metadata to ");
+  Serial.println(fname);
 }
 
 

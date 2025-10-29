@@ -92,7 +92,7 @@ void setup() {
   Wire1.begin();
   rtclock.begin();
   rtclock.check();
-  bool R41b = (strcmp(rtclock.chip(), "DS3231/MAX31328") == 0);
+  bool R41b = (strncmp(rtclock.chip(), "DS", 2) == 0);
   if (R41b)
      deviceid.setPins(DIPPins);
   else
@@ -123,7 +123,8 @@ void setup() {
               SOFTWARE, settings.randomBlinks());
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
-  files.start(settings.fileTime());
+  diagnostic_menu.updateCPUSpeed();
+  files.start(settings.fileTime(), config);
 }
 
 
