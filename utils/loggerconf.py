@@ -557,27 +557,38 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
 
     def read(self, ident, stream, success):
         if 'deviceid' in ident:
+            while len(stream) > 0 and len(stream[0].strip()) == 0:
+                del stream[0]
+            deviceid = False
+            value = 'None'
+            source = ''
             for s in stream:
                 if 'device identifier' in s.lower():
-                    value = 'None'
-                    if 'read from device' in s.lower():
-                        value = s.split(':')[1].split()[0].strip()
-                    if ident == 'deviceidsetup':
-                        if value == 'None':
-                            self.device_id = self.add('Device ID', value)
-                        else:
-                            button = QPushButton('Get')
-                            bbox = self.fontMetrics().boundingRect(button.text())
-                            button.setMaximumWidth(bbox.width() + 10)
-                            button.setMaximumHeight(bbox.height() + 2)
-                            button.setToolTip('Get device ID (Ctrl+G)')
-                            button.clicked.connect(self.get_device_id)
-                            key = QShortcut('Ctrl+G', self)
-                            key.activated.connect(button.animateClick)
-                            self.device_id = self.add('Device ID', value, button)
+                    deviceid = True
+                else:
+                    ss = s.split(':')
+                    if 'value' in ss[0].lower():
+                        value = ss[1].split()[0].strip()
+                    elif 'source' in ss[0].lower():
+                        source = ss[1].strip()
                     else:
-                        self.device_id.setText('<b>' + value + '</b>')
-                    break
+                        break
+            if deviceid:
+                if ident == 'deviceidsetup':
+                    if value == 'None':
+                        self.device_id = self.add('Device ID', value)
+                    else:
+                        button = QPushButton('Get')
+                        bbox = self.fontMetrics().boundingRect(button.text())
+                        button.setMaximumWidth(bbox.width() + 10)
+                        button.setMaximumHeight(bbox.height() + 2)
+                        button.setToolTip('Get device ID (Ctrl+G)')
+                        button.clicked.connect(self.get_device_id)
+                        key = QShortcut('Ctrl+G', self)
+                        key.activated.connect(button.animateClick)
+                        self.device_id = self.add('Device ID', value, button)
+                else:
+                    self.device_id.setText('<b>' + value + '</b>')
             return
         r = 0
         for s in stream:
@@ -1232,7 +1243,7 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.data_button.setVisible(False)
         self.data_button.sigReadRequest.connect(self.sigReadRequest)
         self.data_button.clicked.connect(self.sigPlot)
-        self.data_button.setToolTip('Record some data (Ctrl+D)')
+        self.data_button.setToolTip('Record and plot some data (Ctrl+D)')
         key = QShortcut('Ctrl+D', self)
         key.activated.connect(self.data_button.animateClick)
         self.sensors_start_get = None
@@ -1402,6 +1413,7 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.plotb.setMaximumWidth(bbox.width() + 10)
         self.plotb.setMaximumHeight(bbox.height() + 2)
         self.plotb.clicked.connect(self.sigPlot)
+        self.plotb.setToolTip('Plot sensor readings (Ctrl+S)')
         key = QShortcut('Ctrl+S', self)
         key.activated.connect(self.plotb.animateClick)
         self.box.addWidget(self.plotb, 0, 5, Qt.AlignRight)
@@ -1568,7 +1580,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.recordings = ListFiles()
         self.recordings.setToolTip('List all recordings (Ctrl+R)')
         self.eraserecordings = ListFiles('Delete')
-        self.eraserecordings.setToolTip('Delete all recordings (Ctrl+U)')
+        self.eraserecordings.setToolTip('Delete most recent recordings (Ctrl+U)')
         self.bench = Benchmark()
         self.bench.setToolTip('Write and read data rates of SD card (Ctrl+W)')
 
