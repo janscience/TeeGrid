@@ -37,10 +37,10 @@
 #define PATH             "flonaID2-SDATETIMEM-NUM1"   // folder where to store the recordings, may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
 #define FILENAME         "loggerID2-SDATETIME.wav"   // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
 #define FILE_SAVE_TIME   5*60     // seconds
-#define INITIAL_DELAY    60.0     // seconds
+#define INITIAL_DELAY    10.0     // seconds
 #define SENSORS_INTERVAL 30.0     // interval between sensors readings in seconds
 #define RANDOM_BLINKS    true     // set to true for blinking the LED randomly
-#define BLINK_TIMEOUT    2*60     // time after which internal LEDs are switched off in seconds
+#define BLINK_TIMEOUT    0     // time after which internal LEDs are switched off in seconds
 
 
 // ----------------------------------------------------------------------------
