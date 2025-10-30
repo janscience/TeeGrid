@@ -796,6 +796,37 @@ class ListFiles(ReportButton):
                 self.sigUpdate.emit()
 
                 
+class CleanDir(ReportButton):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__('clean recent recordings', 'Clean', *args, **kwargs)
+        
+    def read(self, ident, stream, success):
+        while len(stream) > 0 and len(stream[0].strip()) == 0:
+            del stream[0]
+        if len(stream) == 0:
+            return
+        title = None
+        text = ''
+        for s in stream:
+            if title is None:
+                if 'no folder exists that can be cleaned' in s.lower():
+                    self.sigDisplayMessage.emit(s)
+                    return
+                if 'clean directory on ' in s.lower():
+                    title = s.strip()
+            elif len(s.strip()) == 0:
+                break
+            else:
+                text += s.rstrip()
+                text += '\n'
+        if len(text) == 0:
+            return
+        self.sigDisplayTerminal.emit(title, text)
+        if success:
+            self.sigUpdate.emit()
+
+                
 class Benchmark(ReportButton):
     
     def __init__(self, *args, **kwargs):
@@ -1595,6 +1626,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.recordings.setToolTip('List all recordings (Ctrl+R)')
         self.eraserecordings = ListFiles('Delete')
         self.eraserecordings.setToolTip('Delete most recent recordings (Ctrl+U)')
+        self.cleandir = CleanDir()
         self.bench = Benchmark()
         self.bench.setToolTip('Write and read data rates of SD card (Ctrl+W)')
 
@@ -1610,6 +1642,9 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.eraserecordings.sigReadRequest.connect(self.sigReadRequest)
         self.eraserecordings.sigDisplayTerminal.connect(self.sigDisplayTerminal)
         self.eraserecordings.sigDisplayMessage.connect(self.sigDisplayMessage)
+        self.cleandir.sigReadRequest.connect(self.sigReadRequest)
+        self.cleandir.sigDisplayTerminal.connect(self.sigDisplayTerminal)
+        self.cleandir.sigDisplayMessage.connect(self.sigDisplayMessage)
         self.root.sigReadRequest.connect(self.sigReadRequest)
         self.root.sigDisplayTerminal.connect(self.sigDisplayTerminal)
         self.root.sigDisplayMessage.connect(self.sigDisplayMessage)
@@ -1618,6 +1653,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.formatcard.sigUpdate.connect(self.start)
         self.erasecard.sigUpdate.connect(self.start)
         self.eraserecordings.sigUpdate.connect(self.start)
+        self.cleandir.sigUpdate.connect(self.start)
         
         key = QShortcut('Ctrl+M', self)
         key.activated.connect(self.checkcard.animateClick)
@@ -1664,6 +1700,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.bench.setup(menu)
         self.formatcard.setup(menu)
         self.erasecard.setup(menu)
+        self.cleandir.setup(menu)
 
     def add(self, label, value, button=None):
         if self.box.itemAtPosition(self.row, 0) is not None:
@@ -1733,10 +1770,12 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             for keys in ['capacity', 'available', 'serial', 'system']:
                 for i in range(len(items)):
                     if keys in items[i][0].lower():
-                        if keys == 'capacity':
+                        if keys == 'serial':
+                            self.add(items[i][0], items[i][1], self.erasecard)
+                        elif keys == 'system':
                             self.add(items[i][0], items[i][1], self.formatcard)
                         elif keys == 'available':
-                            self.add(items[i][0], items[i][1], self.erasecard)
+                            self.add(items[i][0], items[i][1], self.cleandir)
                             if available is not None:
                                 a = float(available.replace(' GB', ''))
                                 c = float(items[i][1].replace(' GB', ''))
