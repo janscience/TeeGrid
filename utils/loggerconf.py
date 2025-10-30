@@ -733,6 +733,7 @@ class ListFiles(ReportButton):
             return
         title = None
         next_dir = False
+        remove_dir = 0
         text = '<style type="text/css"> th, td { padding: 0 15px; }</style>'
         text += '<table>'
         for s in stream:
@@ -741,8 +742,11 @@ class ListFiles(ReportButton):
                     self.sigDisplayMessage.emit(s)
                     return
                 if s.lower().strip().startswith('files on') or \
+                   s.lower().strip().startswith('files in') or \
                    s.lower().strip().startswith('erase all files in'):
                     title = s
+                    if s.lower().strip().startswith('erase all files in'):
+                        remove_dir = 1
             else:
                 if ' name' in s.lower():
                     text += f'<tr><th align="right">size (bytes)</th><th align="left">name</th></tr>'
@@ -756,6 +760,14 @@ class ListFiles(ReportButton):
                     if len(path) > 0 and path[-1] != '/':
                         path += '/'
                     text += f'<tr><td colspan=2>{ns}<b>{path}</b></td></tr>'
+                    next_dir = False
+                elif 'no ' in s.lower() and ' found' in s.lower():
+                    text = f'<tr></tr>' if remove_dir == 0 else ''
+                    text += f'<tr><td colspan=2>{s.strip()}</td></tr>'
+                    if remove_dir > 0:
+                        remove_dir = 2
+                    else:
+                        break
                     next_dir = False
                 elif ' file' in s.lower() or \
                      s.strip().lower().startswith('removed'):
@@ -774,6 +786,8 @@ class ListFiles(ReportButton):
                     else:
                         text += f'<td></td><td align="left">{s.strip()}</td>'
                     text += '</tr>'
+                    if remove_dir >= 2:
+                        break
         text += '</table>'
         if title is not None:
             self.sigDisplayTerminal.emit(title, text)
