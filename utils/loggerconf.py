@@ -308,7 +308,7 @@ class Interactor(ABC):
             return ids
         elif verbose:
             print(key, 'not found')
-        return None
+        return []
 
     @abstractmethod
     def read(self, ident, stream, success):
@@ -347,8 +347,8 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
         self.box.setContentsMargins(0, 0, 0, 0)
         self.box.addWidget(self.time)
         self.box.addWidget(self.state)
-        self.start_get = None
-        self.start_set = None
+        self.start_get = []
+        self.start_set = []
         self.set_count = 50
         self.set_state = 0
         self.prev_time = None
@@ -363,7 +363,7 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
     def start(self):
         self.set_state = -1
         self.set_count = 40  # wait 2 secs before setting the clock
-        if self.start_get is not None:
+        if len(self.start_get) > 0:
             self.timer.start(50)
 
     def stop(self):
@@ -402,7 +402,7 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
                     break
 
     def set_time(self):
-        if self.start_set is None:
+        if len(self.start_set) == 0:
             self.set_state = 0
             self.prev_time = None
             return
@@ -426,7 +426,7 @@ class ReportButton(Interactor, QPushButton, metaclass=InteractorQPushButton):
         self.setText(text)
         self.clicked.connect(self.run)
         self.key = key
-        self.start = None
+        self.start = []
 
     def setText(self, text):
         super().setText(text)
@@ -497,11 +497,11 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.device = None
         self.model = None
         self.serial_number = None
-        self.controller_start_get = None
-        self.psram_start_get = None
-        self.device_id_start_get = None
-        self.device_id = None
-        self.ampl_start_get = None
+        self.controller_start_get = []
+        self.psram_start_get = []
+        self.device_id_start_get = []
+        self.device_id = []
+        self.ampl_start_get = []
         self.row = 1
 
     def set(self, device, model, serial_number):
@@ -541,19 +541,15 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         
     def start(self):
         self.row = 1
-        if self.ampl_start_get is not None:
-            self.sigReadRequest.emit(self, 'amplifier',
-                                     self.ampl_start_get, ['select'])
+        self.sigReadRequest.emit(self, 'amplifier',
+                                 self.ampl_start_get, ['select'])
         #self.add('Device', self.device)
-        if self.controller_start_get is not None:
-            self.sigReadRequest.emit(self, 'controller',
-                                     self.controller_start_get, ['select'])
-        if self.psram_start_get is not None:
-            self.sigReadRequest.emit(self, 'psram',
-                                     self.psram_start_get, ['select'])
-        if self.device_id_start_get is not None:
-            self.sigReadRequest.emit(self, 'deviceidsetup',
-                                     self.device_id_start_get, ['select'])
+        self.sigReadRequest.emit(self, 'controller',
+                                 self.controller_start_get, ['select'])
+        self.sigReadRequest.emit(self, 'psram',
+                                 self.psram_start_get, ['select'])
+        self.sigReadRequest.emit(self, 'deviceidsetup',
+                                 self.device_id_start_get, ['select'])
 
     def read(self, ident, stream, success):
         if 'deviceid' in ident:
@@ -905,9 +901,9 @@ class InputData(ReportButton):
         self.plot = plot
         self.plot.sigReplot.connect(self.get_data)
         self.plot.sigClose.connect(self.stop)
-        self.start_data = None
-        self.get_data = None
-        self.stop_data = None
+        self.start_data = []
+        self.get_data = []
+        self.stop_data = []
      
     def setup(self, menu):
         super().setup(menu)
@@ -1291,13 +1287,13 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.data_button.setToolTip('Record and plot some data (Ctrl+D)')
         key = QShortcut('Ctrl+D', self)
         key.activated.connect(self.data_button.animateClick)
-        self.sensors_start_get = None
-        self.devices_start_get = None
+        self.sensors_start_get = []
+        self.devices_start_get = []
 
     def setup(self, menu):
         self.devices_start_get = self.retrieve('input devices', menu)
         self.sensors_start_get = self.retrieve('sensor devices', menu, False)
-        if self.devices_start_get is None and self.sensors_start_get is None:
+        if len(self.devices_start_get) == 0 and (self.sensors_start_get) == 0:
             self.setVisible(False)
         self.input_button.setup(menu)
         self.data_button.setup(menu)
@@ -1477,9 +1473,9 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                                      QSizePolicy.Policy.Expanding),
                          self.row, 0)
         self.row += 1
-        self.sensors_get = None
-        self.request_get = None
-        self.values_get = None
+        self.sensors_get = []
+        self.request_get = []
+        self.values_get = []
         self.sensors = {}
         self.state = 0
         self.delay = 1000
@@ -1494,7 +1490,7 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                                          menu, False)
         self.values_get = self.retrieve('sensor readings',
                                         menu, False)
-        if self.sensors_get is None:
+        if len(self.sensors_get) == 0:
             self.setVisible(False)
 
     def start(self):
@@ -1676,9 +1672,9 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.box.addWidget(title, 0, 0, 1, 2)
         self.box.addWidget(self.checkcard, 0, 2, Qt.AlignRight)
         self.box.setRowStretch(0, 1)
-        self.sdcard_start_get = None
-        self.root_start_get = None
-        self.recordings_start_get = None
+        self.sdcard_start_get = []
+        self.root_start_get = []
+        self.recordings_start_get = []
         self.nrecordings = 0
         self.srecordings = None
         self.nroot = 0
@@ -2331,12 +2327,12 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         box.addWidget(self.reboot_button, 1, 0)
         box.addWidget(self.firmware_button, 1, 1)
         box.addWidget(self.run_button, 1, 3)
-        self.start_check = None
-        self.start_load = None
-        self.start_save = None
-        self.start_erase = None
-        self.start_list_firmware = None
-        self.start_update_firmware = None
+        self.start_check = []
+        self.start_load = []
+        self.start_save = []
+        self.start_erase = []
+        self.start_list_firmware = []
+        self.start_update_firmware = []
         self.update_stream = []
         self.matches = False
         self.stream_len = 0
@@ -2348,12 +2344,12 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.start_erase = self.retrieve('configuration>erase', menu)
         self.start_list_firmware = self.retrieve('firmware>list', menu)
         self.start_update_firmware = self.retrieve('firmware>update', menu)
-        if self.start_list_firmware is None:
+        if len(self.start_list_firmware) == 0:
             self.firmware_button.setVisible(False)
         else:
             self.sigReadRequest.emit(self, 'firmwarecheck',
                                      self.start_list_firmware, ['select'])
-        if self.start_update_firmware is not None:
+        if len(self.start_update_firmware) > 0:
             self.start_update_firmware.append('STAY')
 
     def save(self):
@@ -3000,7 +2996,7 @@ class Logger(QWidget):
         self.read_func()
 
     def read_request(self, target, ident, start, stop, act='read'):
-        if start is None:
+        if len(start) == 0:
             return
         # put each request only once onto the stack:
         for req in self.request_stack:
@@ -3101,7 +3097,7 @@ class Logger(QWidget):
                 self.read_state = 1
 
     def write_request(self, msg, start):
-        if start is None:
+        if len(start) == 0:
             return
         if not self.request_block:
             self.request_stack.append([msg, None, start,
