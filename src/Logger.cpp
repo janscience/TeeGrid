@@ -143,6 +143,12 @@ void Logger::flashLEDs() {
 
 
 bool Logger::check(Config &config, bool check_backup) {
+  // cleanup previous recordings:
+  char folder[64];
+  SDCard0->latestDir("/", folder, 64);
+  if (strlen(folder) > 0)
+    SDCard0->cleanDir(folder, 1024, ".wav", true, true, Serial);
+  // check for enough space:
   if (!SDCard0->check(1e9)) {
     SDCard0->end();
     StatusLED.switchOff();
