@@ -10,7 +10,6 @@
 #include <SDCard.h>
 #include <SDWriter.h>
 #include <RTClock.h>
-#include <DeviceID.h>
 #include <Blink.h>
 #include <MicroConfig.h>
 
@@ -20,14 +19,12 @@ class Logger {
 public:
 
   Logger(Input &aiinput, SDCard &sdcard0,
-	 const RTClock &rtclock, const DeviceID &deviceid,
-	 Blink &blink);
+	 const RTClock &rtclock, Blink &blink);
   Logger(Input &aiinput, SDCard &sdcard0,
-	 const RTClock &rtclock, const DeviceID &deviceid,
-	 Blink &blink, Blink &errorblink, Blink &syncblink);
+	 const RTClock &rtclock, Blink &blink,
+	 Blink &errorblink, Blink &syncblink);
   Logger(Input &aiinput, SDCard &sdcard0, SDCard &sdcard1,
-	 const RTClock &rtclock, const DeviceID &deviceid,
-	 Blink &blink);
+	 const RTClock &rtclock, Blink &blink);
 
   // Halt with error message and blinking.
   void halt(int errorcode=0, Stream &stream=Serial);
@@ -54,7 +51,7 @@ public:
   
   // Initialize recording directory and file metadata.
   void setup(const char *path, const char *filename,
-	     const char *software, bool randomblinks,
+	     const char *software, bool randomblinks=false,
 	     float blinktimeout=0.0);
 
   // Open files.
@@ -100,7 +97,6 @@ protected:
   SDWriter File0;
   SDWriter File1;
   const RTClock &Clock;
-  const DeviceID &DeviceIdent;
   Blink NoBlink;
   Blink &StatusLED;
   Blink &ErrorLED;

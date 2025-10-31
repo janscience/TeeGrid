@@ -29,9 +29,10 @@ int8_t channels0 [] = {A4, A5, A6, A7, -1, A4, A5, A6, A7, A8, A9};      // inpu
 int8_t channels1 [] = {A2, A3, A20, A22, -1, A20, A22, A12, A13};  // input pins for ADC1
 #define PREGAIN       1
 
-#define PATH          "recordings"       // folder where to store the recordings
+#define LABEL         "logger"           // may be used for naming files
 #define DEVICEID      1                  // may be used for naming files
-#define FILENAME      "gridID-SDATETIME.wav" // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define PATH          "recordings"       // folder where to store the recordings
+#define FILENAME      "LABELID-SDATETIME.wav" // may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME 1*60 // seconds
 #define INITIAL_DELAY  2.0   // seconds
 
@@ -51,19 +52,19 @@ Blink blink("status", LED_BUILTIN);
 SDCard sdcard;
 
 Config config("teegrid.cfg", &sdcard);
-Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+Settings settings(config, LABEL, DEVICEID, PATH, FILENAME, FILE_SAVE_TIME,
 	          INITIAL_DELAY, false, PULSE_FREQUENCY);
 InputADCSettings aisettings(config, SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE, PREGAIN);
 RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
-SDCardMenu sdcard_menu(config, sdcard, settings);
+SDCardMenu sdcard_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings);
 DiagnosticMenu diagnostic_menu(config, sdcard, 0, &aidata, &rtclock);
 HelpAction help_act(config, "Help");
 
-Logger files(aidata, sdcard, rtclock, deviceid, blink);
+Logger files(aidata, sdcard, rtclock, blink);
 
 
 // ----------------------------------------------------------------------------
@@ -98,10 +99,11 @@ void setup() {
   aidata.start();
   aidata.report();
   files.report();
+  settings.preparePaths(deviceid);
   files.setup(settings.path(), settings.fileName(), SOFTWARE);
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
-  files.start(settings.fileTime());
+  files.start(settings.fileTime(), config);
 }
 
 

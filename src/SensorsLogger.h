@@ -15,11 +15,10 @@ class SensorsLogger : public Logger {
 public:
 
   SensorsLogger(Input &aiinput, ESensors &sensors, SDCard &sdcard0,
-		const RTClock &rtclock, const DeviceID &deviceid,
-		Blink &blink);
+		const RTClock &rtclock, Blink &blink);
   SensorsLogger(Input &aiinput, ESensors &sensors, SDCard &sdcard0,
-		const RTClock &rtclock, const DeviceID &deviceid,
-		Blink &blink, Blink &errorblink, Blink &syncblink);
+		const RTClock &rtclock, Blink &blink,
+		Blink &errorblink, Blink &syncblink);
 
   // Initialize environmental sensors.
   void setupSensors();

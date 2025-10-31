@@ -39,9 +39,10 @@ int8_t channels1 [] =  {A2, A3, A20, A22, -1, A20, A22, A12, A13};  // input pin
 #define TEMP_PIN         25   // pin for DATA of thermometer
 #define SENSORS_INTERVAL 10.0 // interval between sensors readings in seconds
 
-#define PATH          "recordings"       // folder where to store the recordings
+#define LABEL         "logger"           // may be used for naming files
 #define DEVICEID      1                  // may be used for naming files
-#define FILENAME      "gridID-SDATETIME" // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define PATH          "recordings"       // folder where to store the recordings
+#define FILENAME      "LABELID-SDATETIME" // may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME 10*60 // seconds
 #define INITIAL_DELAY  2.0   // seconds
 
@@ -72,21 +73,21 @@ IRRatioTSL2591 irratio(&tsl, &sensors);
 IlluminanceTSL2591 illum(&tsl, &sensors);
 
 Config config("teegrid.cfg", &sdcard);
-Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+Settings settings(config, LABEL, DEVICEID, PATH, FILENAME, FILE_SAVE_TIME,
                   INITIAL_DELAY, false, PULSE_FREQUENCY,
 		  0.0, SENSORS_INTERVAL);
 InputADCSettings aisettings(config, SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE, PREGAIN);
 RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
-SDCardMenu sdcard_menu(config, sdcard, settings);
+SDCardMenu sdcard_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings);
 ESensorsMenu sensors_menu(config, sensors);
 DiagnosticMenu diagnostic_menu(config, sdcard, 0, &aidata, &rtclock);
 HelpAction help_act(config, "Help");
 
-SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid, blink);
+SensorsLogger files(aidata, sensors, sdcard, rtclock, blink);
 
 
 void setupSensors() {
@@ -131,6 +132,7 @@ void setup() {
   files.startSensors(settings.sensorsInterval());
   tsl.setTemperature(bme.temperature());
   setupTestSignals(signalPins, settings.pulseFrequency());
+  deviceid.setID(settings.deviceID());
   aisettings.configure(&aidata);
   blink.switchOff();
   if (!aidata.check()) {
@@ -141,10 +143,11 @@ void setup() {
   aidata.start();
   aidata.report();
   files.report();
+  settings.preparePaths(deviceid);
   files.setup(settings.path(), settings.fileName(), SOFTWARE);
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
-  files.start(settings.fileTime());
+  files.start(settings.fileTime(), config);
 }
 
 

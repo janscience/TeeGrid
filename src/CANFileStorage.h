@@ -18,7 +18,7 @@ public:
 
   CANFileStorage(Input &aiinput, SDCard &sdcard0, SDCard &sdcard1,
 		 R41CAN &can, bool master, const RTClock &rtclock,
-		 const DeviceID &deviceid, Blink &blink);
+		 Blink &blink);
 
 protected:
 

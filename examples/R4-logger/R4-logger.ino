@@ -25,9 +25,10 @@
 #define PREGAIN        10.0     // gain factor of preamplifier
 #define GAIN           20.0     // dB
 
+#define LABEL          "logger"      // may be used for naming files
 #define DEVICEID       -1            // may be used for naming files
-#define PATH           "recordings"  // folder where to store the recordings, may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
-#define FILENAME       "bigtankID2-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define PATH           "recordings"  // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
+#define FILENAME       "LABELID2-SDATETIME.wav"  // may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME 20          // seconds
 #define INITIAL_DELAY  10.0          // seconds
 #define RANDOM_BLINKS  true          // set to true for blinking the LED randomly
@@ -60,20 +61,21 @@ Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
 SDCard sdcard;
 
 Config config("logger.cfg", &sdcard);
-Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+Settings settings(config, LABEL, DEVICEID, PATH, FILENAME, FILE_SAVE_TIME,
                   INITIAL_DELAY, RANDOM_BLINKS);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
 RTClockMenu datetime_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
-SDCardMenu sdcard0_menu(config, sdcard, settings);
+SDCardMenu sdcard0_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid,
                                &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
+InfoAction ampl_info(diagnostic_menu, "Amplifier board");
 HelpAction help_act(config, "Help");
 
-Logger files(aidata, sdcard, rtclock, deviceid, blink);
+Logger files(aidata, sdcard, rtclock, blink);
 
 
 // -----------------------------------------------------------------------------
@@ -93,10 +95,14 @@ void setup() {
   rtclock.begin();
   rtclock.check();
   bool R41b = (strncmp(rtclock.chip(), "DS", 2) == 0);
-  if (R41b)
+  if (R41b) {
      deviceid.setPins(DIPPins);
-  else
+     ampl_info.add("Version", "R4.1b");
+  }
+  else {
      files.R41powerDownCAN();
+     ampl_info.add("Version", "R4.1");
+  }
   sdcard.begin();
   files.check(config, true);
   rtclock.setFromFile(sdcard);
@@ -119,6 +125,7 @@ void setup() {
   aidata.start();
   aidata.report();
   files.report();
+  settings.preparePaths(deviceid);
   files.setup(settings.path(), settings.fileName(),
               SOFTWARE, settings.randomBlinks());
   shutdown_usb();   // saves power!

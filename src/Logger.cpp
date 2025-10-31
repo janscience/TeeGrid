@@ -11,15 +11,13 @@
 
 
 Logger::Logger(Input &aiinput, SDCard &sdcard0,
-	       const RTClock &rtclock, const DeviceID &deviceid,
-	       Blink &blink) :
+	       const RTClock &rtclock, Blink &blink) :
   AIInput(aiinput),
   SDCard0(&sdcard0),
   SDCard1(0),
   File0(sdcard0, aiinput, 5),
   File1(),
   Clock(rtclock),
-  DeviceIdent(deviceid),
   NoBlink(""),
   StatusLED(blink),
   ErrorLED(NoBlink),
@@ -37,15 +35,14 @@ Logger::Logger(Input &aiinput, SDCard &sdcard0,
 
 
 Logger::Logger(Input &aiinput, SDCard &sdcard0,
-	       const RTClock &rtclock, const DeviceID &deviceid,
-	       Blink &blink, Blink &errorblink, Blink &syncblink) :
+	       const RTClock &rtclock, Blink &blink,
+	       Blink &errorblink, Blink &syncblink) :
   AIInput(aiinput),
   SDCard0(&sdcard0),
   SDCard1(0),
   File0(sdcard0, aiinput, 5),
   File1(),
   Clock(rtclock),
-  DeviceIdent(deviceid),
   NoBlink(""),
   StatusLED(blink),
   ErrorLED(errorblink),
@@ -64,14 +61,13 @@ Logger::Logger(Input &aiinput, SDCard &sdcard0,
 
 Logger::Logger(Input &aiinput, SDCard &sdcard0,
 	       SDCard &sdcard1, const RTClock &rtclock,
-	       const DeviceID &deviceid, Blink &blink) :
+	       Blink &blink) :
   AIInput(aiinput),
   SDCard0(&sdcard0),
   SDCard1(&sdcard1),
   File0(sdcard0, aiinput, 5),
   File1(sdcard1, aiinput, 5),
   Clock(rtclock),
-  DeviceIdent(deviceid),
   NoBlink(""),
   StatusLED(blink),
   ErrorLED(NoBlink),
@@ -200,7 +196,6 @@ void Logger::report(Stream &stream) const {
     ErrorLED.report(stream);
   if (SyncLED.available())
     SyncLED.report(stream);
-  DeviceIdent.report(stream);
   Clock.report(stream);
   stream.println();
 }
@@ -231,11 +226,9 @@ void Logger::setup(const char *path, const char *filename,
   RandomBlinks = randomblinks;
   BlinkTimeout = (unsigned long)(1000*blinktimeout);
   Filename = filename;
-  Filename = DeviceIdent.makeStr(Filename);
   PrevFilename = "";
   Restarts = 0;
   String path_name = path;
-  path_name = DeviceIdent.makeStr(path_name);
   time_t t = now();
   path_name = Clock.makeStr(path_name, t, true);
   if (File0.sdcard()->dataDir(path_name.c_str()))

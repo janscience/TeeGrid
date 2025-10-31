@@ -33,9 +33,10 @@
 #define PREGAIN            1.0    // gain factor of preamplifier
 #define GAIN               0.0    // dB
 
+#define LABEL            "logger" // may be used for naming files
 #define DEVICEID         -1       // may be used for naming pathes and files
-#define PATH             "flonaID2-SDATETIMEM-NUM1"   // folder where to store the recordings, may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
-#define FILENAME         "loggerID2-SDATETIME.wav"   // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
+#define PATH             "LABELID2-SDATETIMEM-NUM1"   // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
+#define FILENAME         "LABELID2-SDATETIME.wav"   // may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
 #define FILE_SAVE_TIME   5*60     // seconds
 #define INITIAL_DELAY    10.0     // seconds
 #define SENSORS_INTERVAL 30.0     // interval between sensors readings in seconds
@@ -83,14 +84,14 @@ LightBH1750 light1(&sensors);
 LightBH1750 light2(&sensors);
 
 Config config("logger.cfg", &sdcard);
-Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+Settings settings(config, LABEL, DEVICEID, PATH, FILENAME, FILE_SAVE_TIME,
                   INITIAL_DELAY, RANDOM_BLINKS, 0, 0,
                   SENSORS_INTERVAL, BLINK_TIMEOUT);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
 RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
-SDCardMenu sdcard_menu(config, sdcard, settings);
+SDCardMenu sdcard_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 ESensorsMenu sensors_menu(config, sensors);
@@ -98,7 +99,7 @@ DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &
 InfoAction ampl_info(diagnostic_menu, "Amplifier board");
 HelpAction help_act(config, "Help");
 
-SensorsLogger files(aidata, sensors, sdcard, rtclock, deviceid,
+SensorsLogger files(aidata, sensors, sdcard, rtclock,
                     blink, errorblink, syncblink);
 
 
@@ -195,6 +196,7 @@ void setup() {
   aidata.start();
   aidata.report();
   files.report();
+  settings.preparePaths(deviceid);
   files.setup(settings.path(), settings.fileName(),
               SOFTWARE, settings.randomBlinks(),
 	            settings.blinkTimeout());

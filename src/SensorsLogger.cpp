@@ -5,9 +5,8 @@ SensorsLogger::SensorsLogger(Input &aiinput,
 			     ESensors &sensors,
 			     SDCard &sdcard,
 			     const RTClock &rtclock,
-			     const DeviceID &deviceid,
 			     Blink &blink) :
-  Logger(aiinput, sdcard, rtclock, deviceid, blink),
+  Logger(aiinput, sdcard, rtclock, blink),
   Sensors(sensors) {
 }
 
@@ -16,11 +15,10 @@ SensorsLogger::SensorsLogger(Input &aiinput,
 			     ESensors &sensors,
 			     SDCard &sdcard,
 			     const RTClock &rtclock,
-			     const DeviceID &deviceid,
 			     Blink &blink,
 			     Blink &errorblink,
 			     Blink &syncblink) :
-  Logger(aiinput, sdcard, rtclock, deviceid, blink, errorblink, syncblink),
+  Logger(aiinput, sdcard, rtclock, blink, errorblink, syncblink),
   Sensors(sensors) {
 }
 

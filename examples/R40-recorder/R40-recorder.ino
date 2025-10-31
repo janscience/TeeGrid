@@ -26,9 +26,10 @@
 #define PREGAIN       10.0     // gain factor of preamplifier (1 or 10).
 #define GAIN          20.0     // dB
 
-#define PATH          "recordings"   // folder where to store the recordings
+#define LABEL         "logger"       // may be used for naming files
 #define DEVICEID      1              // may be used for naming files
-#define FILENAME      "micarray4-1-SDATETIME.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define PATH          "recordings"   // folder where to store the recordings
+#define FILENAME      "LABELID-SDATETIME.wav"  // may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME 5*60   // seconds
 #define RANDOM_BLINKS  false  // set to true for blinking the LED randomly
 
@@ -54,19 +55,20 @@ PushButtons buttons;
 SDCard sdcard;
 
 Config config("logger.cfg", &sdcard);
-Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
+Settings settings(config, LABEL, DEVICEID, PATH, FILENAME, FILE_SAVE_TIME,
                   0, RANDOM_BLINKS);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
 RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
-SDCardMenu sdcard0_menu(config, sdcard, settings);
+SDCardMenu sdcard0_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R40SetupPCMs);
 DiagnosticMenu diagnostic_menu(config, sdcard, 0, &pcm1, &pcm2, &rtclock);
+InfoAction ampl_info(diagnostic_menu, "Amplifier board");
 HelpAction help_act(config, "Help");
 
-Logger files(aidata, sdcard, rtclock, deviceid, blink);
+Logger files(aidata, sdcard, rtclock, blink);
 
 
 // -----------------------------------------------------------------------------
@@ -79,14 +81,13 @@ void toggle_save(int id) {
   }
   else {
     Serial.println("Start recordng ...");
-    files.start(settings.fileTime());
+    files.start(settings.fileTime(), config);
   }
 }
 
 
 void setup() {
   blink.switchOn();
-  settings.disable("DeviceID");
   settings.enable("RandomBlinks");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
@@ -96,6 +97,7 @@ void setup() {
   Wire.begin();
   rtclock.begin();
   rtclock.check();
+  ampl_info.add("Version", "R4.0");
   sdcard.begin();
   files.check(config);
   rtclock.setFromFile(sdcard);
@@ -117,6 +119,7 @@ void setup() {
   aidata.start();
   aidata.report();
   files.report();
+  settings.preparePaths(deviceid);
   files.setup(settings.path(), settings.fileName(),
               SOFTWARE, settings.randomBlinks());
   buttons.add(BUTTON_PIN, INPUT_PULLUP, toggle_save);
