@@ -25,18 +25,19 @@
 #define PREGAIN        10.0     // gain factor of preamplifier
 #define GAIN           20.0     // dB
 
-#define LABEL          "logger"      // may be used for naming files
-#define DEVICEID       -1            // may be used for naming files
-#define PATH           "recordings"  // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
-#define FILENAME       "LABELID2-SDATETIME.wav"  // may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
-#define FILE_SAVE_TIME 20          // seconds
-#define INITIAL_DELAY  10.0          // seconds
-#define RANDOM_BLINKS  true          // set to true for blinking the LED randomly
+#define LABEL          "logger"               // may be used for naming files
+#define DEVICEID       -1                     // may be used for naming files
+#define PATH           "LABELID2-SDATETIMEM"  // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
+#define FILENAME       "LABELID2-SDATETIME"   // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define FILE_SAVE_TIME 10*60    // seconds
+#define INITIAL_DELAY  10       // seconds
+#define RANDOM_BLINKS  true     // set to true for blinking the LED randomly
+#define BLINK_TIMEOUT    0      // time after which internal LEDs are switched off in seconds
 
 // ----------------------------------------------------------------------------
 
-#define LED_PIN        26    // R4.1
-//#define LED_PIN      27    // R4.2
+#define LED_PIN        26       // R4.1
+//#define LED_PIN      27       // R4.2
 
 // Device ID pins:
 int DIPPins[] = { 34, 35, 36, 37, -1 };
@@ -44,7 +45,7 @@ int DIPPins[] = { 34, 35, 36, 37, -1 };
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid R4-logger v3.0"
+#define SOFTWARE      "TeeGrid R4-logger v3.1"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -62,7 +63,7 @@ SDCard sdcard;
 
 Config config("logger.cfg", &sdcard);
 Settings settings(config, LABEL, DEVICEID, PATH, FILENAME, FILE_SAVE_TIME,
-                  INITIAL_DELAY, RANDOM_BLINKS);
+                  INITIAL_DELAY, RANDOM_BLINKS, 0, 0, 0, BLINK_TIMEOUT);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
 RTClockMenu datetime_menu(config, rtclock);
@@ -82,8 +83,11 @@ Logger files(aidata, sdcard, rtclock, blink);
 
 void setup() {
   blink.switchOn();
+  settings.disable("Path", settings.StreamInput);
+  settings.disable("FileName", settings.StreamInput);
   settings.enable("InitialDelay");
   settings.enable("RandomBlinks");
+  settings.enable("BlinkTimeout");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
@@ -127,7 +131,8 @@ void setup() {
   files.report();
   settings.preparePaths(deviceid);
   files.setup(settings.path(), settings.fileName(),
-              SOFTWARE, settings.randomBlinks());
+              SOFTWARE, settings.randomBlinks(),
+	      settings.blinkTimeout());
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
   diagnostic_menu.updateCPUSpeed();

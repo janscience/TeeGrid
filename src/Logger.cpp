@@ -226,12 +226,16 @@ void Logger::setup(const char *path, const char *filename,
   RandomBlinks = randomblinks;
   BlinkTimeout = (unsigned long)(1000*blinktimeout);
   Filename = filename;
+  int i = Filename.lastIndexOf('.');
+  if (i >= 0)
+    Filename.remove(i);
+  Filename += ".wav";
   PrevFilename = "";
   Restarts = 0;
   String path_name = path;
   time_t t = now();
   path_name = Clock.makeStr(path_name, t, true);
-  if (File0.sdcard()->dataDir(path_name.c_str()))
+  if (File0.sdcard()->dataDir(path_name.c_str(), true))
     Serial.printf("Save recorded data in folder \"%s\" on %sSD card.\n\n",
 		  File0.sdcard()->workingDir(), File0.sdcard()->name());
   File0.header().setSoftware(software);

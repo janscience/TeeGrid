@@ -33,15 +33,15 @@
 #define PREGAIN            1.0    // gain factor of preamplifier
 #define GAIN               0.0    // dB
 
-#define LABEL            "logger" // may be used for naming files
-#define DEVICEID         -1       // may be used for naming pathes and files
-#define PATH             "LABELID2-SDATETIMEM-NUM1"   // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
-#define FILENAME         "LABELID2-SDATETIME.wav"   // may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
+#define LABEL            "logger"              // may be used for naming files
+#define DEVICEID         -1                    // may be used for naming pathes and files
+#define PATH             "LABELID2-SDATETIMEM" // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
+#define FILENAME         "LABELID2-SDATETIME"  // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
 #define FILE_SAVE_TIME   5*60     // seconds
-#define INITIAL_DELAY    10.0     // seconds
+#define INITIAL_DELAY    10       // seconds
 #define SENSORS_INTERVAL 30.0     // interval between sensors readings in seconds
 #define RANDOM_BLINKS    true     // set to true for blinking the LED randomly
-#define BLINK_TIMEOUT    0     // time after which internal LEDs are switched off in seconds
+#define BLINK_TIMEOUT    0        // time after which internal LEDs are switched off in seconds
 
 
 // ----------------------------------------------------------------------------
@@ -57,7 +57,7 @@ int DIPPins[] = { 34, 35, 36, 37, -1 }; // Device ID pins:
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid R4-sensors-logger v3.1"
+#define SOFTWARE      "TeeGrid R4-sensors-logger v3.2"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -145,6 +145,8 @@ void setupSensors(int temp_pin) {
 
 void setup() {
   setupLEDs();
+  settings.disable("Path", settings.StreamInput);
+  settings.disable("FileName", settings.StreamInput);
   settings.enable("InitialDelay");
   if (syncblink.nPins() > 1) {
     settings.disable("RandomBlinks");
@@ -199,7 +201,7 @@ void setup() {
   settings.preparePaths(deviceid);
   files.setup(settings.path(), settings.fileName(),
               SOFTWARE, settings.randomBlinks(),
-	            settings.blinkTimeout());
+	      settings.blinkTimeout());
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
   diagnostic_menu.updateCPUSpeed();

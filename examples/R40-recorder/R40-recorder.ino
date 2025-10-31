@@ -26,10 +26,10 @@
 #define PREGAIN       10.0     // gain factor of preamplifier (1 or 10).
 #define GAIN          20.0     // dB
 
-#define LABEL         "logger"       // may be used for naming files
-#define DEVICEID      1              // may be used for naming files
-#define PATH          "recordings"   // folder where to store the recordings
-#define FILENAME      "LABELID-SDATETIME.wav"  // may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define LABEL         "logger"              // may be used for naming files
+#define DEVICEID      1                     // may be used for naming files
+#define PATH          "recordings"          // folder where to store the recordings
+#define FILENAME      "LABELID2-SDATETIME"  // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME 5*60   // seconds
 #define RANDOM_BLINKS  false  // set to true for blinking the LED randomly
 
@@ -39,7 +39,7 @@
 
 #define BUTTON_PIN    30
 
-#define SOFTWARE      "TeeGrid R40-recorder v1.0"
+#define SOFTWARE      "TeeGrid R40-recorder v1.1"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);

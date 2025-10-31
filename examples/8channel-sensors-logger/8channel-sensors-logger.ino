@@ -39,19 +39,19 @@ int8_t channels1 [] =  {A2, A3, A20, A22, -1, A20, A22, A12, A13};  // input pin
 #define TEMP_PIN         25   // pin for DATA of thermometer
 #define SENSORS_INTERVAL 10.0 // interval between sensors readings in seconds
 
-#define LABEL         "logger"           // may be used for naming files
-#define DEVICEID      1                  // may be used for naming files
-#define PATH          "recordings"       // folder where to store the recordings
-#define FILENAME      "LABELID-SDATETIME" // may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define LABEL         "logger"              // may be used for naming files
+#define DEVICEID      1                     // may be used for naming files
+#define PATH          "LABELID2-SDATETIMEM" // folder where to store the recordings
+#define FILENAME      "LABELID2-SDATETIME"  // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME 10*60 // seconds
-#define INITIAL_DELAY  2.0   // seconds
+#define INITIAL_DELAY  10    // seconds
 
 #define PULSE_FREQUENCY 230 // Hertz
 int signalPins[] = {9, 8, 7, 6, 5, 4, 3, 2, -1}; // pins where to put out test signals
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid 8channel-sensors-logger v2.0"
+#define SOFTWARE      "TeeGrid 8channel-sensors-logger v2.1"
 
 DATA_BUFFER(AIBuffer, NAIBuffer, 256*256)
 InputADC aidata(AIBuffer, NAIBuffer, channels0, channels1);
@@ -109,6 +109,8 @@ void setupSensors() {
 
 void setup() {
   blink.switchOn();
+  settings.disable("Path", settings.StreamInput);
+  settings.disable("FileName", settings.StreamInput);
   settings.enable("InitialDelay");
   settings.enable("PulseFreq");
   settings.enable("SensorsInterval");
