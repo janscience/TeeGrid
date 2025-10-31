@@ -27,6 +27,9 @@ public:
   void startSensors(float interval);
 
   // Open files.
+  void start(float filetime);
+  
+  // Open files and write metadata from config.
   void start(float filetime, Config &config);
 
   // Call this in loop() for writing data to files.

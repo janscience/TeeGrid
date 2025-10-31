@@ -41,6 +41,12 @@ void SensorsLogger::startSensors(float interval) {
 }
 
 
+void SensorsLogger::start(float filetime) {
+  Logger::start(filetime);
+  openSensorsFile();
+}
+
+
 void SensorsLogger::start(float filetime, Config &config) {
   Logger::start(filetime, config);
   openSensorsFile();

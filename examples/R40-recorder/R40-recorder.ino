@@ -81,7 +81,7 @@ void toggle_save(int id) {
   }
   else {
     Serial.println("Start recordng ...");
-    files.start(settings.fileTime(), config);
+    files.start(settings.fileTime());
   }
 }
 

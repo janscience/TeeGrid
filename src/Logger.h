@@ -55,6 +55,9 @@ public:
 	     float blinktimeout=0.0);
 
   // Open files.
+  void start(float filetime);
+  
+  // Open files and write metadata from config.
   void start(float filetime, Config &config);
 
   // Close files.

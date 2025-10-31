@@ -244,7 +244,7 @@ void Logger::setup(const char *path, const char *filename,
 }
 
 
-void Logger::start(float filetime, Config &config) {
+void Logger::start(float filetime) {
   File0.setWriteInterval(2*AIInput.DMABufferTime());
   File0.setMaxFileTime(filetime);
   if (File1.sdcard() != NULL) {
@@ -275,9 +275,14 @@ void Logger::start(float filetime, Config &config) {
   open(true);
   NextStore = 0;
   NextOpen = 0;
-  writeMetadata(config);
   if (RandomBlinks)
     openBlinkFiles();
+}
+
+
+void Logger::start(float filetime, Config &config) {
+  start(filetime);
+  writeMetadata(config);
 }
 
 
