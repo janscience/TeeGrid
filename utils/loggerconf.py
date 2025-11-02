@@ -31,7 +31,9 @@ from PyQt5.QtWidgets import QStackedWidget, QLabel, QScrollArea
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QSpacerItem
 from PyQt5.QtWidgets import QWidget, QFrame, QPushButton, QSizePolicy
 from PyQt5.QtWidgets import QAction, QShortcut
-from PyQt5.QtWidgets import QCheckBox, QLineEdit, QComboBox, QSpinBox, QAbstractSpinBox
+from PyQt5.QtWidgets import QCheckBox, QLineEdit, QComboBox
+from PyQt5.QtWidgets import QSpinBox, QAbstractSpinBox
+from PyQt5.QtWidgets import QFileDialog
 try:
     import pyqtgraph as pg
 except ImportError:
@@ -2303,6 +2305,10 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.erase_button.setToolTip('Erase configuration file on SD card (Alt+E)')
         self.check_button = QPushButton('&Check', self)
         self.check_button.setToolTip('Check the configuration on the logger (Alt+C)')
+        self.import_button = QPushButton('&Import', self)
+        self.import_button.setToolTip('Import configuration from host (Alt+I)')
+        self.export_button = QPushButton('E&xport', self)
+        self.export_button.setToolTip('Export configuration file to host (Alt+X)')
         self.firmware_button = QPushButton('Firmware', self)
         self.firmware_button.setToolTip('Upload new firmware (Alt+U)')
         key = QShortcut('Alt+U', self)
@@ -2315,6 +2321,8 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.load_button.clicked.connect(self.load)
         self.erase_button.clicked.connect(self.erase)
         self.check_button.clicked.connect(self.check)
+        self.import_button.clicked.connect(self.importc)
+        self.export_button.clicked.connect(self.exportc)
         self.firmware_button.clicked.connect(self.firmware)
         self.reboot_button.clicked.connect(self.reboot)
         self.run_button.clicked.connect(self.run)
@@ -2323,14 +2331,17 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         box.addWidget(self.save_button, 0, 0)
         box.addWidget(self.load_button, 0, 1)
         box.addWidget(self.erase_button, 0, 2)
-        box.addWidget(self.check_button, 0, 3)
-        box.addWidget(self.reboot_button, 1, 0)
-        box.addWidget(self.firmware_button, 1, 1)
-        box.addWidget(self.run_button, 1, 3)
+        box.addWidget(self.import_button, 1, 0)
+        box.addWidget(self.export_button, 1, 1)
+        box.addWidget(self.check_button, 1, 2)
+        box.addWidget(self.reboot_button, 2, 0)
+        box.addWidget(self.firmware_button, 2, 1)
+        box.addWidget(self.run_button, 2, 2)
         self.start_check = []
         self.start_load = []
         self.start_save = []
         self.start_erase = []
+        self.start_import = []
         self.start_list_firmware = []
         self.start_update_firmware = []
         self.update_stream = []
@@ -2342,6 +2353,7 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.start_load = self.retrieve('configuration>load', menu)
         self.start_save = self.retrieve('configuration>save', menu)
         self.start_erase = self.retrieve('configuration>erase', menu)
+        self.start_import = self.retrieve('configuration>read', menu)
         self.start_list_firmware = self.retrieve('firmware>list', menu)
         self.start_update_firmware = self.retrieve('firmware>update', menu)
         if len(self.start_list_firmware) == 0:
@@ -2363,6 +2375,23 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
 
     def check(self):
         self.sigReadRequest.emit(self, 'confcheck', self.start_check, ['select'])
+
+    def importc(self):
+        file_path, _ = QFileDialog.getOpenFileName(self,
+                                                   'Load configuration file',
+                                                   'logger.cfg',
+                                                   'configuration files (*.cfg)')
+        if not file_path:
+            return
+        conf_lines = ''
+        with open(file_path, 'r') as sf:
+            conf_lines = ''.join(sf.readlines())
+        if conf_lines:
+            self.sigTransmitRequest.emit(self, 'runimport',
+                                         self.start_import + [conf_lines])
+
+    def exportc(self):
+        self.sigReadRequest.emit(self, 'confexport', self.start_check, ['select'])
 
     def reboot(self):
         self.sigReadRequest.emit(self, 'reboot', ['reboot'], [''])
@@ -2428,6 +2457,9 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
             elif ident == 'runfirmware2':
                 self.sigDisplayTerminal.emit('Update firmware',
                                              self.update_stream + stream)
+        elif ident == 'runimport':
+            print('IMPORT');
+            print(stream);
         if not ident.startswith('conf'):
             return
         if ident == 'confcheck':
@@ -2455,6 +2487,20 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
                     text += f'<td colspan=4><b>{top_key}</b></td>'
                 text += '</tr>'
             text += '</table>'
+        elif ident == 'confexport':
+            if success:
+                file_path, _ = QFileDialog.getSaveFileName(self,
+                                                           'Save configuration file',
+                                                           'logger.cfg',
+                                                           'configuration files (*.cfg)')
+                if not file_path:
+                    return
+                with open(file_path, 'w') as df:
+                    for s in stream:
+                        if len(s.strip()) == 0:
+                            break
+                        df.write(s)
+                        df.write('\n')
         elif ident == 'confload':
             while len(stream) > 0 and len(stream[0].strip()) == 0:
                 del stream[0]
@@ -2526,6 +2572,7 @@ class Logger(QWidget):
         self.config_status.setToolTip('Indicates presence of configuration file')
         self.configuration = ConfigActions(self)
         self.configuration.sigReadRequest.connect(self.read_request)
+        self.configuration.sigTransmitRequest.connect(self.transmit_request)
         self.configuration.sigDisplayTerminal.connect(self.display_terminal)
         self.configuration.sigDisplayMessage.connect(self.display_message)
         self.configuration.sigVerifyParameter.connect(self.verify_parameter)
