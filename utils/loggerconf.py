@@ -2385,13 +2385,13 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
             return
         conf_lines = ''
         with open(file_path, 'r') as sf:
-            conf_lines = ''.join(sf.readlines())
-        if conf_lines:
-            self.sigTransmitRequest.emit(self, 'runimport',
-                                         self.start_import + [conf_lines])
+            conf_lines = [line.rstrip() for line in sf.readlines()]
+        self.sigWriteRequest.emit('DONE', self.start_import + conf_lines)
+        self.sigReadRequest.emit(self, 'confimport', self.start_check, ['select'])
 
     def exportc(self):
-        self.sigReadRequest.emit(self, 'confexport', self.start_check, ['select'])
+        self.sigReadRequest.emit(self, 'confexport', self.start_check,
+                                 ['select'])
 
     def reboot(self):
         self.sigReadRequest.emit(self, 'reboot', ['reboot'], [''])
@@ -2457,9 +2457,6 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
             elif ident == 'runfirmware2':
                 self.sigDisplayTerminal.emit('Update firmware',
                                              self.update_stream + stream)
-        elif ident == 'runimport':
-            print('IMPORT');
-            print(stream);
         if not ident.startswith('conf'):
             return
         if ident == 'confcheck':
@@ -2487,6 +2484,19 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
                     text += f'<td colspan=4><b>{top_key}</b></td>'
                 text += '</tr>'
             text += '</table>'
+        elif ident == 'confimport':
+            top_key = None
+            for s in stream:
+                if 'configuration:' in s.lower():
+                    break
+                cs = s.split(':')
+                if len(cs) > 1 and len(cs[1].strip()) > 0:
+                    key = cs[0].strip()
+                    value = (":".join(cs[1:])).strip()
+                    keys = f'{top_key}>{key}' if top_key else key
+                    self.sigSetParameter.emit(keys, value)
+                else:
+                    top_key = cs[0].strip()
         elif ident == 'confexport':
             if success:
                 file_path, _ = QFileDialog.getSaveFileName(self,
@@ -2572,7 +2582,7 @@ class Logger(QWidget):
         self.config_status.setToolTip('Indicates presence of configuration file')
         self.configuration = ConfigActions(self)
         self.configuration.sigReadRequest.connect(self.read_request)
-        self.configuration.sigTransmitRequest.connect(self.transmit_request)
+        self.configuration.sigWriteRequest.connect(self.write_request)
         self.configuration.sigDisplayTerminal.connect(self.display_terminal)
         self.configuration.sigDisplayMessage.connect(self.display_message)
         self.configuration.sigVerifyParameter.connect(self.verify_parameter)
