@@ -3052,16 +3052,13 @@ class Logger(QWidget):
         block = self.request_block
         if start[-1] == 'STAY':
             start.pop()
-            end = 0
+            end = False
             self.request_block = True
             block = False
         else:
-            end = len(start) - 1
-            if act == 'transmit':
-                end -= 1
+            end = True
         if not block:
-            self.request_stack.append([target, ident, start, end,
-                                       stop, act])
+            self.request_stack.append([target, ident, start, end, stop, act])
         if self.read_func == self.parse_request_stack:
             self.parse_request_stack()
             
@@ -3118,13 +3115,10 @@ class Logger(QWidget):
             self.read_state += 1
         elif self.read_state == 3:
             self.clear_input()
-            if self.request_end > 0:
-                self.write('q')
-                self.request_end -= 1
-            else:
-                self.request_end = None
-                self.request_type = None
-                self.read_func = self.parse_request_stack
+            if self.request_end:
+                self.write('h')
+            self.request_type = None
+            self.read_func = self.parse_request_stack
         elif self.read_state == 4:
             stop_str = 'select'
             if self.request_type == 'transmit' and len(self.request_start) == 1:
@@ -3148,7 +3142,7 @@ class Logger(QWidget):
             return
         if not self.request_block:
             self.request_stack.append([msg, None, start,
-                                       len(start) - 1, None, 'write'])
+                                       True, None, 'write'])
         if self.read_func == self.parse_request_stack:
             self.parse_request_stack()
 
@@ -3168,13 +3162,10 @@ class Logger(QWidget):
             self.read_state += 1
         elif self.read_state == 2:
             self.clear_input()
-            if self.request_end > 0:
-                self.write('q')
-                self.request_end -= 1
-            else:
-                self.request_end = None
-                self.request_type = None
-                self.read_func = self.parse_request_stack
+            if self.request_end:
+                self.write('h')
+            self.request_type = None
+            self.read_func = self.parse_request_stack
 
     def read(self):
         if self.ser is None:
