@@ -2347,6 +2347,7 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.update_stream = []
         self.matches = False
         self.stream_len = 0
+        self.config_file = None
     
     def setup(self, menu):
         self.start_check = self.retrieve('configuration>print', menu)
@@ -2377,9 +2378,10 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.sigReadRequest.emit(self, 'confcheck', self.start_check, ['select'])
 
     def importc(self):
+        fname = 'logger.cfg' if self.config_file is None else self.config_file
         file_path, _ = QFileDialog.getOpenFileName(self,
                                                    'Load configuration file',
-                                                   'logger.cfg',
+                                                   fname,
                                                    'configuration files (*.cfg)')
         if not file_path:
             return
@@ -2499,9 +2501,10 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
                     top_key = cs[0].strip()
         elif ident == 'confexport':
             if success:
+                fname = 'logger.cfg' if self.config_file is None else self.config_file
                 file_path, _ = QFileDialog.getSaveFileName(self,
                                                            'Save configuration file',
-                                                           'logger.cfg',
+                                                           fname,
                                                            'configuration files (*.cfg)')
                 if not file_path:
                     return
@@ -2837,6 +2840,7 @@ class Logger(QWidget):
                 config_file = self.input[k].split('"')[1].strip()
                 self.config_file.setText(f'<b>{config_file}</b>')
                 self.set_configfile_state(not 'not found' in self.input[k])
+                self.configuration.config_file = config_file
                 self.input = self.input[k + 1:]
                 for k in range(len(self.input)):
                     if len(self.input[k].strip()) == 0:
