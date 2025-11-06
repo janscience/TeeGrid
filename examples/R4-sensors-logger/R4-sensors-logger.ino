@@ -205,7 +205,7 @@ void setup() {
   shutdown_usb();   // saves power!
   files.initialDelay(settings.initialDelay());
   diagnostic_menu.updateCPUSpeed();
-  files.start(settings.fileTime(), config);
+  files.start(settings.fileTime(), config, ampl_info);
 }
 
 
