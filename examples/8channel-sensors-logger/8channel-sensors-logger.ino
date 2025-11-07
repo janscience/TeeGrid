@@ -128,7 +128,7 @@ void setup() {
   rtclock.setFromFile(sdcard);
   config.load();
   if (Serial)
-    config.execute(Serial, 10000);
+    config.execute();
   config.report();
   Serial.println();
   files.startSensors(settings.sensorsInterval());

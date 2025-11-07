@@ -8,9 +8,10 @@ ESensorsAction::ESensorsAction(Menu &menu, const char *name,
 }
 
 
-void ESensorDevicesAction::execute(Stream &stream, unsigned long timeout,
-				   bool echo, bool detailed) {
-  Sensors.reportDevices(stream);
+void ESensorDevicesAction::execute(Stream &instream, Stream &outstream,
+				   unsigned long timeout, bool echo,
+				   bool detailed) {
+  Sensors.reportDevices(outstream);
 }
 
 
@@ -20,8 +21,9 @@ ESensorSensorsAction::ESensorSensorsAction(Menu &menu, const char *name,
 }
 
 
-void ESensorSensorsAction::report(Stream &stream, unsigned int roles,
-				  size_t indent, size_t w, bool descend) const {
+void ESensorSensorsAction::write(Stream &stream, unsigned int roles,
+				 size_t indent, size_t width,
+				 bool descend) const {
   if (disabled(roles))
     return;
   if (descend) {
@@ -29,14 +31,14 @@ void ESensorSensorsAction::report(Stream &stream, unsigned int roles,
       stream.printf("%*s%s:\n", indent, "", name());
       indent += indentation();
     }
-    w = 0;
+    width = 0;
     for (size_t k=0; k<Sensors.size(); k++) {
-      if (Sensors[k].available() && (strlen(Sensors[k].name()) > w))
-	w = strlen(Sensors[k].name());
+      if (Sensors[k].available() && (strlen(Sensors[k].name()) > width))
+	width = strlen(Sensors[k].name());
     }
     for (size_t k=0; k<Sensors.size(); k++) {
       if (Sensors[k].available()) {
-	size_t kw = w >= strlen(Sensors[k].name()) ? w - strlen(Sensors[k].name()) : 0;
+	size_t kw = width >= strlen(Sensors[k].name()) ? width - strlen(Sensors[k].name()) : 0;
 	stream.printf("%*s%s:%*s %s (%s)\n", indent, "",
 		      Sensors[k].name(), kw, "",
 		      Sensors[k].chip(), Sensors[k].identifier());
@@ -45,32 +47,35 @@ void ESensorSensorsAction::report(Stream &stream, unsigned int roles,
     Sensors.writeDevices(stream, indent, indentation());
   }
   else if (strlen(name()) > 0)
-    Action::report(stream, roles, indent, w, descend);
+    Action::write(stream, roles, indent, width, descend);
 }
 
 
-void ESensorSensorsAction::execute(Stream &stream, unsigned long timeout,
-				   bool echo, bool detailed) {
-  Sensors.report(stream);
+void ESensorSensorsAction::execute(Stream &instream, Stream &outstream,
+				   unsigned long timeout, bool echo,
+				   bool detailed) {
+  Sensors.report(outstream);
 }
 
 
-void ESensorRequestAction::execute(Stream &stream, unsigned long timeout,
-				   bool echo, bool detailed) {
+void ESensorRequestAction::execute(Stream &instream, Stream &outstream,
+				   unsigned long timeout, bool echo,
+				   bool detailed) {
   Sensors.request();
-  stream.println("Requested new sensor readings.");
-  stream.printf("Sensor values are available after %dms.\n\n",
-		Sensors.delayTime());
+  outstream.println("Requested new sensor readings.");
+  outstream.printf("Sensor values are available after %dms.\n\n",
+		   Sensors.delayTime());
 }
 
 
-void ESensorValuesAction::execute(Stream &stream, unsigned long timeout,
-				  bool echo, bool detailed) {
+void ESensorValuesAction::execute(Stream &instream, Stream &outstream,
+				  unsigned long timeout, bool echo,
+				  bool detailed) {
   if (detailed)
     Sensors.get();
   else
     Sensors.read();
-  Sensors.print(false, false, stream);
+  Sensors.print(false, false, outstream);
 }
 
 
