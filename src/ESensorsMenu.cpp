@@ -42,6 +42,7 @@ void ESensorSensorsAction::report(Stream &stream, unsigned int roles,
 		      Sensors[k].chip(), Sensors[k].identifier());
       }
     }
+    Sensors.writeDevices(stream, indent, indentation());
   }
   else if (strlen(name()) > 0)
     Action::report(stream, roles, indent, w, descend);
