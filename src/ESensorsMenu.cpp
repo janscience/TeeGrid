@@ -8,10 +8,9 @@ ESensorsAction::ESensorsAction(Menu &menu, const char *name,
 }
 
 
-void ESensorDevicesAction::execute(Stream &instream, Stream &outstream,
-				   unsigned long timeout, bool echo,
-				   bool detailed) {
-  Sensors.reportDevices(outstream);
+void ESensorDevicesAction::execute(Stream &stream, unsigned long timeout,
+				   bool echo, bool detailed) {
+  Sensors.reportDevices(stream);
 }
 
 
@@ -22,8 +21,7 @@ ESensorSensorsAction::ESensorSensorsAction(Menu &menu, const char *name,
 
 
 void ESensorSensorsAction::write(Stream &stream, unsigned int roles,
-				 size_t indent, size_t width,
-				 bool descend) const {
+				 size_t indent, size_t width, bool descend) const {
   if (disabled(roles))
     return;
   if (descend) {
@@ -51,31 +49,28 @@ void ESensorSensorsAction::write(Stream &stream, unsigned int roles,
 }
 
 
-void ESensorSensorsAction::execute(Stream &instream, Stream &outstream,
-				   unsigned long timeout, bool echo,
-				   bool detailed) {
-  Sensors.report(outstream);
+void ESensorSensorsAction::execute(Stream &stream, unsigned long timeout,
+				   bool echo, bool detailed) {
+  Sensors.report(stream);
 }
 
 
-void ESensorRequestAction::execute(Stream &instream, Stream &outstream,
-				   unsigned long timeout, bool echo,
-				   bool detailed) {
+void ESensorRequestAction::execute(Stream &stream, unsigned long timeout,
+				   bool echo, bool detailed) {
   Sensors.request();
-  outstream.println("Requested new sensor readings.");
-  outstream.printf("Sensor values are available after %dms.\n\n",
-		   Sensors.delayTime());
+  stream.println("Requested new sensor readings.");
+  stream.printf("Sensor values are available after %dms.\n\n",
+		Sensors.delayTime());
 }
 
 
-void ESensorValuesAction::execute(Stream &instream, Stream &outstream,
-				  unsigned long timeout, bool echo,
-				  bool detailed) {
+void ESensorValuesAction::execute(Stream &stream, unsigned long timeout,
+				  bool echo, bool detailed) {
   if (detailed)
     Sensors.get();
   else
     Sensors.read();
-  Sensors.print(false, false, outstream);
+  Sensors.print(false, false, stream);
 }
 
 
