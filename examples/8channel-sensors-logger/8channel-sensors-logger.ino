@@ -6,7 +6,7 @@
 #include <Blink.h>
 #include <TestSignals.h>
 #include <MicroConfig.h>
-#include <Settings.h>
+#include <LoggerSettings.h>
 #include <InputADCSettings.h>
 #include <InputMenu.h>
 #include <RTClockMenu.h>
@@ -73,9 +73,9 @@ IRRatioTSL2591 irratio(&tsl, &sensors);
 IlluminanceTSL2591 illum(&tsl, &sensors);
 
 Config config("teegrid.cfg", &sdcard);
-Settings settings(config, LABEL, DEVICEID, PATH, FILENAME, FILE_SAVE_TIME,
-                  INITIAL_DELAY, false, PULSE_FREQUENCY,
-		  0.0, SENSORS_INTERVAL);
+LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
+                        FILE_SAVE_TIME, INITIAL_DELAY, false, 0.0,
+			SENSORS_INTERVAL);
 InputADCSettings aisettings(config, SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE, PREGAIN);
 RTClockMenu rtclock_menu(config, rtclock);
@@ -111,8 +111,8 @@ void setup() {
   blink.switchOn();
   settings.disable("Path", settings.StreamInput);
   settings.disable("FileName", settings.StreamInput);
-  settings.enable("InitialDelay");
-  settings.enable("PulseFreq");
+  settings.disable("RandomBlinks");
+  settings.disable("BlinkTimeout");
   settings.enable("SensorsInterval");
   aisettings.disable("Reference");
   aisettings.enable("Pregain");
@@ -133,7 +133,7 @@ void setup() {
   Serial.println();
   files.startSensors(settings.sensorsInterval());
   tsl.setTemperature(bme.temperature());
-  setupTestSignals(signalPins, settings.pulseFrequency());
+  setupTestSignals(signalPins, PULSE_FREQUENCY);
   deviceid.setID(settings.deviceID());
   aisettings.configure(&aidata);
   blink.switchOff();

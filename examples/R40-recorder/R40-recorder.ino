@@ -8,7 +8,7 @@
 #include <Blink.h>
 #include <PushButtons.h>
 #include <MicroConfig.h>
-#include <Settings.h>
+#include <LoggerSettings.h>
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
 #include <InputMenu.h>
@@ -55,8 +55,8 @@ PushButtons buttons;
 SDCard sdcard;
 
 Config config("logger.cfg", &sdcard);
-Settings settings(config, LABEL, DEVICEID, PATH, FILENAME, FILE_SAVE_TIME,
-                  0, RANDOM_BLINKS);
+LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
+                        FILE_SAVE_TIME, 0, RANDOM_BLINKS);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
 RTClockMenu rtclock_menu(config, rtclock);
@@ -88,7 +88,7 @@ void toggle_save(int id) {
 
 void setup() {
   blink.switchOn();
-  settings.enable("RandomBlinks");
+  settings.disable("BlinkTimeout");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   Serial.begin(9600);

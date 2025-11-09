@@ -7,7 +7,7 @@
 #include <DeviceID.h>
 #include <Blink.h>
 #include <MicroConfig.h>
-#include <Settings.h>
+#include <LoggerSettings.h>
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
 #include <InputMenu.h>
@@ -62,8 +62,9 @@ Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
 SDCard sdcard;
 
 Config config("logger.cfg", &sdcard);
-Settings settings(config, LABEL, DEVICEID, PATH, FILENAME, FILE_SAVE_TIME,
-                  INITIAL_DELAY, RANDOM_BLINKS, 0, 0, 0, BLINK_TIMEOUT);
+LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
+                        FILE_SAVE_TIME, INITIAL_DELAY,
+			RANDOM_BLINKS, BLINK_TIMEOUT);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
 RTClockMenu datetime_menu(config, rtclock);
@@ -85,9 +86,6 @@ void setup() {
   blink.switchOn();
   settings.disable("Path", settings.StreamInput);
   settings.disable("FileName", settings.StreamInput);
-  settings.enable("InitialDelay");
-  settings.enable("RandomBlinks");
-  settings.enable("BlinkTimeout");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");

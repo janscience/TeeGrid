@@ -7,7 +7,7 @@
 #include <DeviceID.h>
 #include <Blink.h>
 #include <MicroConfig.h>
-#include <Settings.h>
+#include <LoggerSettings.h>
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
 #include <InputMenu.h>
@@ -24,9 +24,10 @@
 #define PREGAIN       1.0     // gain factor of preamplifier
 #define GAIN          0.0     // dB
 
-#define PATH          "recordings"   // folder where to store the recordings
+#define LABEL         "grid"         // may be used for naming files
 #define DEVICEID      0              // may be used for naming files
-#define FILENAME      "gridID-SDATETIME-RECCOUNT-DEV.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define PATH          "recordings"   // folder where to store the recordings
+#define FILENAME      "LABELID-SDATETIME-RECCOUNT-DEV.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 //String LoggerFileName = "loggergrid-RECNUM4-DEV.wav";
 #define FILE_SAVE_TIME 20 //5*60   // seconds
 #define INITIAL_DELAY  10.0  // seconds
@@ -58,8 +59,8 @@ Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
 SDCard sdcard;
 
 Config config("logger.cfg", &sdcard);
-Settings settings(config, PATH, DEVICEID, FILENAME, FILE_SAVE_TIME,
-                  INITIAL_DELAY);
+LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
+                        FILE_SAVE_TIME, INITIAL_DELAY);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);                  
 RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
@@ -125,7 +126,8 @@ void setupCAN() {
 
 void setup() {
   blink.switchOn();
-  settings.enable("InitialDelay");
+  settings.disable("RandomBlinks");
+  settings.disable("BlinkTimeout");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   Serial.begin(9600);

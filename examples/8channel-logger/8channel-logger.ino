@@ -6,7 +6,7 @@
 #include <Blink.h>
 #include <TestSignals.h>
 #include <MicroConfig.h>
-#include <Settings.h>
+#include <LoggerSettings.h>
 #include <InputADCSettings.h>
 #include <InputMenu.h>
 #include <RTClockMenu.h>
@@ -52,8 +52,8 @@ Blink blink("status", LED_BUILTIN);
 SDCard sdcard;
 
 Config config("teegrid.cfg", &sdcard);
-Settings settings(config, LABEL, DEVICEID, PATH, FILENAME, FILE_SAVE_TIME,
-	          INITIAL_DELAY, false, PULSE_FREQUENCY);
+LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
+                        FILE_SAVE_TIME, INITIAL_DELAY);
 InputADCSettings aisettings(config, SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE, PREGAIN);
 RTClockMenu rtclock_menu(config, rtclock);
@@ -73,8 +73,8 @@ void setup() {
   blink.switchOn();
   settings.disable("Path", settings.StreamInput);
   settings.disable("FileName", settings.StreamInput);
-  settings.enable("InitialDelay");
-  settings.enable("PulseFreq");
+  settings.disable("RandomBlinks");
+  settings.disable("BlinkTimeout");
   aisettings.disable("Reference");
   aisettings.enable("Pregain");
   Serial.begin(9600);
@@ -92,7 +92,7 @@ void setup() {
   Serial.println();
   deviceid.setID(settings.deviceID());
   aisettings.configure(&aidata);
-  setupTestSignals(signalPins, settings.pulseFrequency());
+  setupTestSignals(signalPins, PULSE_FREQUENCY);
   blink.switchOff();
   if (!aidata.check()) {
     Serial.println("Fix ADC settings and check your hardware.");

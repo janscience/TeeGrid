@@ -7,7 +7,7 @@
 #include <DeviceID.h>
 #include <Blink.h>
 #include <MicroConfig.h>
-#include <Settings.h>
+#include <LoggerSettings.h>
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
 #include <InputMenu.h>
@@ -84,9 +84,9 @@ LightBH1750 light1(&sensors);
 LightBH1750 light2(&sensors);
 
 Config config("logger.cfg", &sdcard);
-Settings settings(config, LABEL, DEVICEID, PATH, FILENAME, FILE_SAVE_TIME,
-                  INITIAL_DELAY, RANDOM_BLINKS, 0, 0,
-                  SENSORS_INTERVAL, BLINK_TIMEOUT);
+LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
+                        FILE_SAVE_TIME, INITIAL_DELAY,
+			RANDOM_BLINKS, BLINK_TIMEOUT, SENSORS_INTERVAL);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
 RTClockMenu rtclock_menu(config, rtclock);
@@ -147,15 +147,14 @@ void setup() {
   setupLEDs();
   settings.disable("Path", settings.StreamInput);
   settings.disable("FileName", settings.StreamInput);
-  settings.enable("InitialDelay");
   if (syncblink.nPins() > 1) {
     settings.disable("RandomBlinks");
     settings.setRandomBlinks(true);
   }
   else
     settings.enable("RandomBlinks");
-  settings.enable("SensorsInterval");
   settings.enable("BlinkTimeout");
+  settings.enable("SensorsInterval");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
