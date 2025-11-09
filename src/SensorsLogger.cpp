@@ -48,7 +48,7 @@ void SensorsLogger::start(float filetime) {
 
 
 void SensorsLogger::start(float filetime, Config &config,
-			  InfoAction &amplifier) {
+			  Menu &amplifier) {
   Logger::start(filetime, config, amplifier);
   openSensorsFile();
 }

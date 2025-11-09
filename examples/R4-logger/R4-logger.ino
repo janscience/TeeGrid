@@ -73,7 +73,7 @@ FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid,
                                &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
-InfoAction ampl_info(diagnostic_menu, "Amplifier board");
+Menu ampl_info(diagnostic_menu, "Amplifier board");
 HelpAction help_act(config, "Help");
 
 Logger files(aidata, sdcard, rtclock, blink);
@@ -101,11 +101,11 @@ void setup() {
   bool R41b = (strncmp(rtclock.chip(), "DS", 2) == 0);
   if (R41b) {
      deviceid.setPins(DIPPins);
-     ampl_info.add("Version", "R4.1b");
+     ampl_info.addConstString("Version", "R4.1b");
   }
   else {
      files.R41powerDownCAN();
-     ampl_info.add("Version", "R4.1");
+     ampl_info.addConstString("Version", "R4.1");
   }
   sdcard.begin();
   files.check(config, true);

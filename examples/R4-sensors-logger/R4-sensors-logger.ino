@@ -96,7 +96,7 @@ FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 ESensorsMenu sensors_menu(config, sensors);
 DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock, &gpio);
-InfoAction ampl_info(diagnostic_menu, "Amplifier board");
+Menu ampl_info(diagnostic_menu, "Amplifier board", Action::Report);
 HelpAction help_act(config, "Help");
 
 SensorsLogger files(aidata, sensors, sdcard, rtclock,
@@ -168,11 +168,11 @@ void setup() {
   bool R41b = (strncmp(rtclock.chip(), "DS", 2) == 0);
   if (R41b) {
      deviceid.setPins(DIPPins);
-     ampl_info.add("Version", "R4.1b");
+     ampl_info.addConstString("Version", "R4.1b");
   }
   else {
      files.R41powerDownCAN();
-     ampl_info.add("Version", "R4.1");
+     ampl_info.addConstString("Version", "R4.1");
   }
   setupSensors(R41b ? TEMP_PIN_R41b : TEMP_PIN_R41);
   sdcard.begin();

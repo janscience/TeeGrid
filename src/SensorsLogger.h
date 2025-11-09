@@ -31,7 +31,7 @@ public:
   
   // Open files and write metadata from config.
   // Add more metadata to amplifier.
-  void start(float filetime, Config &config, InfoAction &amplifier);
+  void start(float filetime, Config &config, Menu &amplifier);
 
   // Call this in loop() for writing data to files.
   // Returns true if sensors have been updated.

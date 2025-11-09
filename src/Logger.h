@@ -59,7 +59,7 @@ public:
   
   // Open files and write metadata from config.
   // Add more metadata to amplifier.
-  void start(float filetime, Config &config, InfoAction &amplifier);
+  void start(float filetime, Config &config, Menu &amplifier);
 
   // Close files.
   void close();

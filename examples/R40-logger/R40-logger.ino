@@ -63,7 +63,7 @@ SDCardMenu sdcard0_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R40SetupPCMs);
 DiagnosticMenu diagnostic_menu(config, sdcard, 0, &pcm1, &pcm2, &rtclock);
-InfoAction ampl_info(diagnostic_menu, "Amplifier board");
+Menu ampl_info(diagnostic_menu, "Amplifier board");
 HelpAction help_act(config, "Help");
 
 Logger files(aidata, sdcard, rtclock, blink);
@@ -87,7 +87,7 @@ void setup() {
   Wire.begin();
   rtclock.begin();
   rtclock.check();
-  ampl_info.add("Version", "R4.0");
+  ampl_info.addConstString("Version", "R4.0");
   sdcard.begin();
   files.check(config);
   rtclock.setFromFile(sdcard);
