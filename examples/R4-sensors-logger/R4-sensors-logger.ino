@@ -39,9 +39,10 @@
 #define FILENAME         "LABELID2-SDATETIME"  // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
 #define FILE_SAVE_TIME   5*60     // seconds
 #define INITIAL_DELAY    10       // seconds
-#define SENSORS_INTERVAL 30.0     // interval between sensors readings in seconds
 #define RANDOM_BLINKS    true     // set to true for blinking the LED randomly
 #define BLINK_TIMEOUT    0        // time after which internal LEDs are switched off in seconds
+#define SENSORS_INTERVAL 30.0     // interval between sensors readings in seconds
+#define LIGHT_THRESHOLD  10.0     // threshold for switching off LEDs in lux.
 
 
 // ----------------------------------------------------------------------------
@@ -86,7 +87,8 @@ LightBH1750 light2(&sensors);
 Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
                         FILE_SAVE_TIME, INITIAL_DELAY,
-			RANDOM_BLINKS, BLINK_TIMEOUT, SENSORS_INTERVAL);
+			RANDOM_BLINKS, BLINK_TIMEOUT,
+			SENSORS_INTERVAL, LIGHT_THRESHOLD);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
 RTClockMenu rtclock_menu(config, rtclock);
@@ -138,6 +140,8 @@ void setupSensors(int temp_pin) {
   tempsts.begin(Wire2, STS4x_ADDR);
   tempsts.setPrecision(STS4x_HIGH);
   files.setupSensors();
+  if (light1.available() || light2.available())
+    settings.enable("LightThreshold");
 }
 
 
@@ -182,7 +186,7 @@ void setup() {
     config.execute();
   config.report();
   Serial.println();
-  files.startSensors(settings.sensorsInterval());
+  files.startSensors(settings.sensorsInterval(), settings.lightThreshold());
   deviceid.setID(settings.deviceID());
   if (R41b && deviceid.id() == -1)
     deviceid.read();

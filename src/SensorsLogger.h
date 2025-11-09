@@ -24,7 +24,7 @@ public:
   void setupSensors();
 
   // Start environmental sensors.
-  void startSensors(float interval);
+  void startSensors(float interval, float lightthreshold=0.0);
 
   // Open files.
   void start(float filetime);
@@ -51,7 +51,10 @@ protected:
 
   ESensors &Sensors;
 
-  bool Light;
+  static const size_t MaxLight = 4;
+  ESensor *LightSensors[MaxLight];
+  size_t NLightSensors;
+  float IlluminationThreshold;
   
 };
 

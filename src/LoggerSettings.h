@@ -21,7 +21,7 @@ public:
 		 const char *filename="LABELID2-SDATETIME",
 		 float filetime=10.0, float initialdelay=0.0,
 		 bool randomblinks=false, float blinktimeout=0.0,
-		 float sensorsinterval=30.0);
+		 float sensorsinterval=30.0, float lightthreshold=0.0);
   
   static const size_t MaxStr = 64;
 
@@ -81,6 +81,12 @@ public:
 
   /* Set time between sensor readings to time seconds. */
   void setSensorsInterval(float time);
+  
+  /* Threshold in lux for turing of status and syn LEDs. */
+  float lightThreshold() const { return LightThreshold.value(); };
+
+  /* Set threshold for turing of LEDs to thresh lux. */
+  void setLightThreshold(float thresh);
 
 
 protected:
@@ -94,6 +100,7 @@ protected:
   BoolParameter RandomBlinks;
   NumberParameter<float> BlinkTimeout;
   NumberParameter<float> SensorsInterval;
+  NumberParameter<float> LightThreshold;
   
 };
 
