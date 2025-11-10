@@ -42,7 +42,7 @@
 #define RANDOM_BLINKS    true     // set to true for blinking the LED randomly
 #define BLINK_TIMEOUT    0        // time after which internal LEDs are switched off in seconds
 #define SENSORS_INTERVAL 30.0     // interval between sensors readings in seconds
-#define LIGHT_THRESHOLD  10.0     // threshold for switching off LEDs in lux.
+#define LIGHT_THRESHOLD  50.0     // threshold for switching off LEDs in lux.
 
 
 // ----------------------------------------------------------------------------

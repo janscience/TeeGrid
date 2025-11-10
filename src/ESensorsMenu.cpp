@@ -8,8 +8,7 @@ ESensorsAction::ESensorsAction(Menu &menu, const char *name,
 }
 
 
-void ESensorDevicesAction::execute(Stream &stream, unsigned long timeout,
-				   bool echo, bool detailed) {
+void ESensorDevicesAction::execute(Stream &stream) {
   Sensors.reportDevices(stream);
 }
 
@@ -49,14 +48,12 @@ void ESensorSensorsAction::write(Stream &stream, unsigned int roles,
 }
 
 
-void ESensorSensorsAction::execute(Stream &stream, unsigned long timeout,
-				   bool echo, bool detailed) {
+void ESensorSensorsAction::execute(Stream &stream) {
   Sensors.report(stream);
 }
 
 
-void ESensorRequestAction::execute(Stream &stream, unsigned long timeout,
-				   bool echo, bool detailed) {
+void ESensorRequestAction::execute(Stream &stream) {
   Sensors.request();
   stream.println("Requested new sensor readings.");
   stream.printf("Sensor values are available after %dms.\n\n",
@@ -64,9 +61,8 @@ void ESensorRequestAction::execute(Stream &stream, unsigned long timeout,
 }
 
 
-void ESensorValuesAction::execute(Stream &stream, unsigned long timeout,
-				  bool echo, bool detailed) {
-  if (detailed)
+void ESensorValuesAction::execute(Stream &stream) {
+  if (detailed())
     Sensors.get();
   else
     Sensors.read();
