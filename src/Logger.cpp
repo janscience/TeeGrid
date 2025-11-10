@@ -157,10 +157,14 @@ bool Logger::check(Config &config, bool check_backup) {
     halt(1);
     return false;
   }
-  if (SDCard1 != NULL &&
-      (SDCard1->available() || check_backup) &&
-       !SDCard1->check(SDCard0->free()))
-    SDCard1->end();
+  if (SDCard1 != NULL && (SDCard1->available() || check_backup)) {
+    if (!SDCard1->check(SDCard0->free()))
+      SDCard1->end();
+    else {
+      if (strlen(folder) > 0)
+	SDCard1->cleanDir(folder, 1024, ".wav", true, true, Serial);
+    }
+  }
   return true;
 }
 
