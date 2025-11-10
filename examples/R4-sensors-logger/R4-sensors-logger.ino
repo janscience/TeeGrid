@@ -15,6 +15,7 @@
 #include <SDCardMenu.h>
 #include <ESensorsMenu.h>
 #include <DiagnosticMenu.h>
+#include <BlinkAction.h>
 #include <TeensyBoard.h>
 #include <PowerSave.h>
 #include <SensorsLogger.h>
@@ -72,9 +73,9 @@ Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 RTClockDS1307 rtclock;
 DeviceID deviceid(DEVICEID);
 DigitalIOPCA9536 gpio;
-Blink blink("status", LED_BUILTIN);
-Blink errorblink("error");
-Blink syncblink("sync", LED_PIN, true);
+Blink blink("Status", LED_BUILTIN);
+Blink errorblink("Error");
+Blink syncblink("Synchronization", LED_PIN, true);
 SDCard sdcard;
 
 ESensors sensors;
@@ -98,6 +99,7 @@ FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 ESensorsMenu sensors_menu(config, sensors);
 DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock, &gpio);
+BlinkAction blink_info(diagnostic_menu, "LEDs", &blink, &errorblink, &syncblink);
 Menu ampl_info(diagnostic_menu, "Amplifier board", Action::Report);
 HelpAction help_act(config, "Help");
 
@@ -116,6 +118,20 @@ void setupLEDs() {
     syncblink.switchOff();
   }
   blink.switchOn();
+}
+
+
+bool setupBoard() {
+  bool R41b = (strncmp(rtclock.chip(), "DS", 2) == 0);
+  if (R41b) {
+     deviceid.setPins(DIPPins);
+     ampl_info.addConstString("Version", "R4.1b");
+  }
+  else {
+     files.R41powerDownCAN();
+     ampl_info.addConstString("Version", "R4.1");
+  }
+  return R41b;
 }
 
 
@@ -168,15 +184,7 @@ void setup() {
   printTeeGridBanner(SOFTWARE);
   rtclock.begin();
   rtclock.check();
-  bool R41b = (strncmp(rtclock.chip(), "DS", 2) == 0);
-  if (R41b) {
-     deviceid.setPins(DIPPins);
-     ampl_info.addConstString("Version", "R4.1b");
-  }
-  else {
-     files.R41powerDownCAN();
-     ampl_info.addConstString("Version", "R4.1");
-  }
+  bool R41b = setupBoard();
   setupSensors(R41b ? TEMP_PIN_R41b : TEMP_PIN_R41);
   sdcard.begin();
   files.check(config);
@@ -187,10 +195,11 @@ void setup() {
   config.report();
   Serial.println();
   files.startSensors(settings.sensorsInterval(), settings.lightThreshold());
+  files.report();
+  files.setCPUSpeed(aisettings.rate());
   deviceid.setID(settings.deviceID());
   if (R41b && deviceid.id() == -1)
     deviceid.read();
-  files.setCPUSpeed(aisettings.rate());
   R4SetupPCMs(aidata, aisettings, pcms, NPCMS);
   blink.switchOff();
   aidata.begin();
@@ -200,7 +209,6 @@ void setup() {
   }
   aidata.start();
   aidata.report();
-  files.report();
   settings.preparePaths(deviceid);
   files.setup(settings.path(), settings.fileName(),
               SOFTWARE, settings.randomBlinks(),

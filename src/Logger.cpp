@@ -200,7 +200,6 @@ void Logger::report(Stream &stream) const {
     ErrorLED.report(stream);
   if (SyncLED.available())
     SyncLED.report(stream);
-  stream.println();
 }
 
 
