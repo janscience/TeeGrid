@@ -3,6 +3,7 @@
 // filesystem.
 //#define SINGLE_FILE_MTP
 
+#include <PowerSave.h>
 #include <TeensyBoard.h>
 #include <Logger.h>
 #ifdef SINGLE_FILE_MTP
@@ -11,7 +12,7 @@
 
 
 Logger::Logger(Input &aiinput, SDCard &sdcard0,
-	       const RTClock &rtclock, Blink &blink) :
+	       RTClock &rtclock, Blink &blink) :
   AIInput(aiinput),
   SDCard0(&sdcard0),
   SDCard1(0),
@@ -35,7 +36,7 @@ Logger::Logger(Input &aiinput, SDCard &sdcard0,
 
 
 Logger::Logger(Input &aiinput, SDCard &sdcard0,
-	       const RTClock &rtclock, Blink &blink,
+	       RTClock &rtclock, Blink &blink,
 	       Blink &errorblink, Blink &syncblink) :
   AIInput(aiinput),
   SDCard0(&sdcard0),
@@ -60,7 +61,7 @@ Logger::Logger(Input &aiinput, SDCard &sdcard0,
 
 
 Logger::Logger(Input &aiinput, SDCard &sdcard0,
-	       SDCard &sdcard1, const RTClock &rtclock,
+	       SDCard &sdcard1, RTClock &rtclock,
 	       Blink &blink) :
   AIInput(aiinput),
   SDCard0(&sdcard0),
@@ -179,6 +180,17 @@ void Logger::endBackup(SPIClass *spi) {
 }
 
 
+void Logger::configure(Config &config) {
+  check(config);
+  Clock.setFromFile(*SDCard0);
+  config.load();
+  if (Serial)
+    config.execute();
+  config.report();
+  Serial.println();
+}
+
+
 void Logger::setCPUSpeed(uint32_t rate) {
   if (SDCard1 != NULL && !SDCard1->available()) {
     setTeensySpeed(150);
@@ -194,7 +206,7 @@ void Logger::setCPUSpeed(uint32_t rate) {
 }
 
   
-void Logger::report(Stream &stream) const {
+void Logger::reportBlink(Stream &stream) const {
   StatusLED.report(stream);
   if (ErrorLED.available())
     ErrorLED.report(stream);
@@ -203,22 +215,15 @@ void Logger::report(Stream &stream) const {
 }
 
 
-void Logger::initialDelay(float initial_delay, Stream &stream) {
-  if (initial_delay < 1e-8) {
-    StatusLED.setDouble();
+void Logger::startInput(uint8_t nchannels) {
+  StatusLED.switchOff();
+  AIInput.begin();
+  if (!AIInput.check(nchannels)) {
+    Serial.println("Fix ADC settings and check your hardware.");
+    halt(2);
   }
-  else {
-    stream.printf("Delay for %.0fs ... ", initial_delay);
-    if (initial_delay >= 2.0) {
-      delay(1000);
-      StatusLED.setDouble();
-      StatusLED.delay(uint32_t(1000.0*initial_delay) - 1000);
-    }
-    else
-      delay(uint32_t(1000.0*initial_delay));
-    stream.println();
-    stream.println();
-  }
+  AIInput.start();
+  AIInput.report();
 }
 
 
@@ -246,6 +251,26 @@ void Logger::setup(const char *path, const char *filename,
     File1.sdcard()->dataDir(File0.sdcard()->workingDir());
     File1.header().setSoftware(software);
     File1.header().setCPUSpeed();
+  }
+}
+
+
+void Logger::initialDelay(float initial_delay, Stream &stream) {
+  shutdown_usb();   // saves power!
+  if (initial_delay < 1e-8) {
+    StatusLED.setDouble();
+  }
+  else {
+    stream.printf("Delay for %.0fs ... ", initial_delay);
+    if (initial_delay >= 2.0) {
+      delay(1000);
+      StatusLED.setDouble();
+      StatusLED.delay(uint32_t(1000.0*initial_delay) - 1000);
+    }
+    else
+      delay(uint32_t(1000.0*initial_delay));
+    stream.println();
+    stream.println();
   }
 }
 
@@ -283,6 +308,12 @@ void Logger::start(float filetime) {
   NextOpen = 0;
   if (RandomBlinks)
     openBlinkFiles();
+}
+
+
+void Logger::start(float filetime, Config &config) {
+  start(filetime);
+  writeMetadata(config);
 }
 
 

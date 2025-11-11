@@ -13,7 +13,6 @@
 #include <SDCardMenu.h>
 #include <DiagnosticMenu.h>
 #include <TeensyBoard.h>
-#include <PowerSave.h>
 #include <Logger.h>
 
 // Default settings: ----------------------------------------------------------
@@ -41,7 +40,7 @@ int signalPins[] = {9, 8, 7, 6, 5, 4, 3, 2, -1}; // pins where to put out test s
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid 8channel-logger v2.20"
+#define SOFTWARE      "TeeGrid 8channel-logger v3.0"
 
 DATA_BUFFER(AIBuffer, NAIBuffer, 256*256)
 InputADC aidata(AIBuffer, NAIBuffer, channels0, channels1);
@@ -64,51 +63,49 @@ InputMenu input_menu(config, aidata, aisettings);
 DiagnosticMenu diagnostic_menu(config, sdcard, 0, &aidata, &rtclock);
 HelpAction help_act(config, "Help");
 
-Logger files(aidata, sdcard, rtclock, blink);
+Logger logger(aidata, sdcard, rtclock, blink);
 
 
-// ----------------------------------------------------------------------------
-
-void setup() {
-  blink.switchOn();
+void setupMenu() {
   settings.disable("Path", settings.StreamInput);
   settings.disable("FileName", settings.StreamInput);
   settings.disable("RandomBlinks");
   settings.disable("BlinkTimeout");
   aisettings.disable("Reference");
   aisettings.enable("Pregain");
-  Serial.begin(9600);
-  while (!Serial && millis() < 2000) {};
-  printTeeGridBanner(SOFTWARE);
+  sdcard_menu.CleanRecsAct.setRemove(true);
+}
+
+
+void setupBoard() {
   rtclock.begin();
   rtclock.check();
   sdcard.begin();
-  files.check(config);
-  rtclock.setFromFile(sdcard);
-  config.load();
-  if (Serial)
-    config.execute();
-  config.report();
-  Serial.println();
+}
+
+
+// ----------------------------------------------------------------------------
+
+void setup() {
+  blink.switchOn();
+  setupMenu();
+  Serial.begin(9600);
+  while (!Serial && millis() < 2000) {};
+  printTeeGridBanner(SOFTWARE);
+  setupBoard();
+  logger.configure(config);
   deviceid.setID(settings.deviceID());
   aisettings.configure(&aidata);
-  setupTestSignals(signalPins, PULSE_FREQUENCY);
-  blink.switchOff();
-  if (!aidata.check()) {
-    Serial.println("Fix ADC settings and check your hardware.");
-    halt();
-  }
-  aidata.start();
-  aidata.report();
-  files.report();
   settings.preparePaths(deviceid);
-  files.setup(settings.path(), settings.fileName(), SOFTWARE);
-  shutdown_usb();   // saves power!
-  files.initialDelay(settings.initialDelay());
-  files.start(settings.fileTime(), config);
+  setupTestSignals(signalPins, PULSE_FREQUENCY);
+  logger.startInput();
+  logger.setup(settings.path(), settings.fileName(), SOFTWARE);
+  logger.initialDelay(settings.initialDelay());
+  diagnostic_menu.updateCPUSpeed();
+  logger.start(settings.fileTime(), config);
 }
 
 
 void loop() {
-  files.update();
+  logger.update();
 }

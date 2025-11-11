@@ -15,9 +15,9 @@ class SensorsLogger : public Logger {
 public:
 
   SensorsLogger(Input &aiinput, ESensors &sensors, SDCard &sdcard0,
-		const RTClock &rtclock, Blink &blink);
+		RTClock &rtclock, Blink &blink);
   SensorsLogger(Input &aiinput, ESensors &sensors, SDCard &sdcard0,
-		const RTClock &rtclock, Blink &blink,
+		RTClock &rtclock, Blink &blink,
 		Blink &errorblink, Blink &syncblink);
 
   // Initialize environmental sensors.
@@ -28,6 +28,9 @@ public:
 
   // Open files.
   void start(float filetime);
+  
+  // Open files and write metadata from config.
+  void start(float filetime, Config &config);
   
   // Open files and write metadata from config.
   // Add more metadata to amplifier.

@@ -14,7 +14,6 @@
 #include <DiagnosticMenu.h>
 #include <ESensorsMenu.h>
 #include <TeensyBoard.h>
-#include <PowerSave.h>
 #include <SensorsLogger.h>
 #include <ESensors.h>
 #include <TemperatureDS18x20.h>
@@ -51,7 +50,7 @@ int signalPins[] = {9, 8, 7, 6, 5, 4, 3, 2, -1}; // pins where to put out test s
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid 8channel-sensors-logger v2.1"
+#define SOFTWARE      "TeeGrid 8channel-sensors-logger v3.0"
 
 DATA_BUFFER(AIBuffer, NAIBuffer, 256*256)
 InputADC aidata(AIBuffer, NAIBuffer, channels0, channels1);
@@ -87,7 +86,27 @@ ESensorsMenu sensors_menu(config, sensors);
 DiagnosticMenu diagnostic_menu(config, sdcard, 0, &aidata, &rtclock);
 HelpAction help_act(config, "Help");
 
-SensorsLogger files(aidata, sensors, sdcard, rtclock, blink);
+SensorsLogger logger(aidata, sensors, sdcard, rtclock, blink);
+
+
+void setupMenu() {
+  settings.disable("Path", settings.StreamInput);
+  settings.disable("FileName", settings.StreamInput);
+  settings.disable("RandomBlinks");
+  settings.disable("BlinkTimeout");
+  settings.enable("SensorsInterval");
+  aisettings.disable("Reference");
+  aisettings.enable("Pregain");
+  sdcard_menu.CleanRecsAct.setRemove(true);
+}
+
+
+void setupBoard() {
+  Wire.begin();
+  rtclock.begin();
+  rtclock.check();
+  sdcard.begin();
+}
 
 
 void setupSensors() {
@@ -101,7 +120,7 @@ void setupSensors() {
   tsl.begin(Wire1);
   tsl.setGain(LightTSL2591::AUTO_GAIN);
   irratio.setPercent();
-  files.setupSensors();
+  logger.setupSensors();
 }
 
 
@@ -109,51 +128,28 @@ void setupSensors() {
 
 void setup() {
   blink.switchOn();
-  settings.disable("Path", settings.StreamInput);
-  settings.disable("FileName", settings.StreamInput);
-  settings.disable("RandomBlinks");
-  settings.disable("BlinkTimeout");
-  settings.enable("SensorsInterval");
-  aisettings.disable("Reference");
-  aisettings.enable("Pregain");
+  setupMenu();
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
-  Wire.begin();
-  rtclock.begin();
-  rtclock.check();
+  setupBoard();
   setupSensors();
-  sdcard.begin();
-  files.check(config);
-  rtclock.setFromFile(sdcard);
-  config.load();
-  if (Serial)
-    config.execute();
-  config.report();
-  Serial.println();
-  files.startSensors(settings.sensorsInterval());
+  logger.configure(config);
+  logger.startSensors(settings.sensorsInterval());
   tsl.setTemperature(bme.temperature());
-  setupTestSignals(signalPins, PULSE_FREQUENCY);
   deviceid.setID(settings.deviceID());
   aisettings.configure(&aidata);
-  blink.switchOff();
-  if (!aidata.check()) {
-    Serial.println("Fix ADC settings and check your hardware.");
-    halt();
-  }
-  aidata.reset();
-  aidata.start();
-  aidata.report();
-  files.report();
   settings.preparePaths(deviceid);
-  files.setup(settings.path(), settings.fileName(), SOFTWARE);
-  shutdown_usb();   // saves power!
-  files.initialDelay(settings.initialDelay());
-  files.start(settings.fileTime(), config);
+  setupTestSignals(signalPins, PULSE_FREQUENCY);
+  logger.startInput();
+  logger.setup(settings.path(), settings.fileName(), SOFTWARE);
+  logger.initialDelay(settings.initialDelay());
+  diagnostic_menu.updateCPUSpeed();
+  logger.start(settings.fileTime(), config);
 }
 
 
 void loop() {
-  if (files.update())
+  if (logger.update())
     tsl.setTemperature(bme.temperature());
 }

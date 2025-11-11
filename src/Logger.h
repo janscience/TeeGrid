@@ -19,12 +19,12 @@ class Logger {
 public:
 
   Logger(Input &aiinput, SDCard &sdcard0,
-	 const RTClock &rtclock, Blink &blink);
+	 RTClock &rtclock, Blink &blink);
   Logger(Input &aiinput, SDCard &sdcard0,
-	 const RTClock &rtclock, Blink &blink,
+	 RTClock &rtclock, Blink &blink,
 	 Blink &errorblink, Blink &syncblink);
   Logger(Input &aiinput, SDCard &sdcard0, SDCard &sdcard1,
-	 const RTClock &rtclock, Blink &blink);
+	 RTClock &rtclock, Blink &blink);
 
   // Halt with error message and blinking.
   void halt(int errorcode=0, Stream &stream=Serial);
@@ -40,22 +40,32 @@ public:
   // If secondary SD card is not available, end its usage.
   void endBackup(SPIClass *spi=NULL);
 
+  // Check availability of SD card, set real-time clock from file,
+  // load configuration file, execute menu, and report on serial.
+  void configure(Config &config);
+
   // Reduce CPU speed according to sampling rate.
   void setCPUSpeed(uint32_t rate);
 
-  // Report device identifier and current date and time.
-  void report(Stream &stream=Serial) const;
+  // Report blink pins.
+  void reportBlink(Stream &stream=Serial) const;
 
-  // Delay with double blinks for initial_delay seconds.
-  void initialDelay(float initial_delay, Stream &stream=Serial);
+  // Initialze, check and start analog input.
+  void startInput(uint8_t nchannels=0);
   
   // Initialize recording directory and file metadata.
   void setup(const char *path, const char *filename,
 	     const char *software, bool randomblinks=false,
 	     float blinktimeout=0.0);
 
+  // Delay with double blinks for initial_delay seconds.
+  void initialDelay(float initial_delay, Stream &stream=Serial);
+
   // Open files.
   void start(float filetime);
+  
+  // Open files and write metadata from config.
+  void start(float filetime, Config &config);
   
   // Open files and write metadata from config.
   // Add more metadata to amplifier.
@@ -100,7 +110,7 @@ protected:
   SDCard *SDCard1;
   SDWriter File0;
   SDWriter File1;
-  const RTClock &Clock;
+  RTClock &Clock;
   Blink NoBlink;
   Blink &StatusLED;
   Blink &ErrorLED;

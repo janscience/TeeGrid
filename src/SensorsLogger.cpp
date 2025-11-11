@@ -4,7 +4,7 @@
 SensorsLogger::SensorsLogger(Input &aiinput,
 			     ESensors &sensors,
 			     SDCard &sdcard,
-			     const RTClock &rtclock,
+			     RTClock &rtclock,
 			     Blink &blink) :
   Logger(aiinput, sdcard, rtclock, blink),
   Sensors(sensors),
@@ -16,7 +16,7 @@ SensorsLogger::SensorsLogger(Input &aiinput,
 SensorsLogger::SensorsLogger(Input &aiinput,
 			     ESensors &sensors,
 			     SDCard &sdcard,
-			     const RTClock &rtclock,
+			     RTClock &rtclock,
 			     Blink &blink,
 			     Blink &errorblink,
 			     Blink &syncblink) :
@@ -54,6 +54,12 @@ void SensorsLogger::startSensors(float interval,
 
 void SensorsLogger::start(float filetime) {
   Logger::start(filetime);
+  openSensorsFile();
+}
+
+
+void SensorsLogger::start(float filetime, Config &config) {
+  Logger::start(filetime, config);
   openSensorsFile();
 }
 

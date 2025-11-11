@@ -15,7 +15,6 @@
 #include <SDCardMenu.h>
 #include <DiagnosticMenu.h>
 #include <TeensyBoard.h>
-#include <PowerSave.h>
 #include <Logger.h>
 
 // Default settings: ----------------------------------------------------------
@@ -45,7 +44,7 @@ int DIPPins[] = { 34, 35, 36, 37, -1 };
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid R4-logger v3.1"
+#define SOFTWARE      "TeeGrid R4-logger v3.4"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -69,7 +68,7 @@ InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 
 RTClockMenu datetime_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
-SDCardMenu sdcard0_menu(config, sdcard);
+SDCardMenu sdcard_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid,
@@ -77,21 +76,22 @@ DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid,
 Menu ampl_info(diagnostic_menu, "Amplifier board");
 HelpAction help_act(config, "Help");
 
-Logger files(aidata, sdcard, rtclock, blink);
+Logger logger(aidata, sdcard, rtclock, blink);
 
 
-// -----------------------------------------------------------------------------
-
-void setup() {
-  blink.switchOn();
+void setupMenu() {
   settings.disable("Path", settings.StreamInput);
   settings.disable("FileName", settings.StreamInput);
+  settings.enable("RandomBlinks");
+  settings.enable("BlinkTimeout");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
-  Serial.begin(9600);
-  while (!Serial && millis() < 2000) {};
-  printTeeGridBanner(SOFTWARE);
+  sdcard_menu.CleanRecsAct.setRemove(true);
+}
+
+
+bool setupBoard() {
   Wire.begin();
   Wire1.begin();
   rtclock.begin();
@@ -102,42 +102,40 @@ void setup() {
      ampl_info.addConstString("Version", "R4.1b");
   }
   else {
-     files.R41powerDownCAN();
+     logger.R41powerDownCAN();
      ampl_info.addConstString("Version", "R4.1");
   }
   sdcard.begin();
-  files.check(config, true);
-  rtclock.setFromFile(sdcard);
-  config.load();
-  if (Serial)
-    config.execute();
-  config.report();
-  Serial.println();
+  return R41b;
+}
+
+
+// -----------------------------------------------------------------------------
+
+void setup() {
+  blink.switchOn();
+  setupMenu();
+  Serial.begin(9600);
+  while (!Serial && millis() < 2000) {};
+  printTeeGridBanner(SOFTWARE);
+  bool R41b = setupBoard();
+  logger.configure(config);
+  logger.setCPUSpeed(aisettings.rate());
   deviceid.setID(settings.deviceID());
   if (R41b && deviceid.id() == -1)
     deviceid.read();
-  files.setCPUSpeed(aisettings.rate());
-  R4SetupPCMs(aidata, aisettings, pcms, NPCMS);
-  blink.switchOff();
-  aidata.begin();
-  if (!aidata.check(aisettings.nchannels())) {
-    Serial.println("Fix ADC settings and check your hardware.");
-    halt();
-  }
-  aidata.start();
-  aidata.report();
-  files.report();
   settings.preparePaths(deviceid);
-  files.setup(settings.path(), settings.fileName(),
-              SOFTWARE, settings.randomBlinks(),
-	      settings.blinkTimeout());
-  shutdown_usb();   // saves power!
-  files.initialDelay(settings.initialDelay());
+  R4SetupPCMs(aidata, aisettings, pcms, NPCMS);
+  logger.startInput(aisettings.nchannels());
+  logger.setup(settings.path(), settings.fileName(),
+               SOFTWARE, settings.randomBlinks(),
+    	       settings.blinkTimeout());
+  logger.initialDelay(settings.initialDelay());
   diagnostic_menu.updateCPUSpeed();
-  files.start(settings.fileTime(), config);
+  logger.start(settings.fileTime(), config, ampl_info);
 }
 
 
 void loop() {
-  files.update();
+  logger.update();
 }

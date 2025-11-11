@@ -17,7 +17,7 @@ class CANFileStorage : public Logger {
 public:
 
   CANFileStorage(Input &aiinput, SDCard &sdcard0, SDCard &sdcard1,
-		 R41CAN &can, bool master, const RTClock &rtclock,
+		 R41CAN &can, bool master, RTClock &rtclock,
 		 Blink &blink);
 
 protected:
