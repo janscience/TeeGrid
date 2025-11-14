@@ -29,7 +29,7 @@ except ImportError:
     from PyQt5.QtCore import pyqtSignal as Signal
 from PyQt5.QtCore import Qt, QObject, QTimer, QElapsedTimer, QDateTime, QLocale
 from PyQt5.QtGui import QKeySequence, QFont, QPalette, QColor, QValidator
-from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
 from PyQt5.QtWidgets import QStackedWidget, QLabel, QScrollArea
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QSpacerItem
 from PyQt5.QtWidgets import QWidget, QFrame, QPushButton, QSizePolicy
@@ -1889,87 +1889,6 @@ class Terminal(QWidget):
         vsb.setValue(vsb.maximum())
 
 
-class Message(QLabel):
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setAlignment(Qt.AlignCenter)
-
-    def clear(self):
-        self.setText('')
-
-    def display(self, stream):
-        if isinstance(stream, (tuple, list)):
-            text = ''
-            for s in stream:
-                text += s
-                text += '\n'
-            self.setText(text)
-        else:
-            self.setText(stream)
-
-
-class YesNoQuestion(QWidget):
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.msg = QLabel(self)
-        self.msg.setAlignment(Qt.AlignCenter)
-        self.yesb = QPushButton(self)
-        self.yesb.setText('&Yes')
-        self.yesb.setToolTip('Accept (Return, Y, Ctrl+Y)')
-        self.yesb.clicked.connect(self.accept)
-        key = QShortcut(Qt.Key_Return, self)
-        key.activated.connect(self.yesb.animateClick)
-        key = QShortcut(Qt.Key_Y, self)
-        key.activated.connect(self.yesb.animateClick)
-        key = QShortcut('Ctrl+Y', self)
-        key.activated.connect(self.yesb.animateClick)
-        self.nob = QPushButton(self)
-        self.nob.setText('&No')
-        self.yesb.setToolTip('Reject (Escape, N, Ctrl+N)')
-        self.nob.clicked.connect(self.reject)
-        key = QShortcut(QKeySequence.Cancel, self)
-        key.activated.connect(self.nob.animateClick)
-        key = QShortcut(Qt.Key_N, self)
-        key.activated.connect(self.nob.animateClick)
-        key = QShortcut('Ctrl+N', self)
-        key.activated.connect(self.nob.animateClick)
-        buttons = QWidget(self)
-        hbox = QHBoxLayout(buttons)
-        hbox.addWidget(self.nob)
-        hbox.addWidget(QLabel(self))
-        hbox.addWidget(self.yesb)
-        vbox = QVBoxLayout(self)
-        vbox.addWidget(self.msg)
-        vbox.addWidget(buttons)
-        self.yes = None
-
-    def clear(self):
-        self.yes = None
-        self.msg.setText('')
-
-    def ask(self, stream):
-        self.yes = None
-        text = []
-        for s in reversed(stream):
-            if len(s.strip()) == 0:
-                break
-            if s.strip() == '.':
-                text.insert(0, '')
-            else:
-                text.insert(0, s)
-        text[-1] = text[-1][:text[-1].lower().find(' [y/n] ')]
-        self.msg.setText('\n'.join(text))
-        self.setFocus(Qt.MouseFocusReason)
-
-    def accept(self):
-        self.yes = True
-        
-    def reject(self):
-        self.yes = False
-
-
 class SpinBox(QAbstractSpinBox):
 
     textChanged = Signal(str)
@@ -2617,18 +2536,9 @@ class Logger(QWidget):
         self.configuration.sigVerifyParameter.connect(self.verify_parameter)
         self.configuration.sigSetParameter.connect(self.set_parameter)
         self.configuration.sigConfigFile.connect(self.set_configfile_state)
-        self.question = YesNoQuestion(self)
-        self.question.yesb.clicked.connect(self.close_question)
-        self.question.nob.clicked.connect(self.close_question)
-        self.message = Message(self)
-        self.cstack = QStackedWidget(self)
-        self.cstack.addWidget(self.message)
-        self.cstack.addWidget(self.question)
-        self.cstack.setCurrentWidget(self.message)
         vbox = QVBoxLayout(self.conf)
         vbox.addLayout(self.conf_grid)
         vbox.addWidget(self.configuration)
-        vbox.addWidget(self.cstack)
         
         self.plot_recording = PlotRecording('Recording from analog input', self)
         self.plot_recording.sigClose.connect(lambda: self.stack.setCurrentWidget(self.boxw))
@@ -2678,7 +2588,6 @@ class Logger(QWidget):
         vbox = QVBoxLayout(self)
         vbox.addWidget(logoboxw)
         vbox.addWidget(self.stack)
-        self.last_focus = None
 
         self.device = None
         self.ser = None
@@ -2746,20 +2655,33 @@ class Logger(QWidget):
         self.stack.setCurrentWidget(self.term)
 
     def display_message(self, text):
-        self.message.display(text)
-        self.cstack.setCurrentWidget(self.message)
+        if isinstance(text, (tuple, list)):
+            text = '\n'.join(text)
+        QMessageBox.information(self, 'LoggerConf', text)
+
+    def ask(self, stream):
+        text = []
+        for s in reversed(stream):
+            if len(s.strip()) == 0:
+                break
+            if s.strip() == '.':
+                text.insert(0, '')
+            else:
+                text.insert(0, s)
+        self.clear_input()
+        text[-1] = text[-1][:text[-1].lower().find(' [y/n] ')]
+        r = QMessageBox.question(self, 'LoggerConf', '\n'.join(text),
+                                 QMessageBox.Yes|QMessageBox.No)
+        if r == QMessageBox.Yes:
+            self.write('y')
+        else:
+            self.write('n')
 
     def display_recording_plot(self):
         self.stack.setCurrentWidget(self.plot_recording)
 
     def display_sensors_plot(self):
         self.stack.setCurrentWidget(self.plot_sensors)
-
-    def close_question(self):
-        if self.last_focus is not None:
-            self.last_focus.setFocus(Qt.MouseFocusReason)
-            self.last_focus = None
-        self.cstack.setCurrentWidget(self.message)
         
     def find_parameter(self, keys, menu):
         found = False
@@ -3120,12 +3042,8 @@ class Logger(QWidget):
         elif self.read_state == 1:
             if self.request_type == 'read' and len(self.input) > 0 and \
                self.input[-1].lower().endswith(' [y/n] '):
-                self.message.clear()
-                self.last_focus = QApplication.focusWidget()
-                self.question.ask(self.input)
-                self.cstack.setCurrentWidget(self.question)
-                self.input = []
-                self.read_state = 5
+                self.ask(self.input)
+                self.read_state = 1
             elif self.request_stop is None or \
                len(self.request_stop) == 0:
                 self.read_state += 1
@@ -3167,16 +3085,6 @@ class Logger(QWidget):
             if len(self.input) > 0 and \
                stop_str in self.input[-1].lower():
                 self.read_state = 0
-        elif self.read_state == 5:
-            if self.question.yes is not None:
-                self.clear_input()
-                if self.question.yes:
-                    self.write('y')
-                else:
-                    self.write('n')
-                self.question.clear()
-                self.cstack.setCurrentWidget(self.message)
-                self.read_state = 1
 
     def write_request(self, msg, start):
         if len(start) == 0:
