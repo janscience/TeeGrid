@@ -538,7 +538,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.box.addWidget(vw, self.row, 1, 1, 2)
         else:
             self.box.addWidget(vw, self.row, 1)
-            self.box.addWidget(button, self.row, 2)
+            self.box.addWidget(button, self.row, 2, Qt.AlignRight)
         self.box.setRowStretch(self.row, 1)
         self.row += 1
         return vw
@@ -1834,6 +1834,7 @@ class Terminal(QWidget):
         super().__init__(*args, **kwargs)
         self.title = QLabel(self)
         self.out = QLabel(self)
+        self.out.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.scroll = QScrollArea(self)
         self.scroll.setWidget(self.out)
         self.done = QPushButton(self)
