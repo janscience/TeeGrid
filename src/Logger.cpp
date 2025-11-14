@@ -140,11 +140,6 @@ void Logger::flashLEDs() {
 
 
 bool Logger::check(Config &config, bool check_backup) {
-  // cleanup previous recordings:
-  char folder[64];
-  SDCard0->latestDir("/", folder, 64);
-  if (strlen(folder) > 0)
-    SDCard0->cleanDir(folder, 1024, ".wav", true, true, Serial);
   // check for enough space:
   if (!SDCard0->check(1e9)) {
     SDCard0->end();
@@ -161,10 +156,6 @@ bool Logger::check(Config &config, bool check_backup) {
   if (SDCard1 != NULL && (SDCard1->available() || check_backup)) {
     if (!SDCard1->check(SDCard0->free()))
       SDCard1->end();
-    else {
-      if (strlen(folder) > 0)
-	SDCard1->cleanDir(folder, 1024, ".wav", true, true, Serial);
-    }
   }
   return true;
 }
@@ -183,6 +174,17 @@ void Logger::endBackup(SPIClass *spi) {
 void Logger::configure(Config &config) {
   check(config);
   Clock.setFromFile(*SDCard0);
+  // cleanup previous recordings:
+  char folder[64];
+  SDCard0->latestDir("/", folder, 64);
+  if (strlen(folder) > 0) {
+    SDCard0->cleanDir(folder, 1024, ".wav", true, true);
+    if (SDCard1 != NULL && SDCard1->available())
+      SDCard1->cleanDir(folder, 1024, ".wav", true, true);
+  }
+  // get configuration from EEPROM and file:
+  config.get();
+  Serial.println();
   config.load();
   if (Serial)
     config.execute();

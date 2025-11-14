@@ -2234,7 +2234,7 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                 self.state_widget.setText('&#x274C;')
                 
 
-class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
+class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
 
     sigVerifyParameter = Signal(str, str)
     sigSetParameter = Signal(str, str)
@@ -2242,6 +2242,10 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
     
     def __init__(self, *args, **kwargs):
         super(QWidget, self).__init__(*args, **kwargs)
+        self.put_button = QPushButton('&Put', self)
+        self.put_button.setToolTip('Put configuration to EEPROM memory (Alt+P)')
+        self.get_button = QPushButton('&Get', self)
+        self.get_button.setToolTip('Get configuration from EEPROM memory (Alt+G)')
         self.save_button = QPushButton('&Save', self)
         self.save_button.setToolTip('Save the configuration to file on SD card (Alt+S)')
         self.load_button = QPushButton('&Load', self)
@@ -2249,7 +2253,7 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.erase_button = QPushButton('&Erase', self)
         self.erase_button.setToolTip('Erase configuration file on SD card (Alt+E)')
         self.check_button = QPushButton('&Check', self)
-        self.check_button.setToolTip('Check the configuration on the logger (Alt+C)')
+        self.check_button.setToolTip('Check whether this GUI matches configuration on the logger (Alt+C)')
         self.import_button = QPushButton('&Import', self)
         self.import_button.setToolTip('Import configuration from host (Alt+I)')
         self.export_button = QPushButton('E&xport', self)
@@ -2262,6 +2266,8 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.reboot_button.setToolTip('Reboot logger (Alt+B)')
         self.run_button = QPushButton('&Run', self)
         self.run_button.setToolTip('Run logger (Alt+R)')
+        self.put_button.clicked.connect(self.put)
+        self.get_button.clicked.connect(self.get)
         self.save_button.clicked.connect(self.save)
         self.load_button.clicked.connect(self.load)
         self.erase_button.clicked.connect(self.erase)
@@ -2271,21 +2277,37 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.firmware_button.clicked.connect(self.firmware)
         self.reboot_button.clicked.connect(self.reboot)
         self.run_button.clicked.connect(self.run)
-        box = QGridLayout(self)
+        box = QVBoxLayout(self)
         box.setContentsMargins(0, 0, 0, 0)
-        box.addWidget(self.save_button, 0, 0)
-        box.addWidget(self.load_button, 0, 1)
-        box.addWidget(self.erase_button, 0, 2)
-        box.addWidget(self.import_button, 1, 0)
-        box.addWidget(self.export_button, 1, 1)
-        box.addWidget(self.check_button, 1, 2)
-        box.addWidget(self.reboot_button, 2, 0)
-        box.addWidget(self.firmware_button, 2, 1)
-        box.addWidget(self.run_button, 2, 2)
+        box.addWidget(QLabel('<b>EEPROM:</b>'))
+        box.addWidget(self.put_button)
+        box.addWidget(self.get_button)
+        box.addItem(QSpacerItem(0, 1000, QSizePolicy.Expanding,
+                                QSizePolicy.Expanding))
+        box.addWidget(QLabel('<b>File:</b>'))
+        box.addWidget(self.save_button)
+        box.addWidget(self.load_button)
+        box.addWidget(self.erase_button)
+        box.addItem(QSpacerItem(0, 1000, QSizePolicy.Expanding,
+                                QSizePolicy.Expanding))
+        box.addWidget(QLabel('<b>Host:</b>'))
+        box.addWidget(self.import_button)
+        box.addWidget(self.export_button)
+        box.addItem(QSpacerItem(0, 1000, QSizePolicy.Expanding,
+                                QSizePolicy.Expanding))
+        box.addWidget(QLabel('<b>Logger:</b>'))
+        box.addWidget(self.check_button)
+        box.addItem(QSpacerItem(0, 1000, QSizePolicy.Expanding,
+                                QSizePolicy.Expanding))
+        box.addWidget(self.reboot_button)
+        box.addWidget(self.firmware_button)
+        box.addWidget(self.run_button)
         self.start_check = []
-        self.start_load = []
         self.start_save = []
+        self.start_load = []
         self.start_erase = []
+        self.start_put = []
+        self.start_get = []
         self.start_import = []
         self.start_list_firmware = []
         self.start_update_firmware = []
@@ -2296,10 +2318,12 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
     
     def setup(self, menu):
         self.start_check = self.retrieve('configuration>print', menu)
-        self.start_load = self.retrieve('configuration>load', menu)
+        self.start_put = self.retrieve('configuration>write configuration to eeprom', menu)
+        self.start_get = self.retrieve('configuration>read configuration from eeprom', menu)
         self.start_save = self.retrieve('configuration>save', menu)
+        self.start_load = self.retrieve('configuration>load', menu)
         self.start_erase = self.retrieve('configuration>erase', menu)
-        self.start_import = self.retrieve('configuration>read', menu)
+        self.start_import = self.retrieve('configuration>read configuration from stream', menu)
         self.start_list_firmware = self.retrieve('firmware>list', menu)
         self.start_update_firmware = self.retrieve('firmware>update', menu)
         if len(self.start_list_firmware) == 0:
@@ -2309,6 +2333,12 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
                                      self.start_list_firmware, ['select'])
         if len(self.start_update_firmware) > 0:
             self.start_update_firmware.append('STAY')
+
+    def put(self):
+        self.sigReadRequest.emit(self, 'confput', self.start_put, ['select'])
+
+    def get(self):
+        self.sigReadRequest.emit(self, 'confget', self.start_get, ['select'])
 
     def save(self):
         self.sigReadRequest.emit(self, 'confsave', self.start_save, ['select'])
@@ -2485,6 +2515,15 @@ class ConfigActions(Interactor, QWidget, metaclass=InteractorQWidget):
                     text += '<td>&#x274C;</td></tr>'
             text += '</table>'
             self.sigDisplayTerminal.emit(title, text)
+        elif ident == 'confget' or ident == 'confput':
+            text = ''
+            for i in range(len(stream)):
+                if 'configuration:' in stream[i].lower():
+                    break
+            if i > 0:
+                self.sigDisplayTerminal.emit('EEPROM', stream[:i])
+            if success:
+                self.sigUpdate.emit()
         else:
             text = ''
             for s in stream:
@@ -2523,22 +2562,21 @@ class Logger(QWidget):
         
         self.conf = QFrame(self)
         self.conf.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-        self.conf_grid = QGridLayout()
+        self.configuration = QGridLayout()
         self.config_file = QLabel()
         self.config_status = QLabel()
         self.config_status.setTextFormat(Qt.RichText)
         self.config_status.setToolTip('Indicates presence of configuration file')
-        self.configuration = ConfigActions(self)
-        self.configuration.sigReadRequest.connect(self.read_request)
-        self.configuration.sigWriteRequest.connect(self.write_request)
-        self.configuration.sigDisplayTerminal.connect(self.display_terminal)
-        self.configuration.sigDisplayMessage.connect(self.display_message)
-        self.configuration.sigVerifyParameter.connect(self.verify_parameter)
-        self.configuration.sigSetParameter.connect(self.set_parameter)
-        self.configuration.sigConfigFile.connect(self.set_configfile_state)
+        self.loggeracts = LoggerActions(self)
+        self.loggeracts.sigReadRequest.connect(self.read_request)
+        self.loggeracts.sigWriteRequest.connect(self.write_request)
+        self.loggeracts.sigDisplayTerminal.connect(self.display_terminal)
+        self.loggeracts.sigDisplayMessage.connect(self.display_message)
+        self.loggeracts.sigVerifyParameter.connect(self.verify_parameter)
+        self.loggeracts.sigSetParameter.connect(self.set_parameter)
+        self.loggeracts.sigConfigFile.connect(self.set_configfile_state)
         vbox = QVBoxLayout(self.conf)
-        vbox.addLayout(self.conf_grid)
-        vbox.addWidget(self.configuration)
+        vbox.addLayout(self.configuration)
         
         self.plot_recording = PlotRecording('Recording from analog input', self)
         self.plot_recording.sigClose.connect(lambda: self.stack.setCurrentWidget(self.boxw))
@@ -2564,7 +2602,7 @@ class Logger(QWidget):
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.sigDisplayMessage.connect(self.display_message)
-        self.configuration.sigUpdate.connect(self.sdcardinfo.start)
+        self.loggeracts.sigUpdate.connect(self.sdcardinfo.start)
         iboxw = QWidget(self)
         ibox = QGridLayout(iboxw)
         ibox.setContentsMargins(0, 0, 0, 0)
@@ -2574,6 +2612,7 @@ class Logger(QWidget):
         ibox.addWidget(self.sensorsinfo, 1, 1)
         self.boxw = QWidget(self)
         self.box = QHBoxLayout(self.boxw)
+        self.box.addWidget(self.loggeracts)
         self.box.addWidget(self.conf)
         self.box.addWidget(iboxw)
         self.term = Terminal(self)
@@ -2717,7 +2756,7 @@ class Logger(QWidget):
             print('WARNING in verify():', key, 'not found')
         else:
             p.verify(value)
-            self.configuration.matches = p.matches
+            self.loggeracts.matches = p.matches
 
     def set_parameter(self, key, value):
         keys = [k.strip() for k in key.split('>') if len(k.strip()) > 0]
@@ -2726,7 +2765,7 @@ class Logger(QWidget):
             print('WARNING in verify():', key, 'not found')
         else:
             p.set_value(value)
-            self.configuration.matches = p.matches
+            self.loggeracts.matches = p.matches
 
     def set_configfile_state(self, present):
         if present:
@@ -2789,7 +2828,7 @@ class Logger(QWidget):
                 config_file = self.input[k].split('"')[1].strip()
                 self.config_file.setText(f'<b>{config_file}</b>')
                 self.set_configfile_state(not 'not found' in self.input[k])
-                self.configuration.config_file = config_file
+                self.loggeracts.config_file = config_file
                 self.input = self.input[k + 1:]
                 for k in range(len(self.input)):
                     if len(self.input[k].strip()) == 0:
@@ -2932,7 +2971,7 @@ class Logger(QWidget):
         # init menu:
         if 'Help' in self.menu:
             self.menu.pop('Help')
-        self.configuration.setup(self.menu)
+        self.loggeracts.setup(self.menu)
         self.loggerinfo.setup(self.menu)
         self.hardwareinfo.setup(self.menu)
         self.sensorsinfo.setup(self.menu)
@@ -2950,16 +2989,16 @@ class Logger(QWidget):
                             title = QLabel('<b>' + mk + '</b>', self)
                             title.setSizePolicy(QSizePolicy.Policy.Preferred,
                                                 QSizePolicy.Policy.Fixed)
-                            self.conf_grid.addWidget(title, row, 0, 1, 4)
+                            self.configuration.addWidget(title, row, 0, 1, 4)
                             row += 1
                             add_title = False
-                        self.conf_grid.addItem(QSpacerItem(10, 0), row, 0)
-                        self.conf_grid.addWidget(QLabel(sk + ': ', self),
+                        self.configuration.addItem(QSpacerItem(10, 0), row, 0)
+                        self.configuration.addWidget(QLabel(sk + ': ', self),
                                                  row, 1)
                         param = menu[2][sk][2]
                         param.setup(self)
-                        self.conf_grid.addWidget(param.edit_widget, row, 2)
-                        self.conf_grid.addWidget(param.state_widget,
+                        self.configuration.addWidget(param.edit_widget, row, 2)
+                        self.configuration.addWidget(param.state_widget,
                                                  row, 3)
                         if first_param:
                             param.edit_widget.setFocus(Qt.MouseFocusReason)
@@ -2973,9 +3012,9 @@ class Logger(QWidget):
                             print(f'{mk}:')
                             add_title = False
                         print(f'  {sk}')
-        self.conf_grid.addWidget(QLabel('Configuration file'), row, 0, 1, 2)
-        self.conf_grid.addWidget(self.config_file, row, 2)
-        self.conf_grid.addWidget(self.config_status, row, 3)
+        self.configuration.addWidget(QLabel('Configuration file'), row, 0, 1, 2)
+        self.configuration.addWidget(self.config_file, row, 2)
+        self.configuration.addWidget(self.config_status, row, 3)
         self.hardwareinfo.start()
         self.sensorsinfo.start()
         self.sdcardinfo.start()
