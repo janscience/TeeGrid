@@ -504,6 +504,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.device_id_start_get = []
         self.device_id = []
         self.ampl_start_get = []
+        self.eeprom_hexdump_start_get = []
         self.row = 1
 
     def set(self, device, model, serial_number):
@@ -518,6 +519,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.psramtest.setup(menu)
         self.device_id_start_get = self.retrieve('device id', menu)
         self.ampl_start_get = self.retrieve('amplifier board', menu)
+        self.eeprom_hexdump_start_get = self.retrieve('eeprom memory content', menu)
 
     def add(self, label, value, button=None):
         self.box.addItem(QSpacerItem(0, 0,
@@ -545,7 +547,7 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.row = 1
         self.sigReadRequest.emit(self, 'amplifier',
                                  self.ampl_start_get, ['select'])
-        #self.add('Device', self.device)
+        #self.add('Device', self.device)  # name of USB device in operating system
         self.sigReadRequest.emit(self, 'controller',
                                  self.controller_start_get, ['select'])
         self.sigReadRequest.emit(self, 'psram',
@@ -554,6 +556,13 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                                  self.device_id_start_get, ['select'])
 
     def read(self, ident, stream, success):
+        if 'eepromhexdump' in ident:
+            for i in range(10, len(stream)):
+                if len(stream[i].strip()) == 0:
+                    del stream[i:]
+                    self.sigDisplayTerminal.emit('EEPROM memory', stream)
+                    break
+            return
         if 'deviceid' in ident:
             while len(stream) > 0 and len(stream[0].strip()) == 0:
                 del stream[0]
@@ -604,6 +613,16 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                     self.add('<u>P</u>SRAM size', value, self.psramtest)
                 else:
                     continue
+            elif label.lower() == 'eeprom size':
+                button = QPushButton('Hexdump')
+                bbox = self.fontMetrics().boundingRect(button.text())
+                button.setMaximumWidth(bbox.width() + 10)
+                button.setMaximumHeight(bbox.height() + 2)
+                button.setToolTip('Hexdump of EEPROM memory (Ctrl+H)')
+                button.clicked.connect(self.get_eeprom_hexdump)
+                key = QShortcut('Ctrl+H', self)
+                key.activated.connect(button.animateClick)
+                self.add(label, value, button)
             elif label.lower() != 'mac address':
                 self.add(label, value)
         if ident == 'psram':
@@ -628,6 +647,10 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     def get_device_id(self):
         self.sigReadRequest.emit(self, 'deviceid',
                                  self.device_id_start_get, ['select'])
+
+    def get_eeprom_hexdump(self):
+        self.sigReadRequest.emit(self, 'eepromhexdump',
+                                 self.eeprom_hexdump_start_get, ['select'])
 
 
 class SoftwareInfo(QLabel):
@@ -2613,6 +2636,7 @@ class Logger(QWidget):
         
         self.loggerinfo = LoggerInfo(self)
         self.loggerinfo.sigReadRequest.connect(self.read_request)
+        self.loggerinfo.sigDisplayTerminal.connect(self.display_terminal)
         self.loggerinfo.psramtest.sigReadRequest.connect(self.read_request)
         self.loggerinfo.psramtest.sigDisplayTerminal.connect(self.display_terminal)
         self.loggerinfo.rtclock.sigReadRequest.connect(self.read_request)
