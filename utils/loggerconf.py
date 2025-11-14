@@ -1,7 +1,8 @@
 # https://github.com/pyserial/pyserial
 try:
-    import serial
+    from serial import Serial
     from serial.tools.list_ports import comports
+    from serial.serialutil import SerialException
 except ImportError:
     print('ERROR: failed to import serial module !')
     print('You need to install the pyserial package using')
@@ -12,9 +13,11 @@ except ImportError:
 # pip install pyusb
 try:
     import usb.core
-    has_usb = True
 except ImportError:
-    has_usb = False
+    print('ERROR: failed to import usb module !')
+    print('You need to install the pyusb package using')
+    print('> pip install pyusb')
+    exit()
     
 import sys
 import numpy as np
@@ -206,16 +209,13 @@ def get_teensy_model(vid, pid, serial_number):
         0x280: '41',
         0x281: 'MM'}
 
-    if has_usb:
-        dev = usb.core.find(idVendor=vid, idProduct=pid,
-                            serial_number=serial_number)
-        if dev is None:
-            # this happens when we do not have permissions for the device!
-            return ''
-        else:
-            return teensy_model[dev.bcdDevice]
-    else:
+    dev = usb.core.find(idVendor=vid, idProduct=pid,
+                        serial_number=serial_number)
+    if dev is None:
+        # this happens when we do not have permissions for the device!
         return ''
+    else:
+        return teensy_model[dev.bcdDevice]
 
 
 def discover_teensy_ports():
@@ -2713,10 +2713,10 @@ class Logger(QWidget):
         self.msg.setAlignment(Qt.AlignCenter)
         self.stack.setCurrentWidget(self.msg)
         try:
-            self.ser = serial.Serial(device)
+            self.ser = Serial(device)
             self.ser.reset_input_buffer()
             self.ser.reset_output_buffer()
-        except (OSError, serial.serialutil.SerialException):
+        except (OSError, SerialException):
             self.ser = None
         self.input = []
         self.read_count = 0
@@ -2730,7 +2730,7 @@ class Logger(QWidget):
                 self.ser.write(text.encode('latin1'))
                 self.ser.write(b'\n')
                 self.ser.flush()
-            except (OSError, serial.serialutil.SerialException):
+            except (OSError, SerialException):
                 self.stop()
 
     def stop(self):
@@ -3212,10 +3212,10 @@ class Logger(QWidget):
         if self.ser is None:
             try:
                 print('open serial')
-                self.ser = serial.Serial(self.device)
+                self.ser = Serial(self.device)
                 self.ser.reset_input_buffer()
                 self.ser.reset_output_buffer()
-            except (OSError, serial.serialutil.SerialException):
+            except (OSError, SerialException):
                 print('  FAILED')
                 self.ser = None
                 self.stop()
@@ -3233,14 +3233,14 @@ class Logger(QWidget):
             else:
                 # execute requests:
                 self.read_func()
-        except (OSError, serial.serialutil.SerialException):
+        except (OSError, SerialException):
             self.stop()
             
     def clear_input(self):
         if self.ser is not None:
             try:
                 self.ser.reset_input_buffer()
-            except (OSError, serial.serialutil.SerialException):
+            except (OSError, SerialException):
                 self.stop()
         self.input = []
         
