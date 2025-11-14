@@ -178,7 +178,7 @@ def change_unit(val, old_unit, new_unit):
     else:
         for k in unit_prefixes:
             if len(old_unit) > len(k) and old_unit[:len(k)] == k:
-                f1 = unit_prefixes[k];
+                f1 = unit_prefixes[k]
   
     # parse new unit:
     f2 = 1.0
@@ -187,7 +187,7 @@ def change_unit(val, old_unit, new_unit):
     else:
         for k in unit_prefixes:
             if len(new_unit) > len(k) and new_unit[:len(k)] == k:
-                f2 = unit_prefixes[k];
+                f2 = unit_prefixes[k]
   
     return val*f1/f2
 
@@ -903,6 +903,8 @@ class InputData(ReportButton):
         self.plot = plot
         self.plot.sigReplot.connect(self.get_data)
         self.plot.sigClose.connect(self.stop)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.get_data)
         self.start_data = []
         self.get_data = []
         self.stop_data = []
@@ -914,9 +916,9 @@ class InputData(ReportButton):
         self.stop_data = self.retrieve('stop recording', menu)
 
     def run(self):
-        QApplication.setOverrideCursor(Qt.WaitCursor)
         self.sigReadRequest.emit(self, 'start', self.start, ['select'])
-        self.sigReadRequest.emit(self, 'getdata', self.get_data, ['select'])
+        self.timer.setSingleShot(True)
+        self.timer.start(500)
 
     def get_data(self):
         QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -1025,7 +1027,7 @@ class PlotRecording(QWidget):
         self.plot.toggled.connect(self.replot)
         self.repeat_plot = False
         self.timer = QTimer(self)
-        self.timer.setSingleShot(True);
+        self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.sigReplot)
         hbox = QHBoxLayout()
         hbox.setContentsMargins(0, 0, 0, 0)
@@ -1393,7 +1395,7 @@ class PlotSensors(QWidget):
         vbox.addWidget(self.title)
         vbox.addWidget(self.scroll)
         vbox.addWidget(self.done)
-        self.time = QElapsedTimer();
+        self.time = QElapsedTimer()
 
     def addSensor(self, name, unit):
         # color:
