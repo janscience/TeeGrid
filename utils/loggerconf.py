@@ -2246,6 +2246,8 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.put_button.setToolTip('Put configuration to EEPROM memory (Alt+P)')
         self.get_button = QPushButton('&Get', self)
         self.get_button.setToolTip('Get configuration from EEPROM memory (Alt+G)')
+        self.clear_button = QPushButton('Clear', self)
+        self.clear_button.setToolTip('Clear the full EEPROM memory')
         self.save_button = QPushButton('&Save', self)
         self.save_button.setToolTip('Save the configuration to file on SD card (Alt+S)')
         self.load_button = QPushButton('&Load', self)
@@ -2268,6 +2270,7 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.run_button.setToolTip('Run logger (Alt+R)')
         self.put_button.clicked.connect(self.put)
         self.get_button.clicked.connect(self.get)
+        self.clear_button.clicked.connect(self.clear)
         self.save_button.clicked.connect(self.save)
         self.load_button.clicked.connect(self.load)
         self.erase_button.clicked.connect(self.erase)
@@ -2282,6 +2285,7 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
         box.addWidget(QLabel('<b>EEPROM:</b>'))
         box.addWidget(self.put_button)
         box.addWidget(self.get_button)
+        box.addWidget(self.clear_button)
         box.addItem(QSpacerItem(0, 1000, QSizePolicy.Expanding,
                                 QSizePolicy.Expanding))
         box.addWidget(QLabel('<b>File:</b>'))
@@ -2308,6 +2312,7 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.start_erase = []
         self.start_put = []
         self.start_get = []
+        self.start_clear = []
         self.start_import = []
         self.start_list_firmware = []
         self.start_update_firmware = []
@@ -2320,6 +2325,7 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.start_check = self.retrieve('configuration>print', menu)
         self.start_put = self.retrieve('configuration>write configuration to eeprom', menu)
         self.start_get = self.retrieve('configuration>read configuration from eeprom', menu)
+        self.start_clear = self.retrieve('clear eeprom memory', menu)
         self.start_save = self.retrieve('configuration>save', menu)
         self.start_load = self.retrieve('configuration>load', menu)
         self.start_erase = self.retrieve('configuration>erase', menu)
@@ -2339,6 +2345,9 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
 
     def get(self):
         self.sigReadRequest.emit(self, 'confget', self.start_get, ['select'])
+
+    def clear(self):
+        self.sigReadRequest.emit(self, 'confclear', self.start_clear, ['select'])
 
     def save(self):
         self.sigReadRequest.emit(self, 'confsave', self.start_save, ['select'])
@@ -2516,12 +2525,27 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
             text += '</table>'
             self.sigDisplayTerminal.emit(title, text)
         elif ident == 'confget' or ident == 'confput':
+            error = False
             text = ''
             for i in range(len(stream)):
+                if 'error' in stream[i].lower():
+                    error = True
                 if 'configuration:' in stream[i].lower():
                     break
             if i > 0:
-                self.sigDisplayTerminal.emit('EEPROM', stream[:i])
+                if error:
+                    self.sigDisplayMessage.emit('\n'.join(stream[:i]))
+                else:
+                    self.sigDisplayTerminal.emit('EEPROM', stream[:i])
+            if success:
+                self.sigUpdate.emit()
+        elif ident == 'confclear':
+            text = ''
+            for i in range(len(stream)):
+                if 'diagnostics:' in stream[i].lower():
+                    break
+            if i > 0:
+                self.sigDisplayMessage.emit('\n'.join(stream[:i]))
             if success:
                 self.sigUpdate.emit()
         else:
@@ -2708,9 +2732,12 @@ class Logger(QWidget):
             else:
                 text.insert(0, s)
         self.clear_input()
+        default = '[Y/' in text[-1]
         text[-1] = text[-1][:text[-1].lower().find(' [y/n] ')]
         r = QMessageBox.question(self, 'LoggerConf', '\n'.join(text),
-                                 QMessageBox.Yes|QMessageBox.No)
+                                 QMessageBox.Yes | QMessageBox.No,
+                                 QMessageBox.Yes if default
+                                 else QMessageBox.No )
         if r == QMessageBox.Yes:
             self.write('y')
         else:
