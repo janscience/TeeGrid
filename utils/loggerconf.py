@@ -1279,7 +1279,7 @@ class PlotRecording(QWidget):
 class BlinkLEDs(ReportButton):
     
     def __init__(self, *args, **kwargs):
-        super().__init__('blink leds', 'LEDs', *args, **kwargs)
+        super().__init__('blink leds', 'Blink', *args, **kwargs)
         
     def read(self, ident, stream, success):
         while len(stream) > 0 and len(stream[0].strip()) == 0:
@@ -1304,11 +1304,13 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         title.setSizePolicy(QSizePolicy.Policy.Preferred,
                             QSizePolicy.Policy.Fixed)
         self.box.addWidget(title, 0, 0, 1, 2)
-        self.ledb = BlinkLEDs(self)
-        self.ledb.sigDisplayTerminal.connect(self.sigDisplayTerminal)
-        self.ledb.sigReadRequest.connect(self.sigReadRequest)
-        self.ledb.setToolTip('Blink available LED pins')
-        self.box.addWidget(self.ledb, 0, 4, Qt.AlignRight)
+        self.blink_button = BlinkLEDs(self)
+        self.blink_button.sigDisplayTerminal.connect(self.sigDisplayTerminal)
+        self.blink_button.sigReadRequest.connect(self.sigReadRequest)
+        self.blink_button.setToolTip('Blink available LED pins')
+        key = QShortcut('Ctrl+B', self)
+        key.activated.connect(self.blink_button.animateClick)
+        self.box.addWidget(self.blink_button, 0, 4, Qt.AlignRight)
         self.box.setRowStretch(0, 1)
         self.row = 1
         self.add('<b>Type</b>', 0)
@@ -1341,7 +1343,7 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.devices_start_get = []
 
     def setup(self, menu):
-        self.ledb.setup(menu)
+        self.blink_button.setup(menu)
         self.retrieve('list led pins', menu)
         self.devices_start_get = self.retrieve('input devices', menu)
         self.sensors_start_get = self.retrieve('sensor devices', menu, False)
@@ -2886,12 +2888,13 @@ class Logger(QWidget):
                     if len(self.input[k].strip()) == 0:
                         self.input = self.input[k:]
                         break
+                self.read_func = self.configure_menu
                 break
             elif '! error: no sd card present' in self.input[k].lower():
                 self.input = self.input[k + 1:]
                 self.set_configfile_state(False)
+                self.read_func = self.configure_menu
                 break
-        self.read_func = self.configure_menu
 
     def configure_menu(self):
         if self.read_state == 0:
