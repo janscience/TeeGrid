@@ -445,11 +445,13 @@ class ReportButton(Interactor, QPushButton, metaclass=InteractorQPushButton):
      
     def setup(self, menu):
         self.start = self.retrieve(self.key, menu)
+        if len(self.start) == 0:
+            self.setVisisble(False)
 
     def run(self):
         self.sigReadRequest.emit(self, 'run', self.start, ['select'])
 
-                
+        
 class PSRAMTest(ReportButton):
     
     def __init__(self, *args, **kwargs):
@@ -1274,6 +1276,23 @@ class PlotRecording(QWidget):
         plot.setYRange(ymin, ymax)
     
         
+class ListLEDs(ReportButton):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__('leds', 'LEDs', *args, **kwargs)
+        
+    def read(self, ident, stream, success):
+        while len(stream) > 0 and len(stream[0].strip()) == 0:
+            del stream[0]
+        if not success:
+            return
+        for i in range(len(stream)):
+            stream[i] = stream[i][4:]
+            if len(stream[i].strip()) == 0:
+                break
+        self.sigDisplayTerminal.emit('LEDs', stream[1:i])
+
+        
 class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     
     sigPlot = Signal()
@@ -1285,7 +1304,12 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         title = QLabel('<b>Periphery</b>', self)
         title.setSizePolicy(QSizePolicy.Policy.Preferred,
                             QSizePolicy.Policy.Fixed)
-        self.box.addWidget(title, 0, 0, 1, 4)
+        self.box.addWidget(title, 0, 0, 1, 3)
+        self.ledb = ListLEDs(self)
+        self.ledb.sigDisplayTerminal.connect(self.sigDisplayTerminal)
+        self.ledb.sigReadRequest.connect(self.sigReadRequest)
+        self.ledb.setToolTip('Show available LED pins')
+        self.box.addWidget(self.ledb, 0, 4, Qt.AlignRight)
         self.box.setRowStretch(0, 1)
         self.row = 1
         self.add('<b>Type</b>', 0)
@@ -1318,6 +1342,7 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.devices_start_get = []
 
     def setup(self, menu):
+        self.ledb.setup(menu)
         self.devices_start_get = self.retrieve('input devices', menu)
         self.sensors_start_get = self.retrieve('sensor devices', menu, False)
         if len(self.devices_start_get) == 0 and (self.sensors_start_get) == 0:
