@@ -2861,13 +2861,12 @@ class Logger(QWidget):
                     if len(self.input[k].strip()) == 0:
                         self.input = self.input[k:]
                         break
-                self.read_func = self.configure_menu
                 break
             elif '! error: no sd card present' in self.input[k].lower():
                 self.input = self.input[k + 1:]
                 self.set_configfile_state(False)
-                self.read_func = self.configure_menu
                 break
+        self.read_func = self.configure_menu
 
     def configure_menu(self):
         if self.read_state == 0:

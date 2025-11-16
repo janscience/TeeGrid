@@ -99,7 +99,7 @@ InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 ESensorsMenu sensors_menu(config, sensors);
 DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock, &gpio);
 BlinkAction blink_info(diagnostic_menu, "LEDs", &blink, &errorblink, &syncblink);
-Menu ampl_info(diagnostic_menu, "Amplifier board", Action::Report);
+Menu ampl_info(diagnostic_menu, "Amplifier board", Action::StreamIO | Action::Report);
 HelpAction help_act(config, "Help");
 
 SensorsLogger logger(aidata, sensors, sdcard, rtclock,
