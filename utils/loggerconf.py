@@ -446,7 +446,7 @@ class ReportButton(Interactor, QPushButton, metaclass=InteractorQPushButton):
     def setup(self, menu):
         self.start = self.retrieve(self.key, menu)
         if len(self.start) == 0:
-            self.setVisisble(False)
+            self.setVisible(False)
 
     def run(self):
         self.sigReadRequest.emit(self, 'run', self.start, ['select'])
@@ -1276,22 +1276,21 @@ class PlotRecording(QWidget):
         plot.setYRange(ymin, ymax)
     
         
-class ListLEDs(ReportButton):
+class BlinkLEDs(ReportButton):
     
     def __init__(self, *args, **kwargs):
-        super().__init__('leds', 'LEDs', *args, **kwargs)
+        super().__init__('blink leds', 'LEDs', *args, **kwargs)
         
     def read(self, ident, stream, success):
         while len(stream) > 0 and len(stream[0].strip()) == 0:
             del stream[0]
-        if not success:
+        if len(stream) == 0:
             return
         for i in range(len(stream)):
-            stream[i] = stream[i][4:]
             if len(stream[i].strip()) == 0:
                 break
-        self.sigDisplayTerminal.emit('LEDs', stream[1:i])
-
+        self.sigDisplayTerminal.emit(stream[0], stream[1:i])
+    
         
 class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     
@@ -1304,11 +1303,11 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         title = QLabel('<b>Periphery</b>', self)
         title.setSizePolicy(QSizePolicy.Policy.Preferred,
                             QSizePolicy.Policy.Fixed)
-        self.box.addWidget(title, 0, 0, 1, 3)
-        self.ledb = ListLEDs(self)
+        self.box.addWidget(title, 0, 0, 1, 2)
+        self.ledb = BlinkLEDs(self)
         self.ledb.sigDisplayTerminal.connect(self.sigDisplayTerminal)
         self.ledb.sigReadRequest.connect(self.sigReadRequest)
-        self.ledb.setToolTip('Show available LED pins')
+        self.ledb.setToolTip('Blink available LED pins')
         self.box.addWidget(self.ledb, 0, 4, Qt.AlignRight)
         self.box.setRowStretch(0, 1)
         self.row = 1
@@ -1343,6 +1342,7 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
 
     def setup(self, menu):
         self.ledb.setup(menu)
+        self.retrieve('list led pins', menu)
         self.devices_start_get = self.retrieve('input devices', menu)
         self.sensors_start_get = self.retrieve('sensor devices', menu, False)
         if len(self.devices_start_get) == 0 and (self.sensors_start_get) == 0:

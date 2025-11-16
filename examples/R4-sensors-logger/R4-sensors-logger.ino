@@ -15,7 +15,7 @@
 #include <SDCardMenu.h>
 #include <ESensorsMenu.h>
 #include <DiagnosticMenu.h>
-#include <BlinkAction.h>
+#include <BlinkMenu.h>
 #include <TeensyBoard.h>
 #include <SensorsLogger.h>
 #include <ESensors.h>
@@ -98,7 +98,7 @@ FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 ESensorsMenu sensors_menu(config, sensors);
 DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock, &gpio);
-BlinkAction blink_info(diagnostic_menu, "LEDs", &blink, &errorblink, &syncblink);
+BlinkMenu blink_menu(diagnostic_menu, &blink, &errorblink, &syncblink);
 Menu ampl_info(diagnostic_menu, "Amplifier board", Action::StreamIO | Action::Report);
 HelpAction help_act(config, "Help");
 
