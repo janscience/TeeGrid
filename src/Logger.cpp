@@ -114,31 +114,6 @@ void Logger::halt(int errorcode, Stream &stream) {
 }
 
 
-void Logger::flashLEDs() {
-  if (ErrorLED.available() || SyncLED.available()) {
-    StatusLED.switchOff();
-    delay(100);
-    StatusLED.switchOn();
-    delay(100);
-    StatusLED.switchOff();
-    delay(100);
-    if (ErrorLED.available()) {
-      ErrorLED.switchOn();
-      delay(100);
-      ErrorLED.switchOff();
-      delay(100);
-    }
-    if (SyncLED.available()) {
-      SyncLED.switchOn();
-      delay(100);
-      SyncLED.switchOff();
-      delay(100);
-    }
-    StatusLED.switchOn();
-  }
-}
-
-
 bool Logger::check(Config &config, bool check_backup) {
   // check for enough space:
   if (!SDCard0->check(1e9)) {

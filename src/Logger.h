@@ -28,9 +28,6 @@ public:
 
   // Halt with error message and blinking.
   void halt(int errorcode=0, Stream &stream=Serial);
-  
-  // Flash all available LEDs.
-  void flashLEDs();
 
   // Check accessibility of SD cards.
   // Run menu and halt if the main SD card can not be written.
