@@ -73,7 +73,7 @@ FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
 DiagnosticMenu diagnostic_menu(config, sdcard, &deviceid,
                                &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
-Menu ampl_info(diagnostic_menu, "Amplifier board");
+Menu ampl_info(diagnostic_menu, "Amplifier board", Action::StreamIO | Action::Report);
 HelpAction help_act(config, "Help");
 
 Logger logger(aidata, sdcard, rtclock, blink);
