@@ -385,6 +385,8 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
                                          self.start_get, ['select'])
 
     def read(self, ident, stream, success):
+        if not success:
+            return
         if ident != 'rtclock':
             return
         for s in stream:
@@ -558,16 +560,12 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                                  self.device_id_start_get, ['select'])
 
     def read(self, ident, stream, success):
+        if not success:
+            return
         if 'eepromhexdump' in ident:
-            for i in range(10, len(stream)):
-                if len(stream[i].strip()) == 0:
-                    del stream[i:]
-                    self.sigDisplayTerminal.emit('EEPROM memory', stream)
-                    break
+            self.sigDisplayTerminal.emit('EEPROM memory', stream)
             return
         if 'deviceid' in ident:
-            while len(stream) > 0 and len(stream[0].strip()) == 0:
-                del stream[0]
             deviceid = False
             value = 'None'
             source = ''
@@ -599,14 +597,10 @@ class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                 else:
                     self.device_id.setText('<b>' + value + '</b>')
             return
-        r = 0
         for s in stream:
-            if r > 0 and len(s.strip()) == 0:
-                break
             x = s.split(':')
             if len(x) < 2 or len(x[1].strip()) == 0:
                 continue
-            r += 1
             label = x[0].strip()
             value = ':'.join(x[1:]).strip()
             if ident == 'psram':
@@ -692,13 +686,9 @@ class CheckSDCard(ReportButton):
                          *args, **kwargs)
         
     def read(self, ident, stream, success):
-        while len(stream) > 0 and len(stream[0].strip()) == 0:
-            del stream[0]
         present = False
         text = ''
         for s in stream:
-            if len(s.strip()) == 0:
-                break
             text += s
             text += '\n'
             if 'present and writable' in s:
@@ -715,8 +705,6 @@ class FormatSDCard(ReportButton):
         super().__init__(key, text, *args, **kwargs)
         
     def read(self, ident, stream, success):
-        while len(stream) > 0 and len(stream[0].strip()) == 0:
-            del stream[0]
         for k in range(len(stream)):
             if stream[k].lower().startswith('read file'):
                 i = stream[k].lower().find('on sd card ...')
@@ -825,8 +813,6 @@ class CleanDir(ReportButton):
         super().__init__('clean recent recordings', 'Clean', *args, **kwargs)
         
     def read(self, ident, stream, success):
-        while len(stream) > 0 and len(stream[0].strip()) == 0:
-            del stream[0]
         if len(stream) == 0:
             return
         title = None
@@ -838,8 +824,6 @@ class CleanDir(ReportButton):
                     return
                 if 'clean directory on ' in s.lower():
                     title = s.strip()
-            elif len(s.strip()) == 0:
-                break
             else:
                 text += s.rstrip()
                 text += '\n'
@@ -872,8 +856,6 @@ class Benchmark(ReportButton):
             else:
                 text += stream[k].rstrip()
                 text += '\n'
-                if 'done' in stream[k].lower():
-                    break
                 if 'write speed and latency' in stream[k].lower():
                     start = k + 3
                 if start is not None and k >= start:
@@ -893,8 +875,6 @@ class InputConfiguration(ReportButton):
                          *args, **kwargs)
         
     def read(self, ident, stream, success):
-        while len(stream) > 0 and len(stream[0].strip()) == 0:
-            del stream[0]
         if not success:
             return
         if len(stream) == 0:
@@ -952,8 +932,6 @@ class InputData(ReportButton):
     def read(self, ident, stream, success):
         if ident != 'getdata':
             return
-        while len(stream) > 0 and len(stream[0].strip()) == 0:
-            del stream[0]
         if not success:
             return
         if len(stream) == 0:
@@ -980,8 +958,6 @@ class InputData(ReportButton):
             return
         data = []
         for s in stream:
-            if len(s.strip()) == 0:
-                break
             try:
                 frame = [int(c.strip()) for c in s.split(';')]
                 data.append(frame)
@@ -1282,14 +1258,9 @@ class BlinkLEDs(ReportButton):
         super().__init__('blink leds', 'Blink', *args, **kwargs)
         
     def read(self, ident, stream, success):
-        while len(stream) > 0 and len(stream[0].strip()) == 0:
-            del stream[0]
         if len(stream) == 0:
             return
-        for i in range(len(stream)):
-            if len(stream[i].strip()) == 0:
-                break
-        self.sigDisplayTerminal.emit(stream[0], stream[1:i])
+        self.sigDisplayTerminal.emit(stream[0], stream[1:])
     
         
 class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
@@ -1368,16 +1339,12 @@ class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.box.addWidget(label, self.row, col)
 
     def read(self, ident, stream, success):
-        while len(stream) > 0 and len(stream[0].strip()) == 0:
-            del stream[0]
         if not success:
             return
         if int(stream[0].split()[0]) == 0:
             return
         first_input = True
         for s in stream[1:]:
-            if len(s.strip()) == 0:
-                break
             ss = s.split()
             dev_type = ss[0]
             self.add(dev_type, 0)
@@ -1582,22 +1549,16 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         self.box.addWidget(label, self.row, col, align)
 
     def read(self, ident, stream, success):
-        while len(stream) > 0 and len(stream[0].strip()) == 0:
-            del stream[0]
         if not success:
             return
         if ident == 'request':
             for s in stream:
-                if len(s.strip()) == 0:
-                    break
                 if 'are available after' in s.lower():
                     delaystr = s.strip().rstrip('.').split()[-1]
                     self.delay = int(delaystr.replace('ms', ''))
             return
         elif ident == 'values':
             for s in stream:
-                if len(s.strip()) == 0:
-                    break
                 if '=' not in s:
                     continue
                 name, value = [sx.strip() for sx in s.split('=')]
@@ -1624,8 +1585,6 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.plotb.setEnabled(False)
             return
         for s in stream[1:]:
-            if len(s.strip()) == 0:
-                break
             ss = s.split()
             if 'at' not in ss and 'resolution' not in ss:
                 continue
@@ -1797,21 +1756,19 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                         ns += float(s[s.find('(') + 1:s.find(' MB)')])
             return nf, ns
 
+        if not success:
+            return
         if ident == 'recordings':
             self.nrecordings, self.srecordings = num_files(stream)
         elif ident == 'root':
             self.nroot, self.sroot = num_files(stream)
         elif ident == 'sdcard':
-            r = 0
             items = []
             available = None
             for s in stream:
-                if r > 0 and len(s.strip()) == 0:
-                    break
                 x = s.split(':')
                 if len(x) < 2 or len(x[1].strip()) == 0:
                     continue
-                r += 1
                 label = x[0].strip()
                 value = ':'.join(x[1:]).strip()
                 if label.lower() == 'available':
@@ -2417,8 +2374,6 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.sigReadRequest.emit(self, 'run', ['q'], ['halt'])
 
     def read(self, ident, stream, success):
-        while len(stream) > 0 and len(stream[0].strip()) == 0:
-            del stream[0]
         if ident == 'run':
             if len(stream) != self.stream_len:
                 self.sigDisplayTerminal.emit('Run logger', stream)
@@ -2472,14 +2427,13 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
                                              self.update_stream + stream)
         if not ident.startswith('conf'):
             return
+        if not success:
+            return
         if ident == 'confcheck':
             top_key = None
             text = '<style type="text/css"> td { padding: 0 15px; }</style>'
             text += '<table>'
             for s in stream:
-                if 'configuration:' in s.lower():
-                    self.sigDisplayTerminal.emit('Current configuration on the logger', text)
-                    break
                 text += '<tr>'
                 cs = s.split(':')
                 if len(cs) > 1 and len(cs[1].strip()) > 0:
@@ -2497,11 +2451,11 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
                     text += f'<td colspan=4><b>{top_key}</b></td>'
                 text += '</tr>'
             text += '</table>'
+            self.sigDisplayTerminal.emit('Current configuration on the logger',
+                                         text)
         elif ident == 'confimport':
             top_key = None
             for s in stream:
-                if 'configuration:' in s.lower():
-                    break
                 cs = s.split(':')
                 if len(cs) > 1 and len(cs[1].strip()) > 0:
                     key = cs[0].strip()
@@ -2511,28 +2465,21 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
                 else:
                     top_key = cs[0].strip()
         elif ident == 'confexport':
-            if success:
-                fname = 'logger.cfg' if self.config_file is None else self.config_file
-                file_path, _ = QFileDialog.getSaveFileName(self,
-                                                           'Save configuration file',
-                                                           fname,
-                                                           'configuration files (*.cfg)')
-                if not file_path:
-                    return
-                with open(file_path, 'w') as df:
-                    for s in stream:
-                        if len(s.strip()) == 0:
-                            break
-                        df.write(s)
-                        df.write('\n')
+            fname = 'logger.cfg' if self.config_file is None else self.config_file
+            file_path, _ = QFileDialog.getSaveFileName(self,
+                                                       'Save configuration file',
+                                                       fname,
+                                                       'configuration files (*.cfg)')
+            if not file_path:
+                return
+            with open(file_path, 'w') as df:
+                for s in stream:
+                    df.write(s)
+                    df.write('\n')
         elif ident == 'confload':
-            while len(stream) > 0 and len(stream[0].strip()) == 0:
-                del stream[0]
             if len(stream) > 0:
                 if 'not found' in stream[0]:
                     self.sigDisplayMessage.emit(stream[0].strip())
-                    return
-                if 'configuration:' in stream[0].lower():
                     return
                 title = stream[0].strip()
             text = '<style type="text/css"> td { padding: 0 15px; }</style>'
@@ -2553,33 +2500,21 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
             self.sigDisplayTerminal.emit(title, text)
         elif ident == 'confget' or ident == 'confput':
             error = False
-            text = ''
-            for i in range(len(stream)):
-                if 'error' in stream[i].lower():
+            for s in stream:
+                if 'error' in s:
                     error = True
-                if 'configuration:' in stream[i].lower():
                     break
-            if i > 0:
-                if error:
-                    self.sigDisplayMessage.emit('\n'.join(stream[:i]))
-                else:
-                    self.sigDisplayTerminal.emit('EEPROM', stream[:i])
-            if success:
-                self.sigUpdate.emit()
+            if error:
+                self.sigDisplayMessage.emit('\n'.join(stream))
+            else:
+                self.sigDisplayTerminal.emit('EEPROM', stream)
+            self.sigUpdate.emit()
         elif ident == 'confclear':
-            text = ''
-            for i in range(len(stream)):
-                if 'diagnostics:' in stream[i].lower():
-                    break
-            if i > 0:
-                self.sigDisplayMessage.emit('\n'.join(stream[:i]))
-            if success:
-                self.sigUpdate.emit()
+            self.sigDisplayMessage.emit('\n'.join(stream))
+            self.sigUpdate.emit()
         else:
             text = ''
             for s in stream:
-                if 'configuration:' in s.lower():
-                    break
                 if ident == 'confsave' and \
                    s.strip().lower().startswith('saved'):
                     self.sigConfigFile.emit(True)
@@ -2590,8 +2525,7 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
                 text += '\n'
             if len(text) > 0:
                 self.sigDisplayMessage.emit(text)
-            if success:
-                self.sigUpdate.emit()
+            self.sigUpdate.emit()
 
         
 class Logger(QWidget):
@@ -2750,21 +2684,13 @@ class Logger(QWidget):
         QMessageBox.information(self, 'LoggerConf', text)
 
     def ask(self, stream):
-        text = []
-        for s in reversed(stream):
-            if len(s.strip()) == 0:
-                break
-            if s.strip() == '.':
-                text.insert(0, '')
-            else:
-                text.insert(0, s)
-        self.clear_input()
-        default = '[Y/' in text[-1]
-        text[-1] = text[-1][:text[-1].lower().find(' [y/n] ')]
-        r = QMessageBox.question(self, 'LoggerConf', '\n'.join(text),
+        default = '[Y/' in stream[-1]
+        stream[-1] = stream[-1][:stream[-1].lower().find(' [y/n] ')]
+        r = QMessageBox.question(self, 'LoggerConf', '\n'.join(stream),
                                  QMessageBox.Yes | QMessageBox.No,
                                  QMessageBox.Yes if default
                                  else QMessageBox.No )
+        self.clear_input()
         if r == QMessageBox.Yes:
             self.write('y')
         else:
@@ -2970,6 +2896,7 @@ class Logger(QWidget):
                 self.menu_iter.pop()
                 self.menu_ids.pop()
                 if len(self.menu_iter) == 0:
+                    self.write('gui on')
                     self.init_menu()
                     self.clear_input()
                     self.read_func = self.parse_request_stack
@@ -3124,22 +3051,39 @@ class Logger(QWidget):
 
     def parse_read_request(self):
         if self.read_state == 0:
+            # write menu entry:
             self.clear_input()
             self.write(self.request_start[0])
             self.request_start.pop(0)
             if len(self.request_start) > 0:
-                self.read_state = 4
+                self.read_state = 1
             else:
                 self.request_start = None
-                self.read_state += 1
+                self.read_state = 2
         elif self.read_state == 1:
+            # wait for next menu:
+            stop_str = 'select'
+            if self.request_type == 'transmit' and len(self.request_start) == 1:
+                stop_str = 'new value'
+            if len(self.input) > 0 and \
+               stop_str in self.input[-1].lower():
+                self.read_state = 0
+        elif self.read_state == 2:
+            # erase empty line in input:
+            while len(self.input) > 0 and len(self.input[0].strip()) == 0:
+                del self.input[0]
+            self.read_state = 3
+        elif self.read_state == 3:
+            # ask question:
             if self.request_type == 'read' and len(self.input) > 0 and \
                self.input[-1].lower().endswith(' [y/n] '):
                 self.ask(self.input)
-                self.read_state = 1
+                self.read_state = 3
+            # finish input:
             elif self.request_stop is None or \
                len(self.request_stop) == 0:
-                self.read_state += 1
+                self.read_state = 4
+            # check for stop string:
             elif len(self.input) > 0:
                 last_line = self.input[-1].lower()
                 if len(last_line.strip()) == 0 and len(self.input) > 1:
@@ -3148,36 +3092,36 @@ class Logger(QWidget):
                     if self.request_stop[k] in last_line:
                         self.request_stop = None
                         self.request_stop_index = k
-                        self.read_state += 1
+                        self.read_state = 4
                         break
+            # process input:
             if self.request_ident[:3] == 'run' and \
                self.request_target is not None and \
                self.request_stop_index != 0:
                     self.request_target.read(self.request_ident,
                                              self.input,
                                              self.request_stop_index == 0)
-        elif self.read_state == 2:
+        elif self.read_state == 4:
+            # final processing of input:
             if self.request_target is not None:
+                if self.request_stop_index == 0:
+                    del self.input[-1]
+                    if len(self.input) > 0 and len(self.input[-1].strip()) == 0:
+                        del self.input[-1]
                 self.request_target.read(self.request_ident,
                                          self.input,
                                          self.request_stop_index == 0)
                 self.request_target = None
             if self.request_type == 'transmit' and self.request_stop_index == 1:
                 self.write('keepthevalue')
-            self.read_state += 1
-        elif self.read_state == 3:
+            self.read_state = 5
+        elif self.read_state == 5:
+            # go back to root menu:
             self.clear_input()
             if self.request_end:
                 self.write('h')
             self.request_type = None
             self.read_func = self.parse_request_stack
-        elif self.read_state == 4:
-            stop_str = 'select'
-            if self.request_type == 'transmit' and len(self.request_start) == 1:
-                stop_str = 'new value'
-            if len(self.input) > 0 and \
-               stop_str in self.input[-1].lower():
-                self.read_state = 0
 
     def write_request(self, msg, start):
         if len(start) == 0:
