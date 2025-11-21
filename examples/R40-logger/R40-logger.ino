@@ -8,6 +8,7 @@
 #include <Blink.h>
 #include <MicroConfig.h>
 #include <LoggerSettings.h>
+#include <BlinkSettings.h>
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
 #include <InputMenu.h>
@@ -37,7 +38,7 @@
 
 #define LED_PIN       31
 
-#define SOFTWARE      "TeeGrid R40-logger v3.0"
+#define SOFTWARE      "TeeGrid R40-logger v3.1"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -53,9 +54,9 @@ SDCard sdcard;
 
 Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
-                        FILE_SAVE_TIME, INITIAL_DELAY,
-			RANDOM_BLINKS, BLINK_TIMEOUT);
+                        FILE_SAVE_TIME, INITIAL_DELAY);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
+BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT);
 
 RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
@@ -104,8 +105,8 @@ void setup() {
   R40SetupPCMs(aidata, aisettings, pcms, NPCMS);
   logger.startInput(aisettings.nchannels());
   logger.setup(settings.path(), settings.fileName(),
-               SOFTWARE, settings.randomBlinks(),
-	       settings.blinkTimeout());
+               SOFTWARE, blinksettings.randomBlinks(),
+	       blinksettings.blinkTimeout());
   logger.initialDelay(settings.initialDelay());
   diagnostic_menu.updateCPUSpeed();
   logger.start(settings.fileTime(), config, ampl_info);

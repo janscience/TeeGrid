@@ -8,6 +8,7 @@
 #include <Blink.h>
 #include <MicroConfig.h>
 #include <LoggerSettings.h>
+#include <BlinkSettings.h>
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
 #include <InputMenu.h>
@@ -44,7 +45,7 @@ int DIPPins[] = { 34, 35, 36, 37, -1 };
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid R4-logger v3.4"
+#define SOFTWARE      "TeeGrid R4-logger v3.6"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -62,9 +63,9 @@ SDCard sdcard;
 
 Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
-                        FILE_SAVE_TIME, INITIAL_DELAY,
-			RANDOM_BLINKS, BLINK_TIMEOUT);
+                        FILE_SAVE_TIME, INITIAL_DELAY);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
+BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT);
 
 RTClockMenu datetime_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
@@ -82,8 +83,8 @@ Logger logger(aidata, sdcard, rtclock, blink);
 void setupMenu() {
   settings.disable("Path", settings.StreamInput);
   settings.disable("FileName", settings.StreamInput);
-  settings.enable("RandomBlinks");
-  settings.enable("BlinkTimeout");
+  blinksettings.enable("RandomBlinks");
+  blinksettings.enable("BlinkTimeout");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
@@ -128,8 +129,8 @@ void setup() {
   R4SetupPCMs(aidata, aisettings, pcms, NPCMS);
   logger.startInput(aisettings.nchannels());
   logger.setup(settings.path(), settings.fileName(),
-               SOFTWARE, settings.randomBlinks(),
-    	       settings.blinkTimeout());
+               SOFTWARE, blinksettings.randomBlinks(),
+    	       blinksettings.blinkTimeout());
   logger.initialDelay(settings.initialDelay());
   diagnostic_menu.updateCPUSpeed();
   logger.start(settings.fileTime(), config, ampl_info);

@@ -69,8 +69,6 @@ Logger logger(aidata, sdcard, rtclock, blink);
 void setupMenu() {
   settings.disable("Path", settings.StreamInput);
   settings.disable("FileName", settings.StreamInput);
-  settings.disable("RandomBlinks");
-  settings.disable("BlinkTimeout");
   aisettings.disable("Reference");
   aisettings.enable("Pregain");
   sdcard_menu.CleanRecsAct.setRemove(true);

@@ -8,6 +8,7 @@
 #include <Blink.h>
 #include <MicroConfig.h>
 #include <LoggerSettings.h>
+#include <BlinkSettings.h>
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
 #include <InputMenu.h>
@@ -58,7 +59,7 @@ int DIPPins[] = { 34, 35, 36, 37, -1 }; // Device ID pins:
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid R4-sensors-logger v3.5"
+#define SOFTWARE      "TeeGrid R4-sensors-logger v3.6"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -87,9 +88,10 @@ LightBH1750 light2(&sensors);
 Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
                         FILE_SAVE_TIME, INITIAL_DELAY,
-			RANDOM_BLINKS, BLINK_TIMEOUT,
-			SENSORS_INTERVAL, LIGHT_THRESHOLD);
+			SENSORS_INTERVAL);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
+BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT,
+			    LIGHT_THRESHOLD);
 
 RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
@@ -124,12 +126,12 @@ void setupMenu() {
   settings.disable("Path", settings.StreamInput);
   settings.disable("FileName", settings.StreamInput);
   if (syncblink.nPins() > 1) {
-    settings.disable("RandomBlinks");
-    settings.setRandomBlinks(true);
+    blinksettings.disable("RandomBlinks");
+    blinksettings.setRandomBlinks(true);
   }
   else
-    settings.enable("RandomBlinks");
-  settings.enable("BlinkTimeout");
+    blinksettings.enable("RandomBlinks");
+  blinksettings.enable("BlinkTimeout");
   settings.enable("SensorsInterval");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
@@ -179,7 +181,7 @@ void setupSensors(int temp_pin) {
   tempsts.setPrecision(STS4x_HIGH);
   logger.setupSensors();
   if (light1.available() || light2.available())
-    settings.enable("LightThreshold");
+    blinksettings.enable("LightThreshold");
 }
 
 
@@ -194,7 +196,7 @@ void setup() {
   bool R41b = setupBoard();
   setupSensors(R41b ? TEMP_PIN_R41b : TEMP_PIN_R41);
   logger.configure(config);
-  logger.startSensors(settings.sensorsInterval(), settings.lightThreshold());
+  logger.startSensors(settings.sensorsInterval(), blinksettings.lightThreshold());
   logger.reportBlink();
   logger.setCPUSpeed(aisettings.rate());
   deviceid.setID(settings.deviceID());
@@ -204,8 +206,8 @@ void setup() {
   R4SetupPCMs(aidata, aisettings, pcms, NPCMS);
   logger.startInput(aisettings.nchannels());
   logger.setup(settings.path(), settings.fileName(),
-               SOFTWARE, settings.randomBlinks(),
-	       settings.blinkTimeout());
+               SOFTWARE, blinksettings.randomBlinks(),
+	       blinksettings.blinkTimeout());
   logger.initialDelay(settings.initialDelay());
   diagnostic_menu.updateCPUSpeed();
   logger.start(settings.fileTime(), config, ampl_info);

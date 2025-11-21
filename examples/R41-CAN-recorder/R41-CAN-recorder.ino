@@ -126,8 +126,6 @@ void setupCAN() {
 
 void setup() {
   blink.switchOn();
-  settings.disable("RandomBlinks");
-  settings.disable("BlinkTimeout");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   Serial.begin(9600);

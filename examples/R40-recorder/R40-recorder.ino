@@ -9,6 +9,7 @@
 #include <PushButtons.h>
 #include <MicroConfig.h>
 #include <LoggerSettings.h>
+#include <BlinkSettings.h>
 #include <InputTDMSettings.h>
 #include <SetupPCM.h>
 #include <InputMenu.h>
@@ -38,7 +39,7 @@
 
 #define BUTTON_PIN    30
 
-#define SOFTWARE      "TeeGrid R40-recorder v2.0"
+#define SOFTWARE      "TeeGrid R40-recorder v2.1"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -55,8 +56,9 @@ SDCard sdcard;
 
 Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
-                        FILE_SAVE_TIME, 0, RANDOM_BLINKS);
+                        FILE_SAVE_TIME, 0);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
+BlinkSettings blinksettings(config, RANDOM_BLINKS);
 
 RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
@@ -74,7 +76,7 @@ void setupMenu() {
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
-  settings.disable("BlinkTimeout");
+  blinksettings.disable("BlinkTimeout");
   sdcard_menu.CleanRecsAct.setRemove(true);
 }
 
@@ -117,7 +119,7 @@ void setup() {
   R40SetupPCMs(aidata, aisettings, pcms, NPCMS);
   logger.startInput(aisettings.nchannels());
   logger.setup(settings.path(), settings.fileName(),
-               SOFTWARE, settings.randomBlinks());
+               SOFTWARE, blinksettings.randomBlinks());
   buttons.add(BUTTON_PIN, INPUT_PULLUP, toggle_save);
   logger.initialDelay(0.0);
   diagnostic_menu.updateCPUSpeed();

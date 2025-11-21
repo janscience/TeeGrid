@@ -73,8 +73,7 @@ IlluminanceTSL2591 illum(&tsl, &sensors);
 
 Config config("teegrid.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
-                        FILE_SAVE_TIME, INITIAL_DELAY, false, 0.0,
-			SENSORS_INTERVAL);
+                        FILE_SAVE_TIME, INITIAL_DELAY, SENSORS_INTERVAL);
 InputADCSettings aisettings(config, SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE, PREGAIN);
 RTClockMenu rtclock_menu(config, rtclock);
@@ -92,8 +91,6 @@ SensorsLogger logger(aidata, sensors, sdcard, rtclock, blink);
 void setupMenu() {
   settings.disable("Path", settings.StreamInput);
   settings.disable("FileName", settings.StreamInput);
-  settings.disable("RandomBlinks");
-  settings.disable("BlinkTimeout");
   settings.enable("SensorsInterval");
   aisettings.disable("Reference");
   aisettings.enable("Pregain");

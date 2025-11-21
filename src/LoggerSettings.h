@@ -1,10 +1,10 @@
 /*
   LoggerSettings - common configurable settings for loggers (file name, path, etc.).
-  Created by Jan Benda, November 25th, 2025.
+  Created by Jan Benda, November 15th, 2025.
 */
 
-#ifndef Settings_h
-#define Settings_h
+#ifndef LoggerSettings_h
+#define LoggerSettings_h
 
 
 #include <MicroConfig.h>
@@ -20,8 +20,7 @@ public:
 		 const char *path="LABELID2-SDATETIMEM",
 		 const char *filename="LABELID2-SDATETIME",
 		 float filetime=10.0, float initialdelay=0.0,
-		 bool randomblinks=false, float blinktimeout=0.0,
-		 float sensorsinterval=30.0, float lightthreshold=0.0);
+		 float sensorsinterval=30.0);
   
   static const size_t MaxStr = 64;
 
@@ -63,30 +62,12 @@ public:
 
   /* Set initial delay to time seconds. */
   void setInitialDelay(float time);
-
-  /* Whether LED should blink randomly and be stored to file. */
-  bool randomBlinks() const { return RandomBlinks.value(); };
-
-  /* Set whether LED should blink randomly. */
-  void setRandomBlinks(bool random);
-
-  /* Time in seconds after which the status LEDs are switched off. */
-  float blinkTimeout() const { return BlinkTimeout.value(); };
-
-  /* Set time after which the status LEDs are switched off to time seconds. */
-  void setBlinkTimeout(float time);
   
   /* Time in seconds between sensor readings. */
   float sensorsInterval() const { return SensorsInterval.value(); };
 
   /* Set time between sensor readings to time seconds. */
   void setSensorsInterval(float time);
-  
-  /* Threshold in lux for turing of status and syn LEDs. */
-  float lightThreshold() const { return LightThreshold.value(); };
-
-  /* Set threshold for turing of LEDs to thresh lux. */
-  void setLightThreshold(float thresh);
 
 
 protected:
@@ -97,10 +78,7 @@ protected:
   StringParameter<MaxStr> FileName;
   NumberParameter<float> FileTime;
   NumberParameter<float> InitialDelay;
-  BoolParameter RandomBlinks;
-  NumberParameter<float> BlinkTimeout;
   NumberParameter<float> SensorsInterval;
-  NumberParameter<float> LightThreshold;
   
 };
 

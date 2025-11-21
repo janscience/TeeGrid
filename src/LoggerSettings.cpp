@@ -5,8 +5,7 @@
 LoggerSettings::LoggerSettings(Menu &menu, const char *label, int deviceid,
 			       const char *path, const char *filename,
 			       float filetime, float initialdelay,
-			       bool randomblinks, float blinktimeout,
-			       float sensorsinterval, float lightthreshold) :
+			       float sensorsinterval) :
   Menu(menu, "Settings"),
   Label(*this, "Label", label),
   ID(*this, "DeviceID", deviceid, -1, 127, "%d"),
@@ -14,13 +13,10 @@ LoggerSettings::LoggerSettings(Menu &menu, const char *label, int deviceid,
   FileName(*this, "FileName", filename),
   FileTime(*this, "FileTime", filetime, 1.0, 8640.0, "%.0f", "s"),
   InitialDelay(*this, "InitialDelay", initialdelay, 0.0, 1e8, "%.0f", "s"),
-  RandomBlinks(*this, "RandomBlinks", randomblinks),
-  BlinkTimeout(*this, "BlinkTimeout", blinktimeout, 0.0, 1e8, "%.0f", "s"),
-  SensorsInterval(*this, "SensorsInterval", sensorsinterval, 1.0, 1e8, "%.0f", "s"),
-  LightThreshold(*this, "LightThreshold", lightthreshold, 0.0, 1e8, "%.0f", "lx") {
+  SensorsInterval(*this, "SensorsInterval", sensorsinterval, 1.0, 1e8, "%.0f", "s")
+ {
   ID.setSpecial(-1, "device");
   SensorsInterval.disable();
-  LightThreshold.disable();
 }
 
 
@@ -68,23 +64,7 @@ void LoggerSettings::setInitialDelay(float time) {
 }
 
 
-void LoggerSettings::setRandomBlinks(bool random) {
-  RandomBlinks.setBoolValue(random);
-}
-
-
-void LoggerSettings::setBlinkTimeout(float time) {
-  BlinkTimeout.setValue(time);
-}
-
-
 void LoggerSettings::setSensorsInterval(float time) {
   SensorsInterval.setValue(time);
 }
-
-
-void LoggerSettings::setLightThreshold(float thresh) {
-  LightThreshold.setValue(thresh);
-}
-
 
