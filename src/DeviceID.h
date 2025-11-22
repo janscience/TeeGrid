@@ -49,6 +49,10 @@ public:
   // Set the device identifier to id.
   void setID(int id);
 
+  // Return the maximum possible value of the device ID
+  // (two to the power of number of pins if pins are available, otherwise 0).
+  int maxid() const;
+
   // Write device identifier to stream.
   void write(Stream &stream=Serial, size_t indent=0,
 	     size_t indent_delta=4) const;

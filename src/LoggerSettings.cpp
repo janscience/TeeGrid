@@ -42,14 +42,12 @@ void LoggerSettings::setFileName(const char *fname) {
 
 void LoggerSettings::preparePaths(const DeviceID &deviceid) {
   // path:
-  String s = Path.value();
-  s.replace("LABEL", Label.value());
-  s = deviceid.makeStr(s);
+  String s = SDCard::preparePath(Path.value(), deviceid.id(),
+				 deviceid.maxid(), Label.value());
   Path.setValue(s.c_str());
   // filename:
-  s = FileName.value();
-  s.replace("LABEL", Label.value());
-  s = deviceid.makeStr(s);
+  s = SDCard::preparePath(FileName.value(), deviceid.id(),
+			  deviceid.maxid(), Label.value());
   FileName.setValue(s.c_str());
 }
 

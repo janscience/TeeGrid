@@ -20,6 +20,14 @@ void DeviceID::setID(int id) {
 }
 
 
+int DeviceID::maxid() const {
+  if (NPins > 0)
+    return 1 << NPins;
+  else
+    return 0;
+}
+
+
 void DeviceID::write(Stream &stream, size_t indent,
 		     size_t indent_delta) const {
   char ss[20];
