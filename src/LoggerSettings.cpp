@@ -21,7 +21,7 @@ LoggerSettings::LoggerSettings(Menu &menu, const char *label, int deviceid,
 
 
 void LoggerSettings::setLabel(const char *label) {
-  Path.setValue(label);
+  Label.setValue(label);
 }
 
 								
