@@ -28,6 +28,7 @@
 
 
 #include <Arduino.h>
+#include <MicroConfig.h>
 
 
 class DeviceID {

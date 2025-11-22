@@ -2,7 +2,6 @@
 #include <InputADC.h>
 #include <SDCard.h>
 #include <RTClockDS1307.h>
-#include <DeviceID.h>
 #include <Blink.h>
 #include <TestSignals.h>
 #include <MicroConfig.h>
@@ -46,7 +45,6 @@ DATA_BUFFER(AIBuffer, NAIBuffer, 256*256)
 InputADC aidata(AIBuffer, NAIBuffer, channels0, channels1);
 
 RTClockDS1307 rtclock;
-DeviceID deviceid(DEVICEID);
 Blink blink("status", LED_BUILTIN);
 SDCard sdcard;
 
@@ -92,9 +90,8 @@ void setup() {
   printTeeGridBanner(SOFTWARE);
   setupBoard();
   logger.configure(config);
-  deviceid.setID(settings.deviceID());
   aisettings.configure(&aidata);
-  settings.preparePaths(deviceid);
+  settings.preparePaths();
   setupTestSignals(signalPins, PULSE_FREQUENCY);
   logger.startInput();
   logger.setup(settings.path(), settings.fileName(), SOFTWARE);

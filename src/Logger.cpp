@@ -11,12 +11,12 @@
 #endif
 
 
-Logger::Logger(Input &aiinput, SDCard &sdcard0,
+Logger::Logger(Input &aiinput, SDCard &sdcard,
 	       RTClock &rtclock, Blink &blink) :
   AIInput(aiinput),
-  SDCard0(&sdcard0),
+  SDCard0(&sdcard),
   SDCard1(0),
-  File0(sdcard0, aiinput, 5),
+  File0(sdcard, aiinput, 5),
   File1(),
   Clock(rtclock),
   NoBlink(""),
@@ -35,13 +35,13 @@ Logger::Logger(Input &aiinput, SDCard &sdcard0,
 }
 
 
-Logger::Logger(Input &aiinput, SDCard &sdcard0,
+Logger::Logger(Input &aiinput, SDCard &sdcard,
 	       RTClock &rtclock, Blink &blink,
 	       Blink &errorblink, Blink &syncblink) :
   AIInput(aiinput),
-  SDCard0(&sdcard0),
+  SDCard0(&sdcard),
   SDCard1(0),
-  File0(sdcard0, aiinput, 5),
+  File0(sdcard, aiinput, 5),
   File1(),
   Clock(rtclock),
   NoBlink(""),

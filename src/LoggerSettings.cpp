@@ -1,4 +1,5 @@
 #include <DeviceID.h>
+#include <SDCard.h>
 #include <LoggerSettings.h>
 
 
@@ -40,14 +41,25 @@ void LoggerSettings::setFileName(const char *fname) {
 }
 
 
-void LoggerSettings::preparePaths(const DeviceID &deviceid) {
+void LoggerSettings::preparePaths() {
   // path:
-  String s = SDCard::preparePath(Path.value(), deviceid.id(),
-				 deviceid.maxid(), Label.value());
+  String s = SDCard::preparePath(Path.value(), ID.value(), Label.value());
   Path.setValue(s.c_str());
   // filename:
-  s = SDCard::preparePath(FileName.value(), deviceid.id(),
-			  deviceid.maxid(), Label.value());
+  s = SDCard::preparePath(FileName.value(), ID.value(), Label.value());
+  FileName.setValue(s.c_str());
+}
+
+
+void LoggerSettings::preparePaths(const DeviceID &deviceid) {
+  int id = deviceid.id();
+  if (id == 0 && deviceid.maxid() > 0)
+    id = deviceid.maxid();
+  // path:
+  String s = SDCard::preparePath(Path.value(), id, Label.value());
+  Path.setValue(s.c_str());
+  // filename:
+  s = SDCard::preparePath(FileName.value(), id, Label.value());
   FileName.setValue(s.c_str());
 }
 

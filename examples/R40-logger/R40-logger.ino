@@ -4,7 +4,6 @@
 #include <InputTDM.h>
 #include <SDCard.h>
 #include <RTClock.h>
-#include <DeviceID.h>
 #include <Blink.h>
 #include <MicroConfig.h>
 #include <LoggerSettings.h>
@@ -48,7 +47,6 @@ ControlPCM186x pcm2(Wire, PCM186x_I2C_ADDR2, InputTDM::TDM1);
 Device *pcms[NPCMS] = {&pcm1, &pcm2};
 
 RTClock rtclock;
-DeviceID deviceid(DEVICEID);
 Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
 SDCard sdcard;
 
@@ -63,7 +61,7 @@ ConfigurationMenu configuration_menu(config, sdcard);
 SDCardMenu sdcard_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R40SetupPCMs);
-DiagnosticMenu diagnostic_menu(config, sdcard, 0, &pcm1, &pcm2, &rtclock);
+DiagnosticMenu diagnostic_menu(config, sdcard, &pcm1, &pcm2, &rtclock);
 Menu ampl_info(diagnostic_menu, "Amplifier board", Action::StreamIO | Action::Report);
 HelpAction help_act(config, "Help");
 
@@ -100,8 +98,7 @@ void setup() {
   setupBoard();
   logger.configure(config);
   logger.setCPUSpeed(aisettings.rate());
-  deviceid.setID(settings.deviceID());
-  settings.preparePaths(deviceid);
+  settings.preparePaths();
   R40SetupPCMs(aidata, aisettings, pcms, NPCMS);
   logger.startInput(aisettings.nchannels());
   logger.setup(settings.path(), settings.fileName(),

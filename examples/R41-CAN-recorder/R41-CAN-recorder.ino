@@ -4,7 +4,6 @@
 #include <InputTDM.h>
 #include <SDWriter.h>
 #include <RTClock.h>
-#include <DeviceID.h>
 #include <Blink.h>
 #include <MicroConfig.h>
 #include <LoggerSettings.h>
@@ -25,7 +24,7 @@
 #define GAIN          0.0     // dB
 
 #define LABEL         "grid"         // may be used for naming files
-#define DEVICEID      0              // may be used for naming files
+#define DEVICEID      1              // may be used for naming files
 #define PATH          "recordings"   // folder where to store the recordings
 #define FILENAME      "LABELID-SDATETIME-RECCOUNT-DEV.wav"  // may include ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 //String LoggerFileName = "loggergrid-RECNUM4-DEV.wav";
@@ -54,7 +53,6 @@ ControlPCM186x *pcm = 0;
 
 R41CAN can;
 RTClock rtclock;
-DeviceID deviceid(DEVICEID);
 Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
 SDCard sdcard;
 
@@ -71,7 +69,7 @@ DiagnosticMenu diagnostic_menu(config, sdcard,
 HelpAction help_act(config, "Help");
 
 CANFileStorage files(aidata, sdcard, can, false,
-	             rtclock, deviceid, blink);
+	             rtclock, blink);
 
 
 void setupCAN() {

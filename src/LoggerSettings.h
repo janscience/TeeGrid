@@ -49,6 +49,10 @@ public:
   void setFileName(const char *fname);
 
   /* Replace LABEL and ID in path and filename by the respective strings. */
+  void preparePaths();
+
+  /* Replace LABEL and ID in path and filename by the respective strings.
+     ID is taken from deviceid. */
   void preparePaths(const DeviceID &deviceid);
 
   /* Time in seconds the files will record data. */

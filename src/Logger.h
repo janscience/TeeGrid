@@ -18,9 +18,9 @@ class Logger {
   
 public:
 
-  Logger(Input &aiinput, SDCard &sdcard0,
+  Logger(Input &aiinput, SDCard &sdcard,
 	 RTClock &rtclock, Blink &blink);
-  Logger(Input &aiinput, SDCard &sdcard0,
+  Logger(Input &aiinput, SDCard &sdcard,
 	 RTClock &rtclock, Blink &blink,
 	 Blink &errorblink, Blink &syncblink);
   Logger(Input &aiinput, SDCard &sdcard0, SDCard &sdcard1,
