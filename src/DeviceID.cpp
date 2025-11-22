@@ -100,3 +100,22 @@ int DeviceID::read(Stream *stream) {
   return ID;
 }
 
+
+DeviceIDAction::DeviceIDAction(Menu &menu, DeviceID *deviceid) :
+  Action(menu, "Device ID", StreamInput | Report),
+  DevID(deviceid){
+}
+
+
+void DeviceIDAction::write(Stream &stream, unsigned int roles,
+			   size_t indent, size_t width, bool descend) const {
+  if (disabled(roles))
+    return;
+  if (descend) {
+    DevID->read();
+    DevID->write(stream, indent, indentation());
+  }
+  else
+    Action::write(stream, roles, indent, width, descend);
+}
+

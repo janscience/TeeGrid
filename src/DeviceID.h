@@ -96,4 +96,22 @@ protected:
 };
 
 
+class DeviceIDAction : public Action {
+
+ public:
+
+  /* Initialize and add to configuration menu. */
+  DeviceIDAction(Menu &menu, DeviceID *deviceid);
+
+  /* Read and print device ID. */
+  virtual void write(Stream &stream=Serial, unsigned int roles=AllRoles,
+		     size_t indent=0, size_t width=0, bool descend=true) const;
+
+protected:
+
+  DeviceID *DevID;
+  
+};
+
+
 #endif
