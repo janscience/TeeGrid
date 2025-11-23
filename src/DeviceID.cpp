@@ -116,14 +116,10 @@ DeviceIDAction::DeviceIDAction(Menu &menu, DeviceID *deviceid) :
 
 
 void DeviceIDAction::write(Stream &stream, unsigned int roles,
-			   size_t indent, size_t width, bool descend) const {
+			   size_t indent, size_t width) const {
   if (disabled(roles))
     return;
-  if (descend) {
-    DevID->read();
-    DevID->write(stream, indent, indentation());
-  }
-  else
-    Action::write(stream, roles, indent, width, descend);
+  DevID->read();
+  DevID->write(stream, indent, indentation());
 }
 

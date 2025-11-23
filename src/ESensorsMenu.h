@@ -45,7 +45,7 @@ class ESensorSensorsAction : public ESensorsAction {
 
   /* Print infos about available environmental sensors. */
   virtual void write(Stream &stream=Serial, unsigned int roles=AllRoles,
-		     size_t indent=0, size_t width=0, bool descend=true) const;
+		     size_t indent=0, size_t width=0) const;
 
   /* Print infos about available environmental sensors. */
   virtual void execute(Stream &stream=Serial);
@@ -69,7 +69,7 @@ class ESensorValuesAction : public ESensorsAction {
 
   using ESensorsAction::ESensorsAction;
 
-  /* Print sensor values. If detailed, just get previously requested values.
+  /* Print sensor values. If gui(), just get previously requested values.
      Otherwise request and read them. */
   virtual void execute(Stream &stream=Serial);
 };

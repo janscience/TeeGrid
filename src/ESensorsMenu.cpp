@@ -20,31 +20,27 @@ ESensorSensorsAction::ESensorSensorsAction(Menu &menu, const char *name,
 
 
 void ESensorSensorsAction::write(Stream &stream, unsigned int roles,
-				 size_t indent, size_t width, bool descend) const {
+				 size_t indent, size_t width) const {
   if (disabled(roles))
     return;
-  if (descend) {
-    if (strlen(name()) > 0) {
-      stream.printf("%*s%s:\n", indent, "", name());
-      indent += indentation();
-    }
-    width = 0;
-    for (size_t k=0; k<Sensors.size(); k++) {
-      if (Sensors[k].available() && (strlen(Sensors[k].name()) > width))
-	width = strlen(Sensors[k].name());
-    }
-    for (size_t k=0; k<Sensors.size(); k++) {
-      if (Sensors[k].available()) {
-	size_t kw = width >= strlen(Sensors[k].name()) ? width - strlen(Sensors[k].name()) : 0;
-	stream.printf("%*s%s:%*s %s (%s)\n", indent, "",
-		      Sensors[k].name(), kw, "",
-		      Sensors[k].chip(), Sensors[k].identifier());
-      }
-    }
-    Sensors.writeDevices(stream, indent, indentation());
+  if (strlen(name()) > 0) {
+    stream.printf("%*s%s:\n", indent, "", name());
+    indent += indentation();
   }
-  else if (strlen(name()) > 0)
-    Action::write(stream, roles, indent, width, descend);
+  width = 0;
+  for (size_t k=0; k<Sensors.size(); k++) {
+    if (Sensors[k].available() && (strlen(Sensors[k].name()) > width))
+      width = strlen(Sensors[k].name());
+  }
+  for (size_t k=0; k<Sensors.size(); k++) {
+    if (Sensors[k].available()) {
+      size_t kw = width >= strlen(Sensors[k].name()) ? width - strlen(Sensors[k].name()) : 0;
+      stream.printf("%*s%s:%*s %s (%s)\n", indent, "",
+		    Sensors[k].name(), kw, "",
+		    Sensors[k].chip(), Sensors[k].identifier());
+    }
+  }
+  Sensors.writeDevices(stream, indent, indentation());
 }
 
 
@@ -62,7 +58,7 @@ void ESensorRequestAction::execute(Stream &stream) {
 
 
 void ESensorValuesAction::execute(Stream &stream) {
-  if (detailed())
+  if (gui())
     Sensors.get();
   else
     Sensors.read();
