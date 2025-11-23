@@ -125,8 +125,6 @@ void setupLEDs() {
 
 
 void setupMenu() {
-  settings.disable("Path", settings.StreamInput);
-  settings.disable("FileName", settings.StreamInput);
   if (syncblink.nPins() > 1) {
     blinksettings.disable("RandomBlinks");
     blinksettings.setRandomBlinks(true);

@@ -32,8 +32,8 @@ from PyQt5.QtGui import QKeySequence, QFont, QPalette, QColor, QValidator
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
 from PyQt5.QtWidgets import QStackedWidget, QLabel, QScrollArea
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QSpacerItem
-from PyQt5.QtWidgets import QWidget, QFrame, QPushButton, QSizePolicy
-from PyQt5.QtWidgets import QAction, QShortcut
+from PyQt5.QtWidgets import QWidget, QFrame, QPushButton, QRadioButton
+from PyQt5.QtWidgets import QAction, QShortcut, QSizePolicy
 from PyQt5.QtWidgets import QCheckBox, QLineEdit, QComboBox
 from PyQt5.QtWidgets import QSpinBox, QAbstractSpinBox
 from PyQt5.QtWidgets import QFileDialog
@@ -46,7 +46,7 @@ except ImportError:
     exit()
 
 
-__version__ = '1.1'
+__version__ = '2.0'
 
 
 def parse_number(s):
@@ -1981,7 +1981,7 @@ class SpinBox(QAbstractSpinBox):
 class Parameter(Interactor, QObject, metaclass=InteractorQObject):
     
     def __init__(self, ids, name, value, num_value=None,
-                 out_unit=None, unit=None, type_str=None,
+                 out_unit=None, unit=None, mode_str=None, type_str=None,
                  max_chars=None, ndec=None, min_val=None,
                  max_val=None, special_val=None, special_str=None,
                  selection=None, *args, **kwargs):
@@ -1992,6 +1992,7 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
         self.num_value = num_value
         self.out_unit = out_unit
         self.unit = unit
+        self.mode_str = mode_str
         self.type_str = type_str
         self.max_chars = max_chars
         self.ndec = ndec
@@ -2000,13 +2001,15 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
         self.special_val = special_val
         self.special_str = special_str
         self.selection = selection
+        self.label_widget = None
         self.edit_widget = None
         self.state_widget = None
         self.matches = False
 
     def initialize(self, s):
         ss = s.split(',')
-        self.type_str = ss.pop(0)
+        self.mode_str = ss.pop(0).strip()
+        self.type_str = ss.pop(0).strip()
         self.max_chars = 0
         self.min_val = None
         self.max_val = None
@@ -2056,7 +2059,8 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                 sel = (None, sel)
             self.selection.append(sel)
         
-    def setup(self, parent):
+    def setup(self, parent, label_widget):
+        self.label_widget = label_widget
         if self.type_str == 'boolean':
             self.edit_widget = QCheckBox(parent)
             checked = self.value.lower() in ['yes', 'on', 'true', 'ok', '1']
@@ -2127,6 +2131,13 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
         self.state_widget.setTextFormat(Qt.RichText)
         self.state_widget.setToolTip('Indicate whether dialog value matches logger settings')
         self.state_widget.setText('&#x2705;')
+        self.set_mode('U')
+
+    def set_mode(self, mode):
+        v = mode in self.mode_str
+        self.label_widget.setVisible(v)
+        self.edit_widget.setVisible(v)
+        self.state_widget.setVisible(v)
 
     def transmit_bool(self, check_state):
         start = list(self.ids)
@@ -2244,10 +2255,8 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.import_button.setToolTip('Import configuration from host (Alt+I)')
         self.export_button = QPushButton('E&xport', self)
         self.export_button.setToolTip('Export configuration file to host (Alt+X)')
-        self.firmware_button = QPushButton('Firmware', self)
-        self.firmware_button.setToolTip('Upload new firmware (Alt+U)')
-        key = QShortcut('Alt+U', self)
-        key.activated.connect(self.firmware_button.animateClick)
+        self.firmware_button = QPushButton('&Firmware', self)
+        self.firmware_button.setToolTip('Upload new firmware (Alt+F)')
         self.reboot_button = QPushButton('Re&boot', self)
         self.reboot_button.setToolTip('Reboot logger (Alt+B)')
         self.run_button = QPushButton('&Run', self)
@@ -2307,8 +2316,8 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
     
     def setup(self, menu):
         self.start_check = self.retrieve('configuration>print', menu)
-        self.start_put = self.retrieve('configuration>write configuration to eeprom', menu)
-        self.start_get = self.retrieve('configuration>read configuration from eeprom', menu)
+        self.start_put = self.retrieve('configuration>put configuration to eeprom', menu)
+        self.start_get = self.retrieve('configuration>get configuration from eeprom', menu)
         self.start_clear = self.retrieve('clear eeprom memory', menu)
         self.start_save = self.retrieve('configuration>save', menu)
         self.start_load = self.retrieve('configuration>load', menu)
@@ -2548,6 +2557,7 @@ class Logger(QWidget):
         self.conf = QFrame(self)
         self.conf.setFrameStyle(QFrame.Panel | QFrame.Sunken)
         self.configuration = QGridLayout()
+        self.config_parames = []
         self.config_file = QLabel()
         self.config_status = QLabel()
         self.config_status.setTextFormat(Qt.RichText)
@@ -2701,6 +2711,16 @@ class Logger(QWidget):
 
     def display_sensors_plot(self):
         self.stack.setCurrentWidget(self.plot_sensors)
+
+    def set_user_mode(self, checked):
+        if checked:
+            for p in self.config_params:
+                p.set_mode('U')
+
+    def set_admin_mode(self, checked):
+        if checked:
+            for p in self.config_params:
+                p.set_mode('A')
         
     def find_parameter(self, keys, menu):
         found = False
@@ -2828,6 +2848,9 @@ class Logger(QWidget):
             self.read_state += 1
         elif self.read_state == 1:
             self.write('echo off')
+            self.read_state += 1
+        elif self.read_state == 2:
+            self.write('mode both')
             self.read_state = 0
             self.read_func = self.parse_mainmenu
 
@@ -2957,6 +2980,7 @@ class Logger(QWidget):
         self.hardwareinfo.setup(self.menu)
         self.sensorsinfo.setup(self.menu)
         self.sdcardinfo.setup(self.menu)
+        self.config_params = []
         missing_tools = False
         first_param = True
         row = 0
@@ -2974,10 +2998,10 @@ class Logger(QWidget):
                             row += 1
                             add_title = False
                         self.configuration.addItem(QSpacerItem(10, 0), row, 0)
-                        self.configuration.addWidget(QLabel(sk + ': ', self),
-                                                 row, 1)
+                        param_label = QLabel(sk + ': ', self)
+                        self.configuration.addWidget(param_label, row, 1)
                         param = menu[2][sk][2]
-                        param.setup(self)
+                        param.setup(self, param_label)
                         self.configuration.addWidget(param.edit_widget, row, 2)
                         self.configuration.addWidget(param.state_widget,
                                                  row, 3)
@@ -2985,6 +3009,7 @@ class Logger(QWidget):
                             param.edit_widget.setFocus(Qt.MouseFocusReason)
                             first_param = False
                         row += 1
+                        self.config_params.append(param)
                     elif menu[2][sk][1] == 'action':
                         if not missing_tools:
                             print('WARNING! the following tool actions are not supported:')
@@ -2993,9 +3018,33 @@ class Logger(QWidget):
                             print(f'{mk}:')
                             add_title = False
                         print(f'  {sk}')
+        self.configuration.addItem(QSpacerItem(0, 0,
+                                               QSizePolicy.Policy.Minimum,
+                                               QSizePolicy.Policy.Expanding),
+                                   row, 0)
+        row += 1
         self.configuration.addWidget(QLabel('Configuration file'), row, 0, 1, 2)
         self.configuration.addWidget(self.config_file, row, 2)
         self.configuration.addWidget(self.config_status, row, 3)
+        row += 1
+        fm = self.fontMetrics()
+        self.configuration.addItem(QSpacerItem(0, 2*fm.averageCharWidth(),
+                                               QSizePolicy.Policy.Minimum,
+                                               QSizePolicy.Policy.Minimum),
+                                   row, 0)
+        row += 1
+        self.configuration.addWidget(QLabel('Mode'), row, 0, 1, 2)
+        boxw = QWidget(self)
+        box = QHBoxLayout(boxw)
+        user_button = QRadioButton('&User', self)
+        admin_button = QRadioButton('&Admin', self)
+        user_button.toggled.connect(self.set_user_mode)
+        user_button.setChecked(True)
+        admin_button.toggled.connect(self.set_admin_mode)
+        box.addWidget(user_button)
+        box.addWidget(admin_button)
+        self.configuration.addWidget(boxw, row, 2)
+        row += 1
         self.hardwareinfo.start()
         self.sensorsinfo.start()
         self.sdcardinfo.start()

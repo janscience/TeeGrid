@@ -87,8 +87,6 @@ SensorsLogger logger(aidata, sensors, sdcard, rtclock, blink);
 
 
 void setupMenu() {
-  settings.disable("Path", settings.StreamInput);
-  settings.disable("FileName", settings.StreamInput);
   settings.enable("SensorsInterval");
   aisettings.disable("Reference");
   aisettings.enable("Pregain");

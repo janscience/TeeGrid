@@ -82,8 +82,6 @@ Logger logger(aidata, sdcard, rtclock, blink);
 
 
 void setupMenu() {
-  settings.disable("Path", settings.StreamInput);
-  settings.disable("FileName", settings.StreamInput);
   blinksettings.enable("RandomBlinks");
   blinksettings.enable("BlinkTimeout");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,

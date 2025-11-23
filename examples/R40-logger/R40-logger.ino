@@ -69,8 +69,6 @@ Logger logger(aidata, sdcard, rtclock, blink);
 
 
 void setupMenu() {
-  settings.disable("Path", settings.StreamInput);
-  settings.disable("FileName", settings.StreamInput);
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
