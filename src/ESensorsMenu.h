@@ -17,7 +17,7 @@ class ESensorsAction : public Action {
 
   /* Initialize and add to menu. */
   ESensorsAction(Menu &menu, const char *name, ESensors &sensors,
-		 unsigned int roles=StreamInput);
+		 unsigned int roles=ActionRoles);
 
 protected:
 

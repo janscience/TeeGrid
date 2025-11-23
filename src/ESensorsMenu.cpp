@@ -15,15 +15,13 @@ void ESensorDevicesAction::execute(Stream &stream) {
 
 ESensorSensorsAction::ESensorSensorsAction(Menu &menu, const char *name,
 					   ESensors &sensors) :
-  ESensorsAction(menu, name, sensors, StreamInput | Report) {
+  ESensorsAction(menu, name, sensors, ReportRoles) {
 }
 
 
 void ESensorSensorsAction::write(Stream &stream, unsigned int roles,
 				 size_t indent, size_t width) const {
-  if (disabled(roles))
-    return;
-  if (strlen(name()) > 0) {
+  if (name() != 0 && strlen(name()) > 0) {
     stream.printf("%*s%s:\n", indent, "", name());
     indent += indentation();
   }
@@ -67,7 +65,7 @@ void ESensorValuesAction::execute(Stream &stream) {
 
 
 ESensorsMenu::ESensorsMenu(Menu &menu, ESensors &sensors) :
-  Menu(menu, "Sensors", Action::StreamInput),
+  Menu(menu, "Sensors", StreamInput),
   DevicesAct(*this, "Sensor devices", sensors),
   SensorsAct(*this, "Environmental sensors", sensors),
   ValuesAct(*this, "Sensor readings", sensors),

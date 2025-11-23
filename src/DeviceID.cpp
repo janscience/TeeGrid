@@ -110,15 +110,13 @@ int DeviceID::read(Stream *stream) {
 
 
 DeviceIDAction::DeviceIDAction(Menu &menu, DeviceID *deviceid) :
-  Action(menu, "Device ID", StreamInput | Report),
+  Action(menu, "Device ID", ReportRoles),
   DevID(deviceid){
 }
 
 
 void DeviceIDAction::write(Stream &stream, unsigned int roles,
 			   size_t indent, size_t width) const {
-  if (disabled(roles))
-    return;
   DevID->read();
   DevID->write(stream, indent, indentation());
 }
