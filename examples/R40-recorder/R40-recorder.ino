@@ -75,6 +75,7 @@ void setupMenu() {
                               ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
   blinksettings.disable("BlinkTimeout");
+  blinksettings.disable("SyncTimeout");
   sdcard_menu.CleanRecsAct.setRemove(true);
 }
 

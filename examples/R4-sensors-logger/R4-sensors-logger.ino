@@ -41,7 +41,8 @@
 #define FILE_SAVE_TIME   5*60     // seconds
 #define INITIAL_DELAY    10       // seconds
 #define RANDOM_BLINKS    true     // set to true for blinking the LED randomly
-#define BLINK_TIMEOUT    0        // time after which internal LEDs are switched off in seconds
+#define BLINK_TIMEOUT    0        // time after which status LEDs are switched off in seconds
+#define SYNC_TIMEOUT     0        // time after which synchronization LEDs are switched off in seconds
 #define SENSORS_INTERVAL 30.0     // interval between sensors readings in seconds
 #define LIGHT_THRESHOLD  50.0     // threshold for switching off LEDs in lux.
 
@@ -90,7 +91,7 @@ LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
                         FILE_SAVE_TIME, INITIAL_DELAY,
 			SENSORS_INTERVAL);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
-BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT,
+BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT, SYNC_TIMEOUT,
 			    LIGHT_THRESHOLD);
 
 RTClockMenu rtclock_menu(config, rtclock);
@@ -132,6 +133,7 @@ void setupMenu() {
   else
     blinksettings.enable("RandomBlinks");
   blinksettings.enable("BlinkTimeout");
+  blinksettings.enable("SyncTimeout");
   settings.enable("SensorsInterval");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
@@ -208,7 +210,8 @@ void setup() {
   logger.startInput(aisettings.nchannels());
   logger.setup(settings.path(), settings.fileName(),
                SOFTWARE, blinksettings.randomBlinks(),
-	       blinksettings.blinkTimeout());
+	       blinksettings.blinkTimeout(),
+	       blinksettings.syncTimeout());
   logger.initialDelay(settings.initialDelay());
   diagnostic_menu.updateCPUSpeed();
   logger.start(settings.fileTime(), config, ampl_info);

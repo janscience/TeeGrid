@@ -25,6 +25,7 @@ Logger::Logger(Input &aiinput, SDCard &sdcard,
   SyncLED(NoBlink),
   RandomBlinks(false),
   BlinkTimeout(0),
+  SyncTimeout(0),
   Filename(""),
   PrevFilename(""),
   Saving(false),
@@ -50,6 +51,7 @@ Logger::Logger(Input &aiinput, SDCard &sdcard,
   SyncLED(syncblink),
   RandomBlinks(false),
   BlinkTimeout(0),
+  SyncTimeout(0),
   Filename(""),
   PrevFilename(""),
   Saving(false),
@@ -75,6 +77,7 @@ Logger::Logger(Input &aiinput, SDCard &sdcard0,
   SyncLED(NoBlink),
   RandomBlinks(false),
   BlinkTimeout(0),
+  SyncTimeout(0),
   Filename(""),
   PrevFilename(""),
   FileCounter(0),
@@ -209,9 +212,10 @@ void Logger::startInput(uint8_t nchannels) {
 
 void Logger::setup(const char *path, const char *filename,
 		   const char *software, bool randomblinks,
-		   float blinktimeout) {
+		   float blinktimeout, float synctimeout) {
   RandomBlinks = randomblinks;
   BlinkTimeout = (unsigned long)(1000*blinktimeout);
+  SyncTimeout = (unsigned long)(1000*synctimeout);
   Filename = filename;
   int i = Filename.lastIndexOf('.');
   if (i >= 0)
@@ -594,12 +598,12 @@ void Logger::update() {
   }
   if (RandomBlinks)
     storeBlinks();
-  if ((BlinkTimeout > 0) && (millis() > BlinkTimeout)) {
+  if ((BlinkTimeout > 0) && (millis() > BlinkTimeout))
     StatusLED.disablePin(0);
-    SyncLED.clearPins();
-  }
   if ((BlinkTimeout > 0) && (millis() > 2*BlinkTimeout))
     StatusLED.disablePin(1);
+  if ((SyncTimeout > 0) && (millis() > SyncTimeout))
+    SyncLED.clearPins();
   StatusLED.update();
   SyncLED.update();
 }

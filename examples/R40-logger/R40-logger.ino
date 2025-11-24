@@ -32,6 +32,7 @@
 #define INITIAL_DELAY  10      // seconds
 #define RANDOM_BLINKS  false   // set to true for blinking the LED randomly
 #define BLINK_TIMEOUT    0     // time after which internal LEDs are switched off in seconds
+#define SYNC_TIMEOUT     0      // time after which synchronization LED is switched off in seconds
 
 // ----------------------------------------------------------------------------
 
@@ -54,7 +55,7 @@ Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
                         FILE_SAVE_TIME, INITIAL_DELAY);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
-BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT);
+BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT, SYNC_TIMEOUT);
 
 RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
@@ -69,6 +70,9 @@ Logger logger(aidata, sdcard, rtclock, blink);
 
 
 void setupMenu() {
+  blinksettings.enable("RandomBlinks");
+  blinksettings.enable("BlinkTimeout");
+  blinksettings.enable("SyncTimeout");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
@@ -101,7 +105,8 @@ void setup() {
   logger.startInput(aisettings.nchannels());
   logger.setup(settings.path(), settings.fileName(),
                SOFTWARE, blinksettings.randomBlinks(),
-	       blinksettings.blinkTimeout());
+	       blinksettings.blinkTimeout(),
+	       blinksettings.syncTimeout());
   logger.initialDelay(settings.initialDelay());
   diagnostic_menu.updateCPUSpeed();
   logger.start(settings.fileTime(), config, ampl_info);

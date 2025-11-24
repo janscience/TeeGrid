@@ -53,7 +53,7 @@ public:
   // Initialize recording directory and file metadata.
   void setup(const char *path, const char *filename,
 	     const char *software, bool randomblinks=false,
-	     float blinktimeout=0.0);
+	     float blinktimeout=0.0, float synctimeout=0.0);
 
   // Delay with double blinks for initial_delay seconds.
   void initialDelay(float initial_delay, Stream &stream=Serial);
@@ -117,6 +117,7 @@ protected:
   FsFile BlinkFile0;
   FsFile BlinkFile1;
   unsigned long BlinkTimeout;
+  unsigned long SyncTimeout;
   
   String Filename;       // Template for filename
   String PrevFilename;   // Previous file name

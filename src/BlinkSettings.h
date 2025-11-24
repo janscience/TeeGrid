@@ -14,7 +14,8 @@ class BlinkSettings : public Menu {
 
 public:
 
-  BlinkSettings(Menu &menu, bool randomblinks=false, float blinktimeout=0.0,
+  BlinkSettings(Menu &menu, bool randomblinks=false,
+		float blinktimeout=0.0, float synctimeout=0.0,
 		float lightthreshold=0.0);
 
   /* Whether LED should blink randomly and be stored to file. */
@@ -28,6 +29,13 @@ public:
 
   /* Set time after which the status LEDs are switched off to time seconds. */
   void setBlinkTimeout(float time);
+
+  /* Time in seconds after which the synchronization LEDs are switched off. */
+  float syncTimeout() const { return BlinkTimeout.value(); };
+
+  /* Set time after which the synchronization LEDs are switched off
+     to time seconds. */
+  void setSyncTimeout(float time);
   
   /* Threshold in lux for turing of status and syn LEDs. */
   float lightThreshold() const { return LightThreshold.value(); };
@@ -40,6 +48,7 @@ protected:
 
   BoolParameter RandomBlinks;
   NumberParameter<float> BlinkTimeout;
+  NumberParameter<float> SyncTimeout;
   NumberParameter<float> LightThreshold;
   
 };
