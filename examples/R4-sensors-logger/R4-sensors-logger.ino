@@ -103,7 +103,7 @@ DiagnosticMenu diagnostic_menu(config, sdcard, &pcm1, &pcm2, &pcm3, &pcm4,
                                &rtclock, &gpio);
 DeviceIDAction deviceid_act(diagnostic_menu, &deviceid); 
 BlinkMenu blink_menu(diagnostic_menu, &blink, &errorblink, &syncblink);
-Menu ampl_info(diagnostic_menu, "Amplifier board", Action::StreamIO | Action::Report);
+Menu ampl_info(diagnostic_menu, "Amplifier board");
 HelpAction help_act(config, "Help");
 
 SensorsLogger logger(aidata, sensors, sdcard, rtclock,

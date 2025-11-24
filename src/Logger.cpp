@@ -299,22 +299,21 @@ void Logger::start(float filetime, Config &config) {
 
 void Logger::start(float filetime, Config &config, Menu &amplifier) {
   start(filetime);
+  InfoAction ampl(amplifier, 0);
   if (strlen(File0.header().channels()) > 0)
-    amplifier.addConstString("Channels", File0.header().channels());
+    ampl.add("Channels", File0.header().channels());
   if (strlen(File0.header().averaging()) > 0)
-    amplifier.addConstString("Averaging", File0.header().averaging());
+    ampl.add("Averaging", File0.header().averaging());
   if (strlen(File0.header().conversionSpeed()) > 0)
-    amplifier.addConstString("Conversion speed",
-			     File0.header().conversionSpeed());
+    ampl.add("Conversion speed", File0.header().conversionSpeed());
   if (strlen(File0.header().samplingSpeed()) > 0)
-    amplifier.addConstString("Sampling speed",
-			     File0.header().samplingSpeed());
+    ampl.add("Sampling speed", File0.header().samplingSpeed());
   if (strlen(File0.header().reference()) > 0)
-    amplifier.addConstString("Reference", File0.header().reference());
+    ampl.add("Reference", File0.header().reference());
   if (strlen(File0.header().gain()) > 0)
-    amplifier.addConstString("Gain", File0.header().gain());
+    ampl.add("Gain", File0.header().gain());
   if (strlen(File0.header().software()) > 0)
-    amplifier.addConstString("Software", File0.header().software());
+    ampl.add("Software", File0.header().software());
   writeMetadata(config);
 }
 
