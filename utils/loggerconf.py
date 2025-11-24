@@ -2237,6 +2237,7 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
     sigVerifyParameter = Signal(str, str)
     sigSetParameter = Signal(str, str)
     sigConfigFile = Signal(bool)
+    sigShowStartup = Signal()
     
     def __init__(self, *args, **kwargs):
         super(QWidget, self).__init__(*args, **kwargs)
@@ -2262,6 +2263,8 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.firmware_button.setToolTip('Upload new firmware (Alt+F)')
         self.reboot_button = QPushButton('Re&boot', self)
         self.reboot_button.setToolTip('Reboot logger (Alt+B)')
+        self.startup_button = QPushButton('Startup', self)
+        self.startup_button.setToolTip('Show startup messages')
         self.run_button = QPushButton('&Run', self)
         self.run_button.setToolTip('Run logger (Alt+R)')
         self.put_button.clicked.connect(self.put)
@@ -2274,6 +2277,7 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.import_button.clicked.connect(self.importc)
         self.export_button.clicked.connect(self.exportc)
         self.firmware_button.clicked.connect(self.firmware)
+        self.startup_button.clicked.connect(self.sigShowStartup)
         self.reboot_button.clicked.connect(self.reboot)
         self.run_button.clicked.connect(self.run)
         box = QVBoxLayout(self)
@@ -2299,6 +2303,7 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
         box.addWidget(self.check_button)
         box.addItem(QSpacerItem(0, 1000, QSizePolicy.Expanding,
                                 QSizePolicy.Expanding))
+        box.addWidget(self.startup_button)
         box.addWidget(self.reboot_button)
         box.addWidget(self.firmware_button)
         box.addWidget(self.run_button)
@@ -2575,6 +2580,7 @@ class Logger(QWidget):
         self.loggeracts.sigVerifyParameter.connect(self.verify_parameter)
         self.loggeracts.sigSetParameter.connect(self.set_parameter)
         self.loggeracts.sigConfigFile.connect(self.set_configfile_state)
+        self.loggeracts.sigShowStartup.connect(self.show_startup)
         vbox = QVBoxLayout(self.conf)
         vbox.addLayout(self.configuration)
         
@@ -2634,8 +2640,9 @@ class Logger(QWidget):
         self.read_timer.timeout.connect(self.read)
         self.read_count = 0
         self.read_state = 0
-        self.read_func = None
+        self.startup_input = []
         self.input = []
+        self.read_func = None
         self.request_stack = []
         self.request_block = False
         self.request_type = None
@@ -2653,7 +2660,6 @@ class Logger(QWidget):
         self.menu_item = None
 
     def activate(self, device, model, serial_number):
-        #self.title.setText(f'Teensy{model} with serial number {serial_number} on {device}')
         QApplication.restoreOverrideCursor()
         self.device = device
         self.loggerinfo.set(device, model, serial_number)
@@ -2716,6 +2722,9 @@ class Logger(QWidget):
 
     def display_sensors_plot(self):
         self.stack.setCurrentWidget(self.plot_sensors)
+
+    def show_startup(self):
+        self.display_terminal('Startup messages', self.startup_input)
 
     def set_mode(self, checked):
         mode = 'A' if self.admin_button.isChecked() else 'U'
@@ -2825,6 +2834,7 @@ class Logger(QWidget):
                 self.logo.setText(s)
                 title_start = title_mid - 1
             self.softwareinfo.set(self.input[title_start + 1:title_end])
+            self.startup_input = list(self.input[:title_end + 1])
             self.input = self.input[title_end + 1:]
             self.read_func = self.parse_configfile
         elif self.read_count > 100:
@@ -2840,14 +2850,17 @@ class Logger(QWidget):
                 self.config_file.setText(f'<b>{config_file}</b>')
                 self.set_configfile_state(not 'not found' in self.input[k])
                 self.loggeracts.config_file = config_file
+                self.startup_input.extend(self.input[:k + 1])
                 self.input = self.input[k + 1:]
                 for k in range(len(self.input)):
                     if len(self.input[k].strip()) == 0:
+                        self.startup_input.extend(self.input[:k])
                         self.input = self.input[k:]
                         break
                 self.read_func = self.configure_menu
                 break
             elif '! error: no sd card present' in self.input[k].lower():
+                self.startup_input.extend(self.input[:k + 1])
                 self.input = self.input[k + 1:]
                 self.set_configfile_state(False)
                 self.read_func = self.configure_menu
@@ -3217,12 +3230,10 @@ class Logger(QWidget):
     def read(self):
         if self.ser is None:
             try:
-                print('open serial')
                 self.ser = Serial(self.device)
                 self.ser.reset_input_buffer()
                 self.ser.reset_output_buffer()
             except (OSError, SerialException):
-                print('  FAILED')
                 self.ser = None
                 self.stop()
                 return
