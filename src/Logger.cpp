@@ -148,8 +148,8 @@ void Logger::endBackup(SPIClass *spi) {
 
 void Logger::configure(Config &config) {
   // get configuration from EEPROM:
-  if (config.get() > 0)
-    Serial.println();
+  config.get();
+  Serial.println();
   // check SD card:
   check(config);
   Clock.setFromFile(*SDCard0);
@@ -161,6 +161,7 @@ void Logger::configure(Config &config) {
     if (SDCard1 != NULL && SDCard1->available())
       SDCard1->cleanDir(folder, 1024, ".wav", true, true);
   }
+  Serial.println();
   // get configuration from file:
   config.load();
   if (Serial)
