@@ -2001,6 +2001,7 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
         self.special_val = special_val
         self.special_str = special_str
         self.selection = selection
+        self.title_widget = None
         self.label_widget = None
         self.edit_widget = None
         self.state_widget = None
@@ -2059,8 +2060,9 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
                 sel = (None, sel)
             self.selection.append(sel)
         
-    def setup(self, parent, label_widget):
+    def setup(self, parent, label_widget, title_widget):
         self.label_widget = label_widget
+        self.title_widget = title_widget
         if self.type_str == 'boolean':
             self.edit_widget = QCheckBox(parent)
             checked = self.value.lower() in ['yes', 'on', 'true', 'ok', '1']
@@ -2138,6 +2140,7 @@ class Parameter(Interactor, QObject, metaclass=InteractorQObject):
         self.label_widget.setVisible(v)
         self.edit_widget.setVisible(v)
         self.state_widget.setVisible(v)
+        return v
 
     def transmit_bool(self, check_state):
         start = list(self.ids)
@@ -2562,6 +2565,8 @@ class Logger(QWidget):
         self.config_status = QLabel()
         self.config_status.setTextFormat(Qt.RichText)
         self.config_status.setToolTip('Indicates presence of configuration file')
+        self.user_button = None
+        self.admin_button = None
         self.loggeracts = LoggerActions(self)
         self.loggeracts.sigReadRequest.connect(self.read_request)
         self.loggeracts.sigWriteRequest.connect(self.write_request)
@@ -2712,15 +2717,21 @@ class Logger(QWidget):
     def display_sensors_plot(self):
         self.stack.setCurrentWidget(self.plot_sensors)
 
-    def set_user_mode(self, checked):
-        if checked:
-            for p in self.config_params:
-                p.set_mode('U')
-
-    def set_admin_mode(self, checked):
-        if checked:
-            for p in self.config_params:
-                p.set_mode('A')
+    def set_mode(self, checked):
+        mode = 'A' if self.admin_button.isChecked() else 'U'
+        title_widget = None
+        n = 0
+        for p in self.config_params:
+            if title_widget != p.title_widget:
+                if title_widget is not None:
+                    title_widget.setVisible(n > 0);
+                title_widget = p.title_widget
+                n = 0
+            v = p.set_mode(mode)
+            if v:
+                n += 1
+        if title_widget is not None:
+            title_widget.setVisible(n > 0);
         
     def find_parameter(self, keys, menu):
         found = False
@@ -2984,6 +2995,7 @@ class Logger(QWidget):
         missing_tools = False
         first_param = True
         row = 0
+        title = None
         for mk in self.menu:
             menu = self.menu[mk]
             add_title = True
@@ -3001,7 +3013,7 @@ class Logger(QWidget):
                         param_label = QLabel(sk + ': ', self)
                         self.configuration.addWidget(param_label, row, 1)
                         param = menu[2][sk][2]
-                        param.setup(self, param_label)
+                        param.setup(self, param_label, title)
                         self.configuration.addWidget(param.edit_widget, row, 2)
                         self.configuration.addWidget(param.state_widget,
                                                  row, 3)
@@ -3036,13 +3048,13 @@ class Logger(QWidget):
         self.configuration.addWidget(QLabel('Mode'), row, 0, 1, 2)
         boxw = QWidget(self)
         box = QHBoxLayout(boxw)
-        user_button = QRadioButton('&User', self)
-        admin_button = QRadioButton('&Admin', self)
-        user_button.toggled.connect(self.set_user_mode)
-        user_button.setChecked(True)
-        admin_button.toggled.connect(self.set_admin_mode)
-        box.addWidget(user_button)
-        box.addWidget(admin_button)
+        self.user_button = QRadioButton('&User', self)
+        self.admin_button = QRadioButton('&Admin', self)
+        self.user_button.toggled.connect(self.set_mode)
+        self.user_button.setChecked(True)
+        self.admin_button.toggled.connect(self.set_mode)
+        box.addWidget(self.user_button)
+        box.addWidget(self.admin_button)
         self.configuration.addWidget(boxw, row, 2)
         row += 1
         self.hardwareinfo.start()
