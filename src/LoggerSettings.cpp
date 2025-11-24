@@ -31,6 +31,11 @@ void LoggerSettings::setDeviceID(int id) {
 }
 
 
+void LoggerSettings::setDeviceIDAdmin() {
+  ID.setMode(Action::Admin);
+}
+
+
 void LoggerSettings::setPath(const char *path) {
   Path.setValue(path);
 }

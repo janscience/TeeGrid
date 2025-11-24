@@ -36,6 +36,9 @@ public:
   /* Set device identifier to id. */
   void setDeviceID(int id);
 
+  /* Make device identifier only visible in admin mode. */
+  void setDeviceIDAdmin();
+
   /* Path on SD card where to store the data. */
   const char *path() const { return Path.value(); };
 

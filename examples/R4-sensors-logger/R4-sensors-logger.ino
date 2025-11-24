@@ -148,6 +148,7 @@ bool setupBoard() {
   bool R41b = (strncmp(rtclock.chip(), "DS", 2) == 0);
   if (R41b) {
      deviceid.setPins(DIPPins);
+     settings.setDeviceIDAdmin();
      ampl_info.addConstString("Version", "R4.1b");
   }
   else {
