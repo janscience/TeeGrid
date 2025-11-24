@@ -283,6 +283,10 @@ void Logger::start(float filetime) {
       StatusLED.setTiming(2000);
     StatusLED.clearSwitchTimes();
   }
+  if (BlinkTimeout > 0)
+    BlinkTimeout += millis();
+  if (SyncTimeout > 0)
+    SyncTimeout += millis();
   File0.start();
   if (File1.sdcard() != NULL)
     File1.start(File0);
