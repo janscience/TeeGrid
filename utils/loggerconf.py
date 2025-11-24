@@ -2729,6 +2729,7 @@ class Logger(QWidget):
     def set_mode(self, checked):
         mode = 'A' if self.admin_button.isChecked() else 'U'
         title_widget = None
+        set_focus = True
         n = 0
         for p in self.config_params:
             if title_widget != p.title_widget:
@@ -2737,6 +2738,9 @@ class Logger(QWidget):
                 title_widget = p.title_widget
                 n = 0
             v = p.set_mode(mode)
+            if set_focus and v:
+                p.edit_widget.setFocus(Qt.MouseFocusReason)
+                set_focus = False                
             if v:
                 n += 1
         if title_widget is not None:
