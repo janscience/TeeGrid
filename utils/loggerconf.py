@@ -682,21 +682,18 @@ class SoftwareInfo(QLabel):
 class CheckSDCard(ReportButton):
     
     def __init__(self, *args, **kwargs):
-        super().__init__('sd card check', 'Check',
+        super().__init__('check sd card availability', 'Check',
                          *args, **kwargs)
         
     def read(self, ident, stream, success):
         present = False
-        text = ''
         for s in stream:
-            text += s
-            text += '\n'
             if 'present and writable' in s:
                 present = True
                 self.set_button_color(Qt.green)
         if success and not present:
             self.set_button_color(Qt.red)
-        self.sigDisplayTerminal.emit('Check SD card', text)
+        self.sigDisplayTerminal.emit('Check SD card', stream)
 
                 
 class FormatSDCard(ReportButton):
@@ -837,7 +834,7 @@ class CleanDir(ReportButton):
 class Benchmark(ReportButton):
     
     def __init__(self, *args, **kwargs):
-        super().__init__('sd card benchmark', 'Test',
+        super().__init__('run benchmark test', 'Test',
                          *args, **kwargs)
         self.value = None
 
@@ -2516,6 +2513,13 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
             text += '</table>'
             self.sigDisplayTerminal.emit(title, text)
         elif ident == 'confget' or ident == 'confput':
+            if ident == 'confget':
+                # TODO!!!
+                # need to update GUI for each gotten parameter!
+                # self.sigSetParameter.emit(key, value)
+                # adapt uC output to the one from load config file
+                # parse and format output accordingly
+                pass
             error = False
             for s in stream:
                 if 'error' in s:
@@ -2525,10 +2529,8 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
                 self.sigDisplayMessage.emit('\n'.join(stream))
             else:
                 self.sigDisplayTerminal.emit('EEPROM', stream)
-            self.sigUpdate.emit()
         elif ident == 'confclear':
             self.sigDisplayMessage.emit('\n'.join(stream))
-            self.sigUpdate.emit()
         else:
             text = ''
             for s in stream:
