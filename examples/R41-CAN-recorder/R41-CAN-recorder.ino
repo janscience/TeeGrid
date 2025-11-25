@@ -64,8 +64,7 @@ RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
 SDCardMenu sdcard_menu(config, sdcard, settings);
 FirmwareMenu firmware_menu(config, sdcard);
-DiagnosticMenu diagnostic_menu(config, sdcard,
-                               &pcm1, &pcm2, &pcm3, &pcm4, rtclock);
+DiagnosticMenu diagnostic_menu(config, &pcm1, &pcm2, &pcm3, &pcm4, rtclock);
 HelpAction help_act(config, "Help");
 
 CANFileStorage files(aidata, sdcard, can, false,

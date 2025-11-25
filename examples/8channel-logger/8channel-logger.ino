@@ -58,7 +58,7 @@ ConfigurationMenu configuration_menu(config, sdcard);
 SDCardMenu sdcard_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings);
-DiagnosticMenu diagnostic_menu(config, sdcard, 0, &aidata, &rtclock);
+DiagnosticMenu diagnostic_menu(config, &aidata, &rtclock);
 HelpAction help_act(config, "Help");
 
 Logger logger(aidata, sdcard, rtclock, blink);

@@ -80,7 +80,7 @@ SDCardMenu sdcard_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings);
 ESensorsMenu sensors_menu(config, sensors);
-DiagnosticMenu diagnostic_menu(config, sdcard, 0, &aidata, &rtclock);
+DiagnosticMenu diagnostic_menu(config, &aidata, &rtclock);
 HelpAction help_act(config, "Help");
 
 SensorsLogger logger(aidata, sensors, sdcard, rtclock, blink);

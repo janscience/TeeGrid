@@ -73,8 +73,7 @@ ConfigurationMenu configuration_menu(config, sdcard);
 SDCardMenu sdcard_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, pcms, NPCMS, R4SetupPCMs);
-DiagnosticMenu diagnostic_menu(config, sdcard, &pcm1, &pcm2, &pcm3, &pcm4,
-                               &rtclock);
+DiagnosticMenu diagnostic_menu(config, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 DeviceIDAction deviceid_act(diagnostic_menu, &deviceid); 
 Menu ampl_info(diagnostic_menu, "Amplifier board", Action::StreamIO | Action::Report);
 HelpAction help_act(config, "Help");
