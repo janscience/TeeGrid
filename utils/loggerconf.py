@@ -2491,38 +2491,54 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
                     df.write(s)
                     df.write('\n')
         elif ident == 'confload':
-            if len(stream) > 0:
-                if 'not found' in stream[0]:
-                    self.sigDisplayMessage.emit(stream[0].strip())
-                    return
-                title = stream[0].strip()
+            if len(stream) == 0:
+                return
+            if 'not found' in stream[0]:
+                self.sigDisplayMessage.emit(stream[0].strip())
+                return
+            title = stream[0].strip()
             text = '<style type="text/css"> td { padding: 0 15px; }</style>'
             text += '<table>'
             for s in stream[1:]:
-                if len(s.strip()) == 0 or 'configuration:' in s.lower():
-                    break
                 cs = s.split(' to ')
                 key = cs[0].strip()[4:]
                 value = cs[1].strip()
                 self.sigSetParameter.emit(key, value) 
-                text += f'<tr><td>set {key}</td><td>to</td><td><b>{value}</b></td>'
+                text += f'<tr><td>set</td><td>{key}</td><td>to</td><td><b>{value}</b></td>'
                 if self.matches:
                     text += '<td>&#x2705;</td></tr>'
                 else:
                     text += '<td>&#x274C;</td></tr>'
             text += '</table>'
             self.sigDisplayTerminal.emit(title, text)
-        elif ident == 'confget' or ident == 'confput':
-            if ident == 'confget':
-                # TODO!!!
-                # need to update GUI for each gotten parameter!
-                # self.sigSetParameter.emit(key, value)
-                # adapt uC output to the one from load config file
-                # parse and format output accordingly
-                pass
+        elif ident == 'confget':
+            if len(stream) == 0:
+                return
+            if 'error' in stream[0].lower():
+                self.sigDisplayMessage.emit(stream[0].strip())
+                return
+            title = stream[0].strip()
+            text = '<style type="text/css"> td { padding: 0 15px; }</style>'
+            text += '<table>'
+            for s in stream[1:]:
+                cs = s.split(' to ')
+                key = cs[0].strip()[4:]
+                cs = cs[1].split(' from ')
+                value = cs[0].strip()
+                cs = cs[1].split()
+                addr = cs[-1]
+                self.sigSetParameter.emit(key, value) 
+                text += f'<tr><td>set</td><td>{key}</td><td>to</td><td><b>{value}</b></td><td>from address <tt>{addr}</tt></td>'
+                if self.matches:
+                    text += '<td>&#x2705;</td></tr>'
+                else:
+                    text += '<td>&#x274C;</td></tr>'
+            text += '</table>'
+            self.sigDisplayTerminal.emit(title, text)
+        elif ident == 'confput':
             error = False
             for s in stream:
-                if 'error' in s:
+                if 'error' in s.lower():
                     error = True
                     break
             if error:
@@ -3185,9 +3201,13 @@ class Logger(QWidget):
             # final processing of input:
             if self.request_target is not None:
                 if self.request_stop_index == 0:
-                    del self.input[-1]
+                    if len(self.input) > 0:
+                        del self.input[-1]
                     if len(self.input) > 0 and len(self.input[-1].strip()) == 0:
                         del self.input[-1]
+                if self.request_ident[:3] != 'run':
+                    while len(self.input) > 0 and len(self.input[0].strip()) == 0:
+                        del self.input[0]
                 self.request_target.read(self.request_ident,
                                          self.input,
                                          self.request_stop_index == 0)
