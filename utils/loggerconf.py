@@ -681,6 +681,8 @@ class SoftwareInfo(QLabel):
                 
 class CheckSDCard(ReportButton):
     
+    sigSDCardPresence = Signal(bool)
+    
     def __init__(self, *args, **kwargs):
         super().__init__('check sd card availability', 'Check',
                          *args, **kwargs)
@@ -691,8 +693,10 @@ class CheckSDCard(ReportButton):
             if 'present and writable' in s:
                 present = True
                 self.set_button_color(Qt.green)
-        if success and not present:
-            self.set_button_color(Qt.red)
+        if success:
+            if not present:
+                self.set_button_color(Qt.red)
+            self.sigSDCardPresence.emit(present)
         self.sigDisplayTerminal.emit('Check SD card', stream)
 
                 
@@ -1617,6 +1621,8 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
         
 class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
     
+    sigSDCardPresence = Signal(bool)
+    
     def __init__(self, *args, **kwargs):
         super(QFrame, self).__init__(*args, **kwargs)
         self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
@@ -1638,6 +1644,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
 
         self.checkcard.sigReadRequest.connect(self.sigReadRequest)
         self.checkcard.sigDisplayTerminal.connect(self.sigDisplayTerminal)
+        self.checkcard.sigSDCardPresence.connect(self.sigSDCardPresence)
         self.formatcard.sigReadRequest.connect(self.sigReadRequest)
         self.formatcard.sigDisplayTerminal.connect(self.sigDisplayTerminal)
         self.erasecard.sigReadRequest.connect(self.sigReadRequest)
@@ -1807,6 +1814,7 @@ class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
                                          QSizePolicy.Policy.Minimum,
                                          QSizePolicy.Policy.Expanding),
                              self.row, 0)
+            self.sigSDCardPresence.emit(len(items) > 2)
 
 
 class Terminal(QWidget):
@@ -2258,6 +2266,7 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.export_button.setToolTip('Export configuration file to host (Alt+X)')
         self.firmware_button = QPushButton('&Firmware', self)
         self.firmware_button.setToolTip('Upload new firmware (Alt+F)')
+        self.show_firmware = True
         self.reboot_button = QPushButton('Re&boot', self)
         self.reboot_button.setToolTip('Reboot logger (Alt+B)')
         self.startup_button = QPushButton('Startup', self)
@@ -2331,17 +2340,24 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
         self.start_list_firmware = self.retrieve('firmware>list', menu)
         self.start_update_firmware = self.retrieve('firmware>update', menu)
         if len(self.start_list_firmware) == 0:
-            self.firmware_button.setVisible(False)
+            self.show_firmware = False
         else:
             self.sigReadRequest.emit(self, 'firmwarecheck',
                                      self.start_list_firmware, ['select'])
         if len(self.start_update_firmware) > 0:
             self.start_update_firmware.append('STAY')
+        else:
+            self.show_firmware = False
+        self.firmware_button.setVisible(self.show_firmware)
+
+    def set_sdcard(self, present):
+        if self.show_firmware and not present:
+            self.show_firmware = False
 
     def set_mode(self, mode):
         self.clear_button.setVisible('A' in mode)
         self.check_button.setVisible('A' in mode)
-        self.firmware_button.setVisible('A' in mode)
+        self.firmware_button.setVisible('A' in mode and self.show_firmware)
         self.startup_button.setVisible('A' in mode)
 
     def put(self):
@@ -2401,7 +2417,7 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
         elif 'firmware' in ident:
             if ident == 'firmwarecheck':
                 if len(stream) > 1 and 'no firmware files' in stream[1].lower():
-                    self.firmware_button.setVisible(False)
+                    self.show_firmware = False
             elif ident == 'updatefirmware':
                 self.update_stream = []
                 if len(stream) > 0 and 'available' in stream[0].lower():
@@ -2632,6 +2648,7 @@ class Logger(QWidget):
         self.sdcardinfo.sigReadRequest.connect(self.read_request)
         self.sdcardinfo.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.sigDisplayMessage.connect(self.display_message)
+        self.sdcardinfo.sigSDCardPresence.connect(self.loggeracts.set_sdcard)
         self.loggeracts.sigUpdate.connect(self.sdcardinfo.start)
         iboxw = QWidget(self)
         ibox = QGridLayout(iboxw)
