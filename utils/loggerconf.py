@@ -9,6 +9,8 @@ try:
     from microconfig import parse_number, change_unit
     from microconfig import Interactor, InteractorQObject, InteractorQWidget
     from microconfig import ReportButton, InfoFrame
+    from microconfig import Terminal
+    from microconfig import SpinBox
 except ImportError:
     print('ERROR: failed to import microconfig package !')
     print('- download https://github.com/janscience/MicroConfig')
@@ -30,8 +32,7 @@ from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QSpacerItem
 from PyQt5.QtWidgets import QWidget, QFrame, QPushButton, QRadioButton
 from PyQt5.QtWidgets import QAction, QShortcut, QSizePolicy
 from PyQt5.QtWidgets import QCheckBox, QLineEdit, QComboBox
-from PyQt5.QtWidgets import QSpinBox, QAbstractSpinBox
-from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtWidgets import QSpinBox, QFileDialog
 
 try:
     import pyqtgraph as pg
@@ -1488,172 +1489,6 @@ class SDCardInfo(InfoFrame):
                                          QSizePolicy.Policy.Expanding),
                              self.row, 0)
             self.sigSDCardPresence.emit(len(items) > 2)
-
-
-class Terminal(QWidget):
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.title = QLabel(self)
-        self.out = QLabel(self)
-        self.out.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        self.scroll = QScrollArea(self)
-        self.scroll.setWidget(self.out)
-        self.done = QPushButton(self)
-        self.done.setText('&Done')
-        self.done.setToolTip('Close the terminal (Return, Escape, Space)')
-        self.done.clicked.connect(self.clear)
-        key = QShortcut(QKeySequence.Cancel, self)
-        key.activated.connect(self.done.animateClick)
-        key = QShortcut(Qt.Key_Space, self)
-        key.activated.connect(self.done.animateClick)
-        key = QShortcut(Qt.Key_Return, self)
-        key.activated.connect(self.done.animateClick)
-        vbox = QVBoxLayout(self)
-        vbox.addWidget(self.title)
-        vbox.addWidget(self.scroll)
-        vbox.addWidget(self.done)
-
-    def clear(self):
-        self.title.setText('')
-        self.out.setText('')
-        self.out.setMinimumSize(1, 1)
-        self.out.setMaximumSize(self.out.sizeHint())
-
-    def update(self, stream):
-        if len(stream) > 0:
-            self.title.setText(stream[0])
-        s = ''
-        for l in stream[1:]:
-            s += l + '\n'
-        self.done.setEnabled(False)
-        self.out.setText(s)
-        self.out.setMinimumSize(self.out.sizeHint())
-        vsb = self.scroll.verticalScrollBar()
-        vsb.setValue(vsb.maximum())
-
-    def display(self, title, stream):
-        if title:
-            self.title.setText(title)
-        self.done.setEnabled(True)
-        if isinstance(stream, (tuple, list)):
-            text = ''
-            for s in stream:
-                text += s
-                text += '\n'
-            self.out.setText(text)
-            self.out.setFont(QFont('monospace'))
-        else:
-            self.out.setText(stream)
-            self.out.setFont(QFont('sans'))
-        self.out.setMinimumSize(self.out.sizeHint())
-        vsb = self.scroll.verticalScrollBar()
-        vsb.setValue(vsb.maximum())
-
-
-class SpinBox(QAbstractSpinBox):
-
-    textChanged = Signal(str)
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setAccelerated(True)
-        self.setAlignment(Qt.AlignLeft)
-        self.setButtonSymbols(QAbstractSpinBox.UpDownArrows)
-        self.setCorrectionMode(QAbstractSpinBox.CorrectToPreviousValue)
-        self.setFrame(True)
-        self.setKeyboardTracking(True)
-        self.setReadOnly(False)
-        self.setGroupSeparatorShown(False)
-        self.setWrapping(False)
-        self._minimum = None
-        self._maximum = None
-        self._decimals = 0
-        self._value = 0
-        self._unit = ''
-
-    def setDecimals(self, n):
-        self._decimals = n
-
-    def minimum(self):
-        return self._minimum
-
-    def maximum(self):
-        return self._maximum
-
-    def setMinimum(self, minv):
-        self._minimum = minv
-
-    def setMaximum(self, maxv):
-        self._maximum = maxv
-
-    def setStepType(self, stype):
-        pass
-
-    def stepEnabled(self):
-        steps = self.StepUpEnabled | self.StepDownEnabled
-        try:
-            if self._minimum is not None and self._value <= self._minimum:
-                steps &= ~self.StepDownEnabled
-            if self._maximum is not None and self._value >= self._maximum:
-                steps &= ~self.StepUpEnabled
-        except AttributeError:  # why does it not know self._minimum initially?
-            pass
-        return steps
-
-    def value(self):
-        return self._value
-
-    def setValue(self, value):
-        self._value = value
-        locale = QLocale()
-        text = f'{value:.{self._decimals}f}'
-        text = text.replace('.', locale.decimalPoint())
-        text += self._unit
-        self.lineEdit().setText(text)
-
-    def setSuffix(self, suffix):
-        self._unit = suffix
-
-    def validate(self, text, pos):
-        locale = QLocale()
-        s = text.replace(locale.decimalPoint(), '.')
-        value, unit, ndec = parse_number(s)
-        if value is None:
-            return QValidator.State.Intermediate, text, pos
-        if self._minimum is not None and value <= self._minimum:
-            return QValidator.State.Intermediate, text, pos
-        if self._maximum is not None and value >= self._maximum:
-            return QValidator.State.Intermediate, text, pos
-        if ndec > self._decimals:
-            return QValidator.State.Intermediate, text, pos
-        self._value = float(value)
-        if not self._unit and unit:
-            text = text[:-len(unit)]
-        self.textChanged.emit(text)
-        #return QValidator.State.Intermediate
-        #return QValidator.State.Invalid
-        return QValidator.State.Acceptable, text, pos
-
-    def fixup(self, text):
-        locale = QLocale()
-        s = text.replace(locale.decimalPoint(), '.')
-        value, unit, ndec = parse_number(s)
-        if value is None:
-            value = self._minimum  # TODO should be previous value
-        if self._minimum is not None and value <= self._minimum:
-            value = self._minimum
-        if self._maximum is not None and value >= self._maximum:
-            value = self._maximum
-        if ndec > self._decimals:
-            ndec = self._decimals
-        text = f'{value:.{ndec}f}'.replace('.', locale.decimalPoint())
-        text += unit
-        self.setValue(float(value))
-        self.textChanged.emit(text)
-
-    def stepBy(self, steps):
-        self.setValue(self._value + steps)
 
     
 class Parameter(Interactor, QObject, metaclass=InteractorQObject):
