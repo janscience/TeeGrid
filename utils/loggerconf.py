@@ -2338,6 +2338,12 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
         if len(self.start_update_firmware) > 0:
             self.start_update_firmware.append('STAY')
 
+    def set_mode(self, mode):
+        self.clear_button.setVisible('A' in mode)
+        self.check_button.setVisible('A' in mode)
+        self.firmware_button.setVisible('A' in mode)
+        self.startup_button.setVisible('A' in mode)
+
     def put(self):
         self.sigReadRequest.emit(self, 'confput', self.start_put, ['select'])
 
@@ -2746,6 +2752,7 @@ class Logger(QWidget):
 
     def set_mode(self, checked):
         mode = 'A' if self.admin_button.isChecked() else 'U'
+        self.loggeracts.set_mode(mode)
         title_widget = None
         set_focus = True
         n = 0
