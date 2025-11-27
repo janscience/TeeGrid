@@ -1,28 +1,23 @@
-# https://github.com/pyserial/pyserial
-try:
-    from serial import Serial
-    from serial.tools.list_ports import comports
-    from serial.serialutil import SerialException
-except ImportError:
-    print('ERROR: failed to import serial module !')
-    print('You need to install the pyserial package using')
-    print('> pip install pyserial')
-    exit()
-    
-# https://github.com/pyusb/pyusb
-# pip install pyusb
-try:
-    import usb.core
-except ImportError:
-    print('ERROR: failed to import usb module !')
-    print('You need to install the pyusb package using')
-    print('> pip install pyusb')
-    exit()
-    
 import sys
 import numpy as np
+
+from serial import Serial
+from serial.serialutil import SerialException
+
+try:
+    from microconfig import discover_teensy_ports
+    from microconfig import parse_number, change_unit
+    from microconfig import Interactor, InteractorQObject, InteractorQWidget
+    from microconfig import ReportButton, InfoFrame
+except ImportError:
+    print('ERROR: failed to import microconfig package !')
+    print('- download https://github.com/janscience/MicroConfig')
+    print('- change into the microconfig/ directory')
+    print('- in there execute `pip install .`')
+    exit()
+
 from scipy.signal import welch
-from abc import ABC, abstractmethod
+
 try:
     from PyQt5.QtCore import Signal
 except ImportError:
@@ -37,304 +32,17 @@ from PyQt5.QtWidgets import QAction, QShortcut, QSizePolicy
 from PyQt5.QtWidgets import QCheckBox, QLineEdit, QComboBox
 from PyQt5.QtWidgets import QSpinBox, QAbstractSpinBox
 from PyQt5.QtWidgets import QFileDialog
+
 try:
     import pyqtgraph as pg
 except ImportError:
-    print('ERROR: failed to import pyqtgraph module !')
+    print('ERROR: failed to import pyqtgraph package !')
     print('Install it using')
     print('> pip install pyqtgraph')
     exit()
 
 
 __version__ = '2.0'
-
-
-def parse_number(s):
-    """Parse string with number and unit.
-
-    From https://github.com/bendalab/audioio/blob/master/src/audioio/audiometadata.py
-    
-    Parameters
-    ----------
-    s: str, float, or int
-        String to be parsed. The initial part of the string is
-        expected to be a number, the part following the number is
-        interpreted as the unit. If float or int, then return this
-        as the value with empty unit.
-
-    Returns
-    -------
-    v: None, int, or float
-        Value of the string as float. Without decimal point, an int is returned.
-        If the string does not contain a number, None is returned.
-    u: str
-        Unit that follows the initial number.
-    n: int
-        Number of digits behind the decimal point.
-    """
-    n = len(s)
-    ip = n
-    have_point = False
-    for i in range(len(s)):
-        if s[i] == '.':
-            if have_point:
-                n = i
-                break
-            have_point = True
-            ip = i + 1
-        if not s[i] in '0123456789.+-':
-            n = i
-            break
-    if n == 0:
-        return None, s, 0
-    v = float(s[:n]) if have_point else int(s[:n])
-    u = s[n:].strip()
-    nd = n - ip if n >= ip else 0
-    return v, u, nd
-
-
-unit_prefixes = {'Deka': 1e1, 'deka': 1e1, 'Hekto': 1e2, 'hekto': 1e2,
-                 'kilo': 1e3, 'Kilo': 1e3, 'Mega': 1e6, 'mega': 1e6,
-                 'Giga': 1e9, 'giga': 1e9, 'Tera': 1e12, 'tera': 1e12, 
-                 'Peta': 1e15, 'peta': 1e15, 'Exa': 1e18, 'exa': 1e18, 
-                 'Dezi': 1e-1, 'dezi': 1e-1, 'Zenti': 1e-2, 'centi': 1e-2,
-                 'Milli': 1e-3, 'milli': 1e-3, 'Micro': 1e-6, 'micro': 1e-6, 
-                 'Nano': 1e-9, 'nano': 1e-9, 'Piko': 1e-12, 'piko': 1e-12, 
-                 'Femto': 1e-15, 'femto': 1e-15, 'Atto': 1e-18, 'atto': 1e-18, 
-                 'da': 1e1, 'h': 1e2, 'K': 1e3, 'k': 1e3, 'M': 1e6,
-                 'G': 1e9, 'T': 1e12, 'P': 1e15, 'E': 1e18, 
-                 'd': 1e-1, 'c': 1e-2, 'mu': 1e-6, 'u': 1e-6, 'm': 1e-3,
-                 'n': 1e-9, 'p': 1e-12, 'f': 1e-15, 'a': 1e-18}
-""" SI prefixes for units with corresponding factors. """
-
-
-def change_unit(val, old_unit, new_unit):
-    """Scale numerical value to a new unit.
-
-    From https://github.com/bendalab/audioio/blob/master/src/audioio/audiometadata.py
-    which is adapted from https://github.com/relacs/relacs/blob/1facade622a80e9f51dbf8e6f8171ac74c27f100/options/src/parameter.cc#L1647-L1703
-
-    Parameters
-    ----------
-    val: float
-        Value given in `old_unit`.
-    old_unit: str
-        Unit of `val`.
-    new_unit: str
-        Requested unit of return value.
-
-    Returns
-    -------
-    new_val: float
-        The input value `val` scaled to `new_unit`.
-
-    Examples
-    --------
-
-    ```
-    >>> from audioio import change_unit
-    >>> change_unit(5, 'mm', 'cm')
-    0.5
-
-    >>> change_unit(5, '', 'cm')
-    5.0
-
-    >>> change_unit(5, 'mm', '')
-    5.0
-
-    >>> change_unit(5, 'cm', 'mm')
-    50.0
-
-    >>> change_unit(4, 'kg', 'g')
-    4000.0
-
-    >>> change_unit(12, '%', '')
-    0.12
-
-    >>> change_unit(1.24, '', '%')
-    124.0
-
-    >>> change_unit(2.5, 'min', 's')
-    150.0
-
-    >>> change_unit(3600, 's', 'h')
-    1.0
-
-    ```
-
-    """
-    # missing unit?
-    if not old_unit and not new_unit:
-        return val
-    if not old_unit and new_unit != '%':
-        return val
-    if not new_unit and old_unit != '%':
-        return val
-
-    # special units that directly translate into factors:
-    unit_factors = {'%': 0.01, 'hour': 60.0*60.0, 'h': 60.0*60.0, 'min': 60.0}
-
-    # parse old unit:
-    f1 = 1.0
-    if old_unit in unit_factors:
-        f1 = unit_factors[old_unit]
-    else:
-        for k in unit_prefixes:
-            if len(old_unit) > len(k) and old_unit[:len(k)] == k:
-                f1 = unit_prefixes[k]
-  
-    # parse new unit:
-    f2 = 1.0
-    if new_unit in unit_factors:
-        f2 = unit_factors[new_unit]
-    else:
-        for k in unit_prefixes:
-            if len(new_unit) > len(k) and new_unit[:len(k)] == k:
-                f2 = unit_prefixes[k]
-  
-    return val*f1/f2
-
-
-def get_teensy_model(vid, pid, serial_number):
-    
-    # map bcdDevice of USB device to Teensy model version:
-    teensy_model = {   
-        0x274: '30',
-        0x275: '31',
-        0x273: 'LC',
-        0x276: '35',
-        0x277: '36',
-        0x278: '40 beta',
-        0x279: '40',
-        0x280: '41',
-        0x281: 'MM'}
-
-    dev = usb.core.find(idVendor=vid, idProduct=pid,
-                        serial_number=serial_number)
-    if dev is None:
-        # this happens when we do not have permissions for the device!
-        return ''
-    else:
-        return teensy_model[dev.bcdDevice]
-
-
-def discover_teensy_ports():
-    devices = []
-    serial_numbers = []
-    models = []
-    for port in sorted(comports(False)):
-        if port.vid is None and port.pid is None:
-            continue
-        #if port.vid == 0x16C0 and port.pid in [0x0483, 0x048B, 0x048C, 0x04D5]:
-        if port.manufacturer == 'Teensyduino':
-            teensy_model = get_teensy_model(port.vid, port.pid,
-                                            port.serial_number)
-            # TODO: we should also check for permissions!
-            devices.append(port.device)
-            serial_numbers.append(port.serial_number)
-            models.append(teensy_model)
-    return devices, models, serial_numbers
-
-
-class ScanLogger(QLabel):
-
-    sigLoggerFound = Signal(object, object, object)
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setText('Scanning for loggers ...\nPlease connect a logger to an USB port.')
-        self.setAlignment(Qt.AlignCenter)
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.scan)
-        self.start()
-
-    def start(self):
-        self.timer.start(50)
-
-    def scan(self):
-        devices, models, serial_numbers = discover_teensy_ports()
-        if len(devices) > 0:
-            self.timer.stop()
-            self.sigLoggerFound.emit(devices[0],
-                                     models[0],
-                                     serial_numbers[0])
-
-            
-class Interactor(ABC):
-
-    sigReadRequest = Signal(object, str, list, list)
-    sigWriteRequest = Signal(str, list)
-    sigTransmitRequest = Signal(object, str, list)
-    sigDisplayTerminal = Signal(str, object)
-    sigDisplayMessage = Signal(object)
-    sigUpdate = Signal()
-
-    @abstractmethod
-    def setup(self, menu):
-        pass
-
-    def retrieve(self, key, menu, verbose=True):
-        
-        def find(keys, menu, ids):
-            found = False
-            for mk in menu:
-                if keys[0] in mk.lower():
-                    found = True
-                    menu_item = menu[mk]
-                    ids.append(menu_item[0])
-                    if len(keys) > 1:
-                        if menu_item[1] == 'menu' and \
-                           find(keys[1:], menu_item[2], ids):
-                            if len(menu_item[2]) == 0:
-                                menu.pop(mk)
-                            return True
-                    else:
-                        menu.pop(mk)
-                        return True
-                    break
-            if not found:
-                for mk in menu:
-                    menu_item = menu[mk]
-                    ids.append(menu_item[0])
-                    if menu_item[1] == 'menu' and \
-                       find(keys, menu_item[2], ids):
-                        if len(menu_item[2]) == 0:
-                            menu.pop(mk)
-                        return True
-                    ids.pop()
-            return False
-
-        keys = [k.strip() for k in key.split('>') if len(k.strip()) > 0]
-        ids = []
-        if find(keys, menu, ids):
-            return ids
-        elif verbose:
-            print(key, 'not found')
-        return []
-
-    @abstractmethod
-    def read(self, ident, stream, success):
-        pass
-
-        
-class InteractorQObject(type(Interactor), type(QObject)):
-    # this class is needed for multiple inheritance of ABC ...
-    pass
-
-        
-class InteractorQWidget(type(Interactor), type(QWidget)):
-    # this class is needed for multiple inheritance of ABC ...
-    pass
-
-        
-class InteractorQFrame(type(Interactor), type(QFrame)):
-    # this class is needed for multiple inheritance of ABC ...
-    pass
-
-        
-class InteractorQPushButton(type(Interactor), type(QPushButton)):
-    # this class is needed for multiple inheritance of ABC ...
-    pass
 
 
 class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
@@ -422,37 +130,6 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
                 self.prev_time = None
                 self.timer.setInterval(50)
 
-                
-class ReportButton(Interactor, QPushButton, metaclass=InteractorQPushButton):
-    
-    def __init__(self, key, text, *args, **kwargs):
-        super(QPushButton, self).__init__(*args, **kwargs)
-        self.setText(text)
-        self.clicked.connect(self.run)
-        self.key = key
-        self.start = []
-
-    def setText(self, text):
-        super().setText(text)
-        bbox = self.fontMetrics().boundingRect(text)
-        self.setMaximumWidth(bbox.width() + 10)
-        self.setMaximumHeight(bbox.height() + 2)
-
-    def set_button_color(self, color):
-       pal = self.palette()
-       pal.setColor(QPalette.Button, QColor(color))
-       self.setAutoFillBackground(True)
-       self.setPalette(pal)
-       self.update()
-     
-    def setup(self, menu):
-        self.start = self.retrieve(self.key, menu)
-        if len(self.start) == 0:
-            self.setVisible(False)
-
-    def run(self):
-        self.sigReadRequest.emit(self, 'run', self.start, ['select'])
-
         
 class PSRAMTest(ReportButton):
     
@@ -483,11 +160,10 @@ class PSRAMTest(ReportButton):
         self.sigDisplayTerminal.emit(title, text)
 
 
-class LoggerInfo(Interactor, QFrame, metaclass=InteractorQFrame):
+class LoggerInfo(InfoFrame):
     
     def __init__(self, *args, **kwargs):
-        super(QFrame, self).__init__(*args, **kwargs)
-        self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        super().__init__(*args, **kwargs)
         self.rtclock = RTClock(self)
         self.box = QGridLayout(self)
         title = QLabel('<b>Logger</b>', self)
@@ -1264,13 +940,12 @@ class BlinkLEDs(ReportButton):
         self.sigDisplayTerminal.emit(stream[0], stream[1:])
     
         
-class HardwareInfo(Interactor, QFrame, metaclass=InteractorQFrame):
+class HardwareInfo(InfoFrame):
     
     sigPlot = Signal()
     
     def __init__(self, plot, *args, **kwargs):
-        super(QFrame, self).__init__(*args, **kwargs)
-        self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        super().__init__(*args, **kwargs)
         self.box = QGridLayout(self)
         title = QLabel('<b>Periphery</b>', self)
         title.setSizePolicy(QSizePolicy.Policy.Preferred,
@@ -1458,13 +1133,12 @@ class PlotSensors(QWidget):
             plot.listDataItems()[0].setData(time, data)
 
         
-class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
+class SensorsInfo(InfoFrame):
     
     sigPlot = Signal()
     
     def __init__(self, plot, *args, **kwargs):
-        super(QFrame, self).__init__(*args, **kwargs)
-        self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        super().__init__(*args, **kwargs)
         self.plot = plot
         self.box = QGridLayout(self)
         title = QLabel('<b>Environmental sensors</b>', self)
@@ -1619,13 +1293,12 @@ class SensorsInfo(Interactor, QFrame, metaclass=InteractorQFrame):
             self.row += 1
         
         
-class SDCardInfo(Interactor, QFrame, metaclass=InteractorQFrame):
+class SDCardInfo(InfoFrame):
     
     sigSDCardPresence = Signal(bool)
     
     def __init__(self, *args, **kwargs):
-        super(QFrame, self).__init__(*args, **kwargs)
-        self.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+        super().__init__(*args, **kwargs)
         self.checkcard = CheckSDCard()
         self.checkcard.setToolTip('Check accessability of micro SD card (Ctrl+M)')
         self.erasecard = FormatSDCard('sd card>erase and format', 'Erase')
@@ -3311,6 +2984,30 @@ class Logger(QWidget):
                 self.stop()
         self.input = []
         
+
+class ScanLogger(QLabel):
+
+    sigLoggerFound = Signal(object, object, object)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setText('Scanning for loggers ...\nPlease connect a logger to an USB port.')
+        self.setAlignment(Qt.AlignCenter)
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.scan)
+        self.start()
+
+    def start(self):
+        self.timer.start(200)
+
+    def scan(self):
+        devices, models, serial_numbers = discover_teensy_ports()
+        if len(devices) > 0:
+            self.timer.stop()
+            self.sigLoggerFound.emit(devices[0],
+                                     models[0],
+                                     serial_numbers[0])
+
 
 class LoggerConf(QMainWindow):
     def __init__(self):
