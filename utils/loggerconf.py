@@ -5,7 +5,7 @@ from serial import Serial
 from serial.serialutil import SerialException
 
 try:
-    from microconfig import discover_teensy_ports
+    from microconfig import Discover, discover_teensy
     from microconfig import parse_number, change_unit
     from microconfig import Interactor, InteractorQObject, InteractorQWidget
     from microconfig import ReportButton, InfoFrame
@@ -188,10 +188,10 @@ class LoggerInfo(InfoFrame):
         self.eeprom_hexdump_start_get = []
         self.row = 1
 
-    def set(self, device, model, serial_number):
-        self.device = device
-        self.model = model
-        self.serial_number = serial_number
+    def set(self, device):
+        self.device = device.device
+        self.model = device.model
+        self.serial_number = device.serial
 
     def setup(self, menu):
         self.rtclock.setup(menu)
@@ -2208,15 +2208,15 @@ class Logger(QWidget):
         self.menu_key = None
         self.menu_item = None
 
-    def activate(self, device, model, serial_number):
+    def activate(self, device):
         QApplication.restoreOverrideCursor()
-        self.device = device
-        self.loggerinfo.set(device, model, serial_number)
+        self.device = device.device
+        self.loggerinfo.set(device)
         self.msg.setText('Reading configuration ...')
         self.msg.setAlignment(Qt.AlignCenter)
         self.stack.setCurrentWidget(self.msg)
         try:
-            self.ser = Serial(device)
+            self.ser = Serial(self.device)
             self.ser.reset_input_buffer()
             self.ser.reset_output_buffer()
         except (OSError, SerialException):
@@ -2820,30 +2820,6 @@ class Logger(QWidget):
         self.input = []
         
 
-class ScanLogger(QLabel):
-
-    sigLoggerFound = Signal(object, object, object)
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setText('Scanning for loggers ...\nPlease connect a logger to an USB port.')
-        self.setAlignment(Qt.AlignCenter)
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.scan)
-        self.start()
-
-    def start(self):
-        self.timer.start(200)
-
-    def scan(self):
-        devices, models, serial_numbers = discover_teensy_ports()
-        if len(devices) > 0:
-            self.timer.stop()
-            self.sigLoggerFound.emit(devices[0],
-                                     models[0],
-                                     serial_numbers[0])
-
-
 class LoggerConf(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -2865,10 +2841,10 @@ class LoggerConf(QMainWindow):
         pg.setConfigOption('background', back_color)
         pg.setConfigOption('foreground', text_color)
 
-    def activate(self, device, model, serial_number):
+    def activate(self, device):
         self.logger = Logger(self)
         self.logger.sigLoggerDisconnected.connect(self.disconnect)
-        self.logger.activate(device, model, serial_number)
+        self.logger.activate(device)
         self.stack.addWidget(self.logger)
         self.stack.setCurrentWidget(self.logger)
 
@@ -2878,6 +2854,28 @@ class LoggerConf(QMainWindow):
         self.logger = None
         self.scanlogger.start()
         self.stack.setCurrentWidget(self.scanlogger)
+
+
+class ScanLogger(QLabel):
+
+    sigLoggerFound = Signal(object)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.devices = Discover(discover_teensy)
+        self.setText('Scanning for loggers ...\nPlease connect a logger to an USB port.')
+        self.setAlignment(Qt.AlignCenter)
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.scan)
+        self.start()
+
+    def start(self):
+        self.timer.start(200)
+
+    def scan(self):
+        if self.devices.discover():
+            self.timer.stop()
+            self.sigLoggerFound.emit(self.devices[0])
 
 
 def main():
