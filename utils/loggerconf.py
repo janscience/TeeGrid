@@ -2093,12 +2093,18 @@ class LoggerActions(Interactor, QWidget, metaclass=InteractorQWidget):
             self.sigUpdate.emit()
 
         
-class Logger(QWidget):
-
-    sigLoggerDisconnected = Signal()
+class Logger(QMainWindow):
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, device, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.setWindowTitle(f'LoggerConf {__version__}: {device.device}')
+        
+        # default colors:
+        back_color = self.palette().color(QPalette.Window)
+        text_color = self.palette().color(QPalette.WindowText)
+        pg.setConfigOption('background', back_color)
+        pg.setConfigOption('foreground', text_color)
+        
         self.logo = QLabel(self)
         self.logo.setFont(QFont('monospace'))
         self.softwareinfo = SoftwareInfo(self)
@@ -2179,9 +2185,12 @@ class Logger(QWidget):
         self.stack.addWidget(self.plot_recording)
         self.stack.addWidget(self.plot_sensors)
         self.stack.setCurrentWidget(self.msg)
-        vbox = QVBoxLayout(self)
+        
+        box = QWidget(self)
+        vbox = QVBoxLayout(box)
         vbox.addWidget(logoboxw)
         vbox.addWidget(self.stack)
+        self.setCentralWidget(box)
 
         self.device = None
         self.ser = None
@@ -2209,7 +2218,6 @@ class Logger(QWidget):
         self.menu_item = None
 
     def activate(self, device):
-        QApplication.restoreOverrideCursor()
         self.device = device.device
         self.loggerinfo.set(device)
         self.msg.setText('Reading configuration ...')
@@ -2242,7 +2250,7 @@ class Logger(QWidget):
         if self.ser is not None:
             self.ser.close()
         self.ser = None
-        self.sigLoggerDisconnected.emit()
+        self.close()
 
     def display_terminal(self, title, text):
         self.term.display(title, text)
@@ -2820,67 +2828,72 @@ class Logger(QWidget):
         self.input = []
         
 
-class LoggerConf(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle(f'LoggerConf {__version__}')
-        self.scanlogger = ScanLogger(self)
-        self.scanlogger.sigLoggerFound.connect(self.activate)
-        self.stack = QStackedWidget(self)
-        self.stack.addWidget(self.scanlogger)
-        self.stack.setCurrentWidget(self.scanlogger)
-        self.setCentralWidget(self.stack)
+class DeviceScanner(QMainWindow):
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         quit = QAction('&Quit', self)
         quit.setShortcuts(QKeySequence.Quit)
         quit.triggered.connect(QApplication.quit)
         self.addAction(quit)
-        self.logger = None
-        # default colors:
-        back_color = self.palette().color(QPalette.Window)
-        text_color = self.palette().color(QPalette.WindowText)
-        pg.setConfigOption('background', back_color)
-        pg.setConfigOption('foreground', text_color)
-
-    def activate(self, device):
-        self.logger = Logger(self)
-        self.logger.sigLoggerDisconnected.connect(self.disconnect)
-        self.logger.activate(device)
-        self.stack.addWidget(self.logger)
-        self.stack.setCurrentWidget(self.logger)
-
-    def disconnect(self):
-        self.stack.removeWidget(self.logger)
-        del self.logger
-        self.logger = None
-        self.scanlogger.start()
-        self.stack.setCurrentWidget(self.scanlogger)
-
-
-class ScanLogger(QLabel):
-
-    sigLoggerFound = Signal(object)
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.devices = Discover(discover_teensy)
-        self.setText('Scanning for loggers ...\nPlease connect a logger to an USB port.')
-        self.setAlignment(Qt.AlignCenter)
+        self.devices = dict()
+        self.scan = Discover(discover_teensy)
+        boxw = QWidget(self)
+        self.setCentralWidget(boxw)
+        box = QVBoxLayout(boxw)
+        self.label = QLabel(self)
+        self.label.setAlignment(Qt.AlignCenter)
+        self.display()
+        box.addWidget(self.label)
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.scan)
-        self.start()
+        self.timer.timeout.connect(self.scan_ports)
+        self.timer.start(500)
 
-    def start(self):
-        self.timer.start(200)
+    def scan_ports(self):
+        changed = False
+        # mark devices as not found:
+        for d in self.devices:
+            self.devices[d][0] = False
+        if self.scan.discover():
+            # loop over detected devices:
+            for dev in self.scan:
+                d = (dev.device, dev.model, dev.serial)
+                if d in self.devices:
+                    self.devices[d][0] = True
+                else:
+                    logger = Logger(dev, self)
+                    logger.activate(dev)
+                    logger.show()
+                    self.devices[d] = [True, logger]
+                    changed = True
+        # remove devices that are not active anymore:
+        old_devs = []
+        for d in self.devices:
+            if not self.devices[d][0]:
+                old_devs.append(d)
+        for d in old_devs:
+            changed = True
+            self.devices[d][1].stop()
+            del self.devices[d]
+        if changed:
+            self.display()
 
-    def scan(self):
-        if self.devices.discover():
-            self.timer.stop()
-            self.sigLoggerFound.emit(self.devices[0])
-
+    def display(self):
+        text = '<style type="text/css"> td { padding: 0 15px; }</style>'
+        text += 'Scanning for loggers ...<br/>'
+        if len(self.devices) > 0:
+            text += '<table><tr><th align="left">Device</th><th align="left">Model</th><th align="left">Serial number</th></tr>'
+            for dev in self.devices:
+                text += f'<tr><td align="left">{dev[0]}</td><td align="left">{dev[1]}</td><td align="left">{dev[2]}</td></tr>'
+            text += '</table>'
+        else:
+            text += 'Please connect a logger to an USB port.'
+        self.label.setText(text)
+        
 
 def main():
     app = QApplication(sys.argv)
-    main = LoggerConf()
+    main = DeviceScanner()
     main.show()
     app.exec_()
 
