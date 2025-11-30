@@ -4,7 +4,7 @@ import numpy as np
 from microconfig import MicroConfig
 
 try:
-    from microconfig import Discover, discover_teensy
+    from microconfig import discover_teensy
     from microconfig import parse_number, change_unit
     from microconfig import Interactor, InteractorQWidget
     from microconfig import ReportButton, InfoFrame
@@ -1464,7 +1464,7 @@ class SDCardInfo(InfoFrame):
         
 class Logger(MicroConfig):
     
-    def __init__(self, device, *args, **kwargs):
+    def __init__(self, title, device, *args, **kwargs):
         super().__init__('LoggerConf', device, *args, **kwargs)
         self.setWindowTitle(f'{self.title} {__version__}: {device.device}')
         
@@ -1513,9 +1513,9 @@ class Logger(MicroConfig):
         self.stack.addWidget(self.plot_recording)
         self.stack.addWidget(self.plot_sensors)
 
-    def activate(self, device):
+    def start(self, device):
         self.loggerinfo.set(device)
-        super().activate(device)
+        super().start(device)
 
     def stop(self):
         self.loggerinfo.rtclock.stop()
@@ -1527,17 +1527,16 @@ class Logger(MicroConfig):
     def display_sensors_plot(self):
         self.stack.setCurrentWidget(self.plot_sensors)
 
-    def init_menu(self):
+    def setup(self):
         self.loggerinfo.setup(self.menu)
         self.hardwareinfo.setup(self.menu)
         self.sensorsinfo.setup(self.menu)
         self.sdcardinfo.setup(self.menu)
-        super().init_menu()
+        super().setup()
         self.hardwareinfo.start()
         self.sensorsinfo.start()
         self.sdcardinfo.start()
         self.loggerinfo.start()
-        self.stack.setCurrentWidget(self.boxw)
                     
 
 def main():
