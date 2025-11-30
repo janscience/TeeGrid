@@ -1,8 +1,7 @@
 import sys
 import numpy as np
 
-from serial import Serial
-from serial.serialutil import SerialException
+from microconfig import MicroConfig
 
 try:
     from microconfig import Discover, discover_teensy
@@ -13,6 +12,7 @@ try:
     from microconfig import SpinBox
     from microconfig import ConfigActions
     from microconfig import Parameter
+    from microconfig import Scanner
 except ImportError:
     print('ERROR: failed to import microconfig package !')
     print('- download https://github.com/janscience/MicroConfig')
@@ -27,12 +27,12 @@ try:
 except ImportError:
     from PyQt5.QtCore import pyqtSignal as Signal
 from PyQt5.QtCore import Qt, QTimer, QElapsedTimer, QDateTime
-from PyQt5.QtGui import QKeySequence, QFont, QPalette, QColor, QValidator
-from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
-from PyQt5.QtWidgets import QStackedWidget, QLabel, QScrollArea
+from PyQt5.QtGui import QKeySequence, QPalette, QColor, QValidator
+from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5.QtWidgets import QLabel, QScrollArea
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QGridLayout, QSpacerItem
-from PyQt5.QtWidgets import QWidget, QFrame, QPushButton, QRadioButton
-from PyQt5.QtWidgets import QAction, QShortcut, QSizePolicy
+from PyQt5.QtWidgets import QWidget, QPushButton
+from PyQt5.QtWidgets import QShortcut, QSizePolicy
 from PyQt5.QtWidgets import QComboBox
 
 try:
@@ -325,36 +325,6 @@ class LoggerInfo(InfoFrame):
     def get_eeprom_hexdump(self):
         self.sigReadRequest.emit(self, 'eepromhexdump',
                                  self.eeprom_hexdump_start_get, ['select'])
-
-
-class SoftwareInfo(QLabel):
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
-    def set(self, stream):
-        text = '<style type="text/css"> th, td { padding: 0 15px; }</style>'
-        text += '<table>'
-        libs = False
-        n = 0
-        for s in stream:
-            s = s.strip()
-            if len(s) > 0:
-                if n == 0:
-                    text += f'<tr><td colspan=2><b>{s}</b></td></tr>'
-                else:
-                    if not libs:
-                        text += '<tr><td>based on</td>'
-                        libs = True
-                    else:
-                        text += '<tr><td></td>'
-                    s = s.replace('based on ', '')
-                    s = s.replace('and ', '')
-                    text += f'<td><b>{s}</b></td></tr>'
-                n += 1
-        text += '</table>'
-        self.setText(text)
 
                 
 class CheckSDCard(ReportButton):
@@ -1492,51 +1462,18 @@ class SDCardInfo(InfoFrame):
             self.sigSDCardPresence.emit(len(items) > 2)
 
         
-class Logger(QMainWindow):
+class Logger(MicroConfig):
     
     def __init__(self, device, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setWindowTitle(f'LoggerConf {__version__}: {device.device}')
+        super().__init__('LoggerConf', device, *args, **kwargs)
+        self.setWindowTitle(f'{self.title} {__version__}: {device.device}')
         
-        # default colors:
+        # default plot colors:
         back_color = self.palette().color(QPalette.Window)
         text_color = self.palette().color(QPalette.WindowText)
         pg.setConfigOption('background', back_color)
         pg.setConfigOption('foreground', text_color)
-        
-        self.logo = QLabel(self)
-        self.logo.setFont(QFont('monospace'))
-        self.softwareinfo = SoftwareInfo(self)
-        logoboxw = QWidget(self)
-        logobox = QHBoxLayout(logoboxw)
-        logobox.addWidget(self.logo)
-        logobox.addWidget(QLabel())
-        logobox.addWidget(self.softwareinfo)
-        
-        self.msg = QLabel(self)
-        
-        self.conf = QFrame(self)
-        self.conf.setFrameStyle(QFrame.Panel | QFrame.Sunken)
-        self.configuration = QGridLayout()
-        self.config_parames = []
-        self.config_file = QLabel()
-        self.config_status = QLabel()
-        self.config_status.setTextFormat(Qt.RichText)
-        self.config_status.setToolTip('Indicates presence of configuration file')
-        self.user_button = None
-        self.admin_button = None
-        self.configacts = ConfigActions(self)
-        self.configacts.sigReadRequest.connect(self.read_request)
-        self.configacts.sigWriteRequest.connect(self.write_request)
-        self.configacts.sigDisplayTerminal.connect(self.display_terminal)
-        self.configacts.sigDisplayMessage.connect(self.display_message)
-        self.configacts.sigVerifyParameter.connect(self.verify_parameter)
-        self.configacts.sigSetParameter.connect(self.set_parameter)
-        self.configacts.sigConfigFile.connect(self.set_configfile_state)
-        self.configacts.sigShowStartup.connect(self.show_startup)
-        vbox = QVBoxLayout(self.conf)
-        vbox.addLayout(self.configuration)
-        
+                
         self.plot_recording = PlotRecording('Recording from analog input', self)
         self.plot_recording.sigClose.connect(lambda: self.stack.setCurrentWidget(self.boxw))
         self.plot_sensors = PlotSensors('Environmental sensors', self)
@@ -1563,6 +1500,7 @@ class Logger(QMainWindow):
         self.sdcardinfo.sigDisplayMessage.connect(self.display_message)
         self.sdcardinfo.sigSDCardPresence.connect(self.configacts.set_sdcard)
         self.configacts.sigUpdate.connect(self.sdcardinfo.start)
+
         iboxw = QWidget(self)
         ibox = QGridLayout(iboxw)
         ibox.setContentsMargins(0, 0, 0, 0)
@@ -1570,108 +1508,18 @@ class Logger(QMainWindow):
         ibox.addWidget(self.sdcardinfo, 0, 1)
         ibox.addWidget(self.hardwareinfo, 1, 0)
         ibox.addWidget(self.sensorsinfo, 1, 1)
-        self.boxw = QWidget(self)
-        self.box = QHBoxLayout(self.boxw)
-        self.box.addWidget(self.configacts)
-        self.box.addWidget(self.conf)
         self.box.addWidget(iboxw)
-        self.term = Terminal(self)
-        self.term.done.clicked.connect(lambda x: self.stack.setCurrentWidget(self.boxw))
-        self.stack = QStackedWidget(self)
-        self.stack.addWidget(self.msg)
-        self.stack.addWidget(self.boxw)
-        self.stack.addWidget(self.term)
+        
         self.stack.addWidget(self.plot_recording)
         self.stack.addWidget(self.plot_sensors)
-        self.stack.setCurrentWidget(self.msg)
-        
-        box = QWidget(self)
-        vbox = QVBoxLayout(box)
-        vbox.addWidget(logoboxw)
-        vbox.addWidget(self.stack)
-        self.setCentralWidget(box)
-
-        self.device = None
-        self.ser = None
-        self.read_timer = QTimer(self)
-        self.read_timer.timeout.connect(self.read)
-        self.read_count = 0
-        self.read_state = 0
-        self.startup_input = []
-        self.input = []
-        self.read_func = None
-        self.request_stack = []
-        self.request_block = False
-        self.request_type = None
-        self.request_target = None
-        self.request_ident = None
-        self.request_start = None
-        self.request_end = None
-        self.request_stop = None
-        self.request_stop_index = None
-
-        self.menu = {}
-        self.menu_iter = []
-        self.menu_ids = []
-        self.menu_key = None
-        self.menu_item = None
 
     def activate(self, device):
-        self.device = device.device
         self.loggerinfo.set(device)
-        self.msg.setText('Reading configuration ...')
-        self.msg.setAlignment(Qt.AlignCenter)
-        self.stack.setCurrentWidget(self.msg)
-        try:
-            self.ser = Serial(self.device)
-            self.ser.reset_input_buffer()
-            self.ser.reset_output_buffer()
-        except (OSError, SerialException):
-            self.ser = None
-        self.input = []
-        self.read_count = 0
-        self.read_state = 0
-        self.read_func = self.parse_logo
-        self.read_timer.start(2)
-
-    def write(self, text):
-        if self.ser is not None:
-            try:
-                self.ser.write(text.encode('latin1'))
-                self.ser.write(b'\n')
-                self.ser.flush()
-            except (OSError, SerialException):
-                self.stop()
+        super().activate(device)
 
     def stop(self):
-        self.read_timer.stop()
         self.loggerinfo.rtclock.stop()
-        if self.ser is not None:
-            self.ser.close()
-        self.ser = None
-        self.close()
-
-    def display_terminal(self, title, text):
-        self.term.display(title, text)
-        self.stack.setCurrentWidget(self.term)
-
-    def display_message(self, text):
-        if isinstance(text, (tuple, list)):
-            text = '\n'.join(text)
-        QMessageBox.information(self, 'LoggerConf', text)
-
-    def ask(self, stream):
-        default = '[Y/' in stream[-1]
-        stream[-1] = stream[-1][:stream[-1].lower().find(' [y/n] ')]
-        r = QMessageBox.question(self, 'LoggerConf', '\n'.join(stream),
-                                 QMessageBox.Yes | QMessageBox.No,
-                                 QMessageBox.Yes if default
-                                 else QMessageBox.No )
-        self.clear_input()
-        if r == QMessageBox.Yes:
-            self.write('y')
-        else:
-            self.write('n')
+        super().stop()
 
     def display_recording_plot(self):
         self.stack.setCurrentWidget(self.plot_recording)
@@ -1679,620 +1527,22 @@ class Logger(QMainWindow):
     def display_sensors_plot(self):
         self.stack.setCurrentWidget(self.plot_sensors)
 
-    def show_startup(self):
-        self.display_terminal('Startup messages', self.startup_input)
-
-    def set_mode(self, checked):
-        mode = 'A' if self.admin_button.isChecked() else 'U'
-        self.configacts.set_mode(mode)
-        title_widget = None
-        set_focus = True
-        n = 0
-        for p in self.config_params:
-            if title_widget != p.title_widget:
-                if title_widget is not None:
-                    title_widget.setVisible(n > 0);
-                title_widget = p.title_widget
-                n = 0
-            v = p.set_mode(mode)
-            if set_focus and v:
-                p.edit_widget.setFocus(Qt.MouseFocusReason)
-                set_focus = False                
-            if v:
-                n += 1
-        if title_widget is not None:
-            title_widget.setVisible(n > 0);
-        
-    def find_parameter(self, keys, menu):
-        found = False
-        for mk in menu:
-            if keys[0] == mk:
-                found = True
-                menu_item = menu[mk]
-                if len(keys) > 1:
-                    if menu_item[1] == 'menu':
-                        p = self.find_parameter(keys[1:], menu_item[2])
-                        if p is not None:
-                            return p
-                        else:
-                            found = False
-                elif menu_item[1] == 'param':
-                    return menu_item[2]
-                else:
-                    return None
-                break
-        if not found:
-            for mk in menu:
-                menu_item = menu[mk]
-                if menu_item[1] == 'menu':
-                    p = self.find_parameter(keys, menu_item[2])
-                    if p is not None:
-                        return p
-        return None
-
-    def verify_parameter(self, key, value):
-        keys = [k.strip() for k in key.split('>') if len(k.strip()) > 0]
-        p = self.find_parameter(keys, self.menu)
-        if p is None:
-            print('WARNING in verify():', key, 'not found')
-        else:
-            p.verify(value)
-            self.configacts.matches = p.matches
-
-    def set_parameter(self, key, value):
-        keys = [k.strip() for k in key.split('>') if len(k.strip()) > 0]
-        p = self.find_parameter(keys, self.menu)
-        if p is None:
-            print('WARNING in verify():', key, 'not found')
-        else:
-            p.set_value(value)
-            self.configacts.matches = p.matches
-
-    def set_configfile_state(self, present):
-        if present:
-            self.config_status.setText('&#x2705;')
-        else:
-            self.config_status.setText('&#x274C;')
-
-    def parse_idle(self):
-        pass
-        
-    def parse_halt(self, k):
-        s = 'Logger halted\n'
-        k -= 1
-        while k >= 0 and len(self.input[k]) == 0:
-            k -= 1
-        self.msg.setText(s + self.input[k])
-        self.stack.setCurrentWidget(self.msg)
-        self.read_func = self.parse_idle
-
-    def parse_logo(self):
-        title_start = None
-        title_mid = None
-        title_end = None
-        for k in range(len(self.input)):
-            if 'HALT' in self.input[k]:
-                self.parse_halt(k)
-                return
-            elif self.input[k][:20] == 20*'=':
-                title_start = k
-            elif title_start is not None and \
-                 ' by ' in self.input[k]:
-                title_mid = k
-            elif title_start is not None and \
-                 self.input[k][:20] == 20*'-':
-                title_end = k
-        if title_start is not None and \
-           title_end is not None:
-            if title_mid is not None:
-                s = ''
-                for l in self.input[title_start + 1:title_mid]:
-                    if len(l.strip()) == 0:
-                        continue
-                    if len(s) > 0:
-                        s += '\n'
-                    s += l
-                self.logo.setText(s)
-                title_start = title_mid - 1
-            self.softwareinfo.set(self.input[title_start + 1:title_end])
-            self.startup_input = list(self.input[:title_end + 1])
-            self.input = self.input[title_end + 1:]
-            self.read_func = self.parse_configfile
-        elif self.read_count > 100:
-            self.read_count = 0
-            self.write('reboot')
-        else:
-            self.read_count += 1
-
-    def parse_configfile(self):
-        for k in range(len(self.input)):
-            if 'configuration file "' in self.input[k].lower():
-                config_file = self.input[k].split('"')[1].strip()
-                self.config_file.setText(f'<b>{config_file}</b>')
-                self.set_configfile_state(not 'not found' in self.input[k])
-                self.configacts.config_file = config_file
-                self.startup_input.extend(self.input[:k + 1])
-                self.input = self.input[k + 1:]
-                for k in range(len(self.input)):
-                    if len(self.input[k].strip()) == 0:
-                        self.startup_input.extend(self.input[:k])
-                        self.input = self.input[k:]
-                        break
-                self.read_func = self.configure_menu
-                break
-            elif '! error: no sd card present' in self.input[k].lower():
-                self.startup_input.extend(self.input[:k + 1])
-                self.input = self.input[k + 1:]
-                self.set_configfile_state(False)
-                self.read_func = self.configure_menu
-                break
-
-    def configure_menu(self):
-        if self.read_state == 0:
-            self.write('detailed on')
-            self.read_state += 1
-        elif self.read_state == 1:
-            self.write('echo off')
-            self.read_state += 1
-        elif self.read_state == 2:
-            self.write('mode both')
-            self.read_state = 0
-            self.read_func = self.parse_mainmenu
-
-    def parse_menu(self, title_str):
-        menu_start = None
-        menu_end = None
-        for k in range(len(self.input)):
-            if 'HALT' in self.input[k]:
-                self.parse_halt(k)
-                return
-            elif title_str + ':' in self.input[k]:
-                menu_start = k
-            elif menu_start is not None and \
-                 'Select' in self.input[k]:
-                menu_end = k
-        if menu_start is None or menu_end is None:
-            return {}
-        menu = {}
-        for l in self.input[menu_start + 1:menu_end]:
-            x = l.split()
-            num = x[0][:-1]
-            if x[-1] == '...':
-                # sub menu:
-                name = ' '.join(x[1:-1])
-                menu[name] = (num, 'menu', {})
-            else:
-                l = ' '.join(x[1:])
-                if ':' in l:
-                    # parameter:
-                    x = l.split(':')
-                    name = x[0].strip()
-                    value = x[1].strip()
-                    menu[name] = [num, 'param', value]
-                else:
-                    # action:
-                    menu[l] = (num, 'action')
-        self.input = []
-        return menu
-
-    def parse_mainmenu(self):
-        if self.read_state == 0:
-            self.clear_input()
-            self.write('print')
-            self.read_state += 1
-        elif self.read_state == 1:
-            self.menu = self.parse_menu('Menu')
-            if len(self.menu) > 0:
-                self.menu_iter = [iter(self.menu.items())]
-                self.menu_ids = [None]
-                self.read_state = 0
-                self.read_func = self.parse_submenus
-                
-    def parse_submenus(self):
-        if self.read_state == 0:
-            # get next menu entry:
-            try:
-                if len(self.menu_iter) == 0:
-                    exit()
-                self.menu_key, self.menu_item = next(self.menu_iter[-1])
-                self.menu_ids[-1] = self.menu_item[0]
-                if self.menu_item[1] == 'menu':
-                    self.read_state = 10
-                elif self.menu_item[1] == 'param':
-                    self.read_state = 20
-            except StopIteration:
-                self.menu_iter.pop()
-                self.menu_ids.pop()
-                if len(self.menu_iter) == 0:
-                    self.write('gui on')
-                    self.init_menu()
-                    self.clear_input()
-                    self.read_func = self.parse_request_stack
-                else:
-                    self.write('q')
-        elif self.read_state == 10:
-            # request submenu:
-            self.clear_input()
-            self.write(self.menu_item[0])
-            self.read_state += 1
-        elif self.read_state == 11:
-            # parse submenu:
-            submenu = {}
-            if len(self.input) > 1 and 'Select' in self.input[-1]:
-                submenu = self.parse_menu(self.menu_key)
-            if len(submenu) > 0:
-                self.menu_item[2].update(submenu)
-                self.menu_iter.append(iter(self.menu_item[2].items()))
-                self.menu_ids.append(None)
-                self.read_state = 0
-        elif self.read_state == 20:
-            # request parameter:
-            self.clear_input()
-            self.write(self.menu_item[0])
-            self.read_state += 1
-        elif self.read_state == 21:
-            # parse parameter:
-            list_start = None
-            list_end = None
-            for k in range(len(self.input)):
-                if list_start is None and \
-                   self.input[k].lower().startswith(self.menu_key.lower()):
-                    list_start = k + 1
-                elif list_end is None and \
-                     'new value' in self.input[k].lower() and \
-                     self.input[k].rstrip()[-1] == ':':
-                    list_end = k
-            if list_start is None or list_end is None:
-                return
-            s = self.input[list_end]
-            i = s.find('new value')
-            s = s[i + s[i:].find('(') + 1:s.find('):')]
-            param = Parameter(self.menu_ids, self.menu_key, self.menu_item[2])
-            param.initialize(s)
-            param.set_selection(self.input[list_start:list_end])
-            param.sigTransmitRequest.connect(self.transmit_request)
-            self.menu_item[2] = param
-            self.write('keepthevalue')
-            self.read_state = 0
-            
-
     def init_menu(self):
-        # init menu:
-        if 'Help' in self.menu:
-            self.menu.pop('Help')
-        self.configacts.setup(self.menu)
         self.loggerinfo.setup(self.menu)
         self.hardwareinfo.setup(self.menu)
         self.sensorsinfo.setup(self.menu)
         self.sdcardinfo.setup(self.menu)
-        self.config_params = []
-        missing_tools = False
-        first_param = True
-        row = 0
-        title = None
-        for mk in self.menu:
-            menu = self.menu[mk]
-            add_title = True
-            if menu[1] == 'menu':
-                for sk in menu[2]:
-                    if menu[2][sk][1] == 'param':
-                        if add_title:
-                            title = QLabel('<b>' + mk + '</b>', self)
-                            title.setSizePolicy(QSizePolicy.Policy.Preferred,
-                                                QSizePolicy.Policy.Fixed)
-                            self.configuration.addWidget(title, row, 0, 1, 4)
-                            row += 1
-                            add_title = False
-                        self.configuration.addItem(QSpacerItem(10, 0), row, 0)
-                        param_label = QLabel(sk + ': ', self)
-                        self.configuration.addWidget(param_label, row, 1)
-                        param = menu[2][sk][2]
-                        param.setup(self, param_label, title)
-                        self.configuration.addWidget(param.edit_widget, row, 2)
-                        self.configuration.addWidget(param.state_widget,
-                                                 row, 3)
-                        if first_param:
-                            param.edit_widget.setFocus(Qt.MouseFocusReason)
-                            first_param = False
-                        row += 1
-                        self.config_params.append(param)
-                    elif menu[2][sk][1] == 'action':
-                        if not missing_tools:
-                            print('WARNING! the following tool actions are not supported:')
-                            missing_tools = True
-                        if add_title:
-                            print(f'{mk}:')
-                            add_title = False
-                        print(f'  {sk}')
-        self.configuration.addItem(QSpacerItem(0, 0,
-                                               QSizePolicy.Policy.Minimum,
-                                               QSizePolicy.Policy.Expanding),
-                                   row, 0)
-        row += 1
-        self.configuration.addWidget(QLabel('Configuration file'), row, 0, 1, 2)
-        self.configuration.addWidget(self.config_file, row, 2)
-        self.configuration.addWidget(self.config_status, row, 3)
-        row += 1
-        fm = self.fontMetrics()
-        self.configuration.addItem(QSpacerItem(0, 2*fm.averageCharWidth(),
-                                               QSizePolicy.Policy.Minimum,
-                                               QSizePolicy.Policy.Minimum),
-                                   row, 0)
-        row += 1
-        self.configuration.addWidget(QLabel('Mode'), row, 0, 1, 2)
-        boxw = QWidget(self)
-        box = QHBoxLayout(boxw)
-        self.user_button = QRadioButton('&User', self)
-        self.admin_button = QRadioButton('&Admin', self)
-        self.user_button.toggled.connect(self.set_mode)
-        self.user_button.setChecked(True)
-        self.admin_button.toggled.connect(self.set_mode)
-        box.addWidget(self.user_button)
-        box.addWidget(self.admin_button)
-        self.configuration.addWidget(boxw, row, 2)
-        row += 1
+        super().init_menu()
         self.hardwareinfo.start()
         self.sensorsinfo.start()
         self.sdcardinfo.start()
         self.loggerinfo.start()
         self.stack.setCurrentWidget(self.boxw)
-            
-    def parse_request_stack(self):
-        if len(self.request_stack) == 0:
-            if self.request_type is None:
-                self.request_block = False
-            return
-        self.clear_input()
-        request = self.request_stack.pop(0)
-        self.request_target = request[0]
-        self.request_ident = request[1]
-        self.request_start = request[2]
-        self.request_end = request[3]
-        self.request_stop = request[4]
-        if not isinstance(self.request_stop, (list, tuple)):
-            self.request_stop = (self.request_stop, )
-        self.request_stop_index = None
-        self.request_type = request[5]
-        self.read_state = 0
-        if self.request_type in ['read', 'transmit']:
-            self.read_func = self.parse_read_request
-        else:
-            self.read_func = self.parse_write_request
-        self.read_func()
-
-    def read_request(self, target, ident, start, stop, act='read'):
-        if len(start) == 0:
-            return
-        # put each request only once onto the stack:
-        for req in self.request_stack:
-            if req[0] == target and req[1] == ident and req[-1] == act:
-                return
-        block = self.request_block
-        if start[-1] == 'STAY':
-            start.pop()
-            end = False
-            self.request_block = True
-            block = False
-        else:
-            end = True
-        if not block:
-            self.request_stack.append([target, ident, start, end, stop, act])
-        if self.read_func == self.parse_request_stack:
-            self.parse_request_stack()
-            
-    def transmit_request(self, target, ident, start):
-        stop = ['select', 'new value']
-        self.read_request(target, ident, start, stop, 'transmit')
-
-    def parse_read_request(self):
-        if self.read_state == 0:
-            # write menu entry:
-            self.clear_input()
-            self.write(self.request_start[0])
-            self.request_start.pop(0)
-            if len(self.request_start) > 0:
-                self.read_state = 1
-            else:
-                self.request_start = None
-                self.read_state = 2
-        elif self.read_state == 1:
-            # wait for next menu:
-            stop_str = 'select'
-            if self.request_type == 'transmit' and len(self.request_start) == 1:
-                stop_str = 'new value'
-            if len(self.input) > 0 and \
-               stop_str in self.input[-1].lower():
-                self.read_state = 0
-        elif self.read_state == 2:
-            # erase empty line in input:
-            while len(self.input) > 0 and len(self.input[0].strip()) == 0:
-                del self.input[0]
-            self.read_state = 3
-        elif self.read_state == 3:
-            # ask question:
-            if self.request_type == 'read' and len(self.input) > 0 and \
-               self.input[-1].lower().endswith(' [y/n] '):
-                self.ask(self.input)
-                self.read_state = 3
-            # finish input:
-            elif self.request_stop is None or \
-               len(self.request_stop) == 0:
-                self.read_state = 4
-            # check for stop string:
-            elif len(self.input) > 0:
-                last_line = self.input[-1].lower()
-                if len(last_line.strip()) == 0 and len(self.input) > 1:
-                    last_line = self.input[-2].lower()
-                for k in reversed(range(len(self.request_stop))):
-                    if self.request_stop[k] in last_line:
-                        self.request_stop = None
-                        self.request_stop_index = k
-                        self.read_state = 4
-                        break
-            # process input:
-            if self.request_ident[:3] == 'run' and \
-               self.request_target is not None and \
-               self.request_stop_index != 0:
-                    self.request_target.read(self.request_ident,
-                                             self.input,
-                                             self.request_stop_index == 0)
-        elif self.read_state == 4:
-            # final processing of input:
-            if self.request_target is not None:
-                if self.request_stop_index == 0:
-                    if len(self.input) > 0:
-                        del self.input[-1]
-                    if len(self.input) > 0 and len(self.input[-1].strip()) == 0:
-                        del self.input[-1]
-                if self.request_ident[:3] != 'run':
-                    while len(self.input) > 0 and len(self.input[0].strip()) == 0:
-                        del self.input[0]
-                self.request_target.read(self.request_ident,
-                                         self.input,
-                                         self.request_stop_index == 0)
-                self.request_target = None
-            if self.request_type == 'transmit' and self.request_stop_index == 1:
-                self.write('keepthevalue')
-            self.read_state = 5
-        elif self.read_state == 5:
-            # go back to root menu:
-            self.clear_input()
-            if self.request_end:
-                self.write('h')
-            self.request_type = None
-            self.read_func = self.parse_request_stack
-
-    def write_request(self, msg, start):
-        if len(start) == 0:
-            return
-        if not self.request_block:
-            self.request_stack.append([msg, None, start,
-                                       True, None, 'write'])
-        if self.read_func == self.parse_request_stack:
-            self.parse_request_stack()
-
-    def parse_write_request(self):
-        if self.read_state == 0:
-            self.clear_input()
-            if len(self.request_start) > 0:
-                self.write(self.request_start[0])
-                self.request_start.pop(0)
-            else:
-                self.request_start = None
-                self.read_state += 1
-        elif self.read_state == 1:
-            self.clear_input()
-            self.write(self.request_target)
-            self.request_target = None
-            self.read_state += 1
-        elif self.read_state == 2:
-            self.clear_input()
-            if self.request_end:
-                self.write('h')
-            self.request_type = None
-            self.read_func = self.parse_request_stack
-
-    def read(self):
-        if self.ser is None:
-            try:
-                self.ser = Serial(self.device)
-                self.ser.reset_input_buffer()
-                self.ser.reset_output_buffer()
-            except (OSError, SerialException):
-                self.ser = None
-                self.stop()
-                return
-        try:
-            if self.ser.in_waiting > 0:
-                # read in incoming data:
-                x = self.ser.read(self.ser.in_waiting)
-                lines = x.decode('utf8').split('\n')
-                if len(self.input) == 0:
-                    self.input = ['']
-                self.input[-1] += lines[0].rstrip('\r')
-                for l in lines[1:]:
-                    self.input.append(l.rstrip('\r'))
-            else:
-                # execute requests:
-                self.read_func()
-        except (OSError, SerialException):
-            self.stop()
-            
-    def clear_input(self):
-        if self.ser is not None:
-            try:
-                self.ser.reset_input_buffer()
-            except (OSError, SerialException):
-                self.stop()
-        self.input = []
-        
-
-class DeviceScanner(QMainWindow):
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        quit = QAction('&Quit', self)
-        quit.setShortcuts(QKeySequence.Quit)
-        quit.triggered.connect(QApplication.quit)
-        self.addAction(quit)
-        self.devices = dict()
-        self.scan = Discover(discover_teensy)
-        boxw = QWidget(self)
-        self.setCentralWidget(boxw)
-        box = QVBoxLayout(boxw)
-        self.label = QLabel(self)
-        self.label.setAlignment(Qt.AlignCenter)
-        self.display()
-        box.addWidget(self.label)
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.scan_ports)
-        self.timer.start(500)
-
-    def scan_ports(self):
-        changed = False
-        # mark devices as not found:
-        for d in self.devices:
-            self.devices[d][0] = False
-        if self.scan.discover():
-            # loop over detected devices:
-            for dev in self.scan:
-                d = (dev.device, dev.model, dev.serial)
-                if d in self.devices:
-                    self.devices[d][0] = True
-                else:
-                    logger = Logger(dev, self)
-                    logger.activate(dev)
-                    logger.show()
-                    self.devices[d] = [True, logger]
-                    changed = True
-        # remove devices that are not active anymore:
-        old_devs = []
-        for d in self.devices:
-            if not self.devices[d][0]:
-                old_devs.append(d)
-        for d in old_devs:
-            changed = True
-            self.devices[d][1].stop()
-            del self.devices[d]
-        if changed:
-            self.display()
-
-    def display(self):
-        text = '<style type="text/css"> td { padding: 0 15px; }</style>'
-        text += 'Scanning for loggers ...<br/>'
-        if len(self.devices) > 0:
-            text += '<table><tr><th align="left">Device</th><th align="left">Model</th><th align="left">Serial number</th></tr>'
-            for dev in self.devices:
-                text += f'<tr><td align="left">{dev[0]}</td><td align="left">{dev[1]}</td><td align="left">{dev[2]}</td></tr>'
-            text += '</table>'
-        else:
-            text += 'Please connect a logger to an USB port.'
-        self.label.setText(text)
-        
+                    
 
 def main():
     app = QApplication(sys.argv)
-    main = DeviceScanner()
+    main = Scanner([discover_teensy], Logger)
     main.show()
     app.exec_()
 
