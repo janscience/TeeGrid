@@ -192,7 +192,7 @@ class LoggerInfo(InfoFrame):
     def set(self, device):
         self.device = device.device
         self.model = device.model
-        self.serial_number = device.serial
+        self.serial_number = device.serial_number
 
     def setup(self, menu):
         self.rtclock.setup(menu)
@@ -1541,7 +1541,7 @@ class Logger(MicroConfig):
 
 def main():
     app = QApplication(sys.argv)
-    main = Scanner([discover_teensy], Logger)
+    main = Scanner('logger', [discover_teensy], Logger)
     main.show()
     app.exec_()
 
