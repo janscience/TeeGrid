@@ -136,7 +136,7 @@ class RTClock(Interactor, QWidget, metaclass=InteractorQWidget):
 class PSRAMTest(ReportButton):
     
     def __init__(self, *args, **kwargs):
-        super().__init__('psram memory test', 'Test', *args, **kwargs)
+        super().__init__('psram memory test', 'Test', None, *args, **kwargs)
         
     def read(self, ident, stream, success):
         title = None
@@ -332,7 +332,7 @@ class CheckSDCard(ReportButton):
     sigSDCardPresence = Signal(bool)
     
     def __init__(self, *args, **kwargs):
-        super().__init__('check sd card availability', 'Check',
+        super().__init__('check sd card availability', 'Check', None,
                          *args, **kwargs)
         
     def read(self, ident, stream, success):
@@ -351,7 +351,7 @@ class CheckSDCard(ReportButton):
 class FormatSDCard(ReportButton):
     
     def __init__(self, key, text, *args, **kwargs):
-        super().__init__(key, text, *args, **kwargs)
+        super().__init__(key, text, None, *args, **kwargs)
         
     def read(self, ident, stream, success):
         for k in range(len(stream)):
@@ -383,7 +383,7 @@ class FormatSDCard(ReportButton):
 class ListFiles(ReportButton):
     
     def __init__(self, name='List', *args, **kwargs):
-        super().__init__('', name, *args, **kwargs)
+        super().__init__('', name, None, *args, **kwargs)
 
     def setup(self, start):
         self.start = start
@@ -459,7 +459,8 @@ class ListFiles(ReportButton):
 class CleanDir(ReportButton):
     
     def __init__(self, *args, **kwargs):
-        super().__init__('clean recent recordings', 'Clean', *args, **kwargs)
+        super().__init__('clean recent recordings', 'Clean', None,
+                         *args, **kwargs)
         
     def read(self, ident, stream, success):
         if len(stream) == 0:
@@ -486,7 +487,7 @@ class CleanDir(ReportButton):
 class Benchmark(ReportButton):
     
     def __init__(self, *args, **kwargs):
-        super().__init__('run benchmark test', 'Test',
+        super().__init__('run benchmark test', 'Test', None,
                          *args, **kwargs)
         self.value = None
 
@@ -520,12 +521,10 @@ class Benchmark(ReportButton):
 class InputConfiguration(ReportButton):
     
     def __init__(self, *args, **kwargs):
-        super().__init__('report input configuration', 'Input',
+        super().__init__('report input configuration', 'Input', 'inputconf',
                          *args, **kwargs)
         
     def read(self, ident, stream, success):
-        if not success:
-            return
         if len(stream) == 0:
             return
         title = None
@@ -552,7 +551,7 @@ class InputConfiguration(ReportButton):
 class InputData(ReportButton):
     
     def __init__(self, plot, *args, **kwargs):
-        super().__init__('start recording', 'Data',
+        super().__init__('start recording', 'Data', 'inputdata',
                          *args, **kwargs)
         self.plot = plot
         self.plot.sigReplot.connect(self.get_data)
@@ -580,8 +579,6 @@ class InputData(ReportButton):
         
     def read(self, ident, stream, success):
         if ident != 'getdata':
-            return
-        if not success:
             return
         if len(stream) == 0:
             return
@@ -904,7 +901,7 @@ class PlotRecording(QWidget):
 class BlinkLEDs(ReportButton):
     
     def __init__(self, *args, **kwargs):
-        super().__init__('blink leds', 'Blink', *args, **kwargs)
+        super().__init__('blink leds', 'Blink', None, *args, **kwargs)
         
     def read(self, ident, stream, success):
         if len(stream) == 0:
@@ -1464,8 +1461,8 @@ class SDCardInfo(InfoFrame):
         
 class Logger(MicroConfig):
     
-    def __init__(self, title, device, *args, **kwargs):
-        super().__init__('LoggerConf', device, *args, **kwargs)
+    def __init__(self, title, name, device, *args, **kwargs):
+        super().__init__('LoggerConf', name, device, *args, **kwargs)
         self.setWindowTitle(f'{self.title} {__version__}: {device.device}')
         
         # default plot colors:
