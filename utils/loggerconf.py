@@ -1272,7 +1272,7 @@ class SDCardInfo(InfoFrame):
         self.checkcard.setToolTip('Check accessability of micro SD card (Ctrl+M)')
         self.erasecard = FormatSDCard('sd card>erase and format', 'Erase')
         self.erasecard.setToolTip('Flash erase and format SD card (Ctrl+E)')
-        self.formatcard = FormatSDCard('sd card>format', '&Format')
+        self.formatcard = FormatSDCard('sd card>format', 'Format')
         self.formatcard.setToolTip('Format SD card (Ctrl+F)')
         self.root = ListFiles()
         self.root.setToolTip('List files in root directory (Ctrl+O)')
