@@ -377,7 +377,7 @@ class FormatSDCard(ReportButton):
             title = 'Format SD card'
         self.sigDisplayTerminal.emit(title, stream)
         if success:
-            self.sigUpdate.emit()
+            self.sigSDCardUpdate.emit()
 
                 
 class ListFiles(ReportButton):
@@ -453,7 +453,7 @@ class ListFiles(ReportButton):
             self.sigDisplayTerminal.emit(title, text)
             if success and \
                title.lower().strip().startswith('erase all files in'):
-                self.sigUpdate.emit()
+                self.sigSDCardUpdate.emit()
 
                 
 class CleanDir(ReportButton):
@@ -481,7 +481,7 @@ class CleanDir(ReportButton):
             return
         self.sigDisplayTerminal.emit(title, text)
         if success:
-            self.sigUpdate.emit()
+            self.sigSDCardUpdate.emit()
 
                 
 class Benchmark(ReportButton):
@@ -1305,10 +1305,10 @@ class SDCardInfo(InfoFrame):
         self.root.sigDisplayMessage.connect(self.sigDisplayMessage)
         self.bench.sigReadRequest.connect(self.sigReadRequest)
         self.bench.sigDisplayTerminal.connect(self.sigDisplayTerminal)
-        self.formatcard.sigUpdate.connect(self.start)
-        self.erasecard.sigUpdate.connect(self.start)
-        self.eraserecordings.sigUpdate.connect(self.start)
-        self.cleandir.sigUpdate.connect(self.start)
+        self.formatcard.sigSDCardUpdate.connect(self.start)
+        self.erasecard.sigSDCardUpdate.connect(self.start)
+        self.eraserecordings.sigSDCardUpdate.connect(self.start)
+        self.cleandir.sigSDCardUpdate.connect(self.start)
         
         key = QShortcut('Ctrl+M', self)
         key.activated.connect(self.checkcard.animateClick)
@@ -1496,7 +1496,7 @@ class Logger(MicroConfig):
         self.sdcardinfo.sigDisplayTerminal.connect(self.display_terminal)
         self.sdcardinfo.sigDisplayMessage.connect(self.display_message)
         self.sdcardinfo.sigSDCardPresence.connect(self.configacts.set_sdcard)
-        self.configacts.sigUpdate.connect(self.sdcardinfo.start)
+        self.configacts.sigSDCardUpdate.connect(self.sdcardinfo.start)
 
         iboxw = QWidget(self)
         ibox = QGridLayout(iboxw)
