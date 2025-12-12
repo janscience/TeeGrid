@@ -657,7 +657,7 @@ class PlotRecording(QWidget):
         tbox.addWidget(self.utime)
         self.vbox = pg.GraphicsLayoutWidget()
         fm = self.fontMetrics()
-        self.vbox.ci.setSpacing(fm.averageCharWidth())
+        self.vbox.ci.setSpacing(0.1*fm.averageCharWidth())
         self.vbox.ci.layout.setColumnStretchFactor(0, 2)
         self.vbox.ci.layout.setColumnStretchFactor(1, 1)
         self.scroll = QScrollArea(self)
@@ -850,15 +850,15 @@ class PlotRecording(QWidget):
             p.setLabel('bottom', '', '')
             p.setXLink(plot.getViewBox())
             p.setYLink(plot.getViewBox())
-            p.setMinimumHeight(14*fm.averageCharWidth())
+            p.setMinimumHeight(10*fm.averageCharWidth())
             s = self.vbox.getItem(channel, 1)
             s.getAxis('bottom').setStyle(showValues=False)
             s.setLabel('bottom', '', '')
             s.setXLink(spec.getViewBox())
             s.setYLink(spec.getViewBox())
-            s.setMinimumHeight(14*fm.averageCharWidth())
-        plot.setMinimumHeight(19*fm.averageCharWidth())
-        spec.setMinimumHeight(19*fm.averageCharWidth())
+            s.setMinimumHeight(10*fm.averageCharWidth())
+        plot.setMinimumHeight(15*fm.averageCharWidth())
+        spec.setMinimumHeight(15*fm.averageCharWidth())
         for row in range(data.shape[1], data.shape[1] + 1000):
             plot = self.vbox.getItem(row, 0)
             if plot is None:
@@ -866,7 +866,7 @@ class PlotRecording(QWidget):
             plot.setVisible(False)
             spec = self.vbox.getItem(row, 1)
             spec.setVisible(False)
-        self.vbox.setMinimumHeight(data.shape[1]*18*fm.averageCharWidth())
+        self.vbox.setMinimumHeight(data.shape[1]*12*fm.averageCharWidth())
         QApplication.restoreOverrideCursor()
         if self.repeat_plot:
             self.timer.start(int(1000*self.utime.value()))
@@ -1039,7 +1039,7 @@ class PlotSensors(QWidget):
         self.title = QLabel(title, self)
         self.vbox = pg.GraphicsLayoutWidget()
         fm = self.fontMetrics()
-        self.vbox.ci.setSpacing(2*fm.averageCharWidth())
+        self.vbox.ci.setSpacing(0.2*fm.averageCharWidth())
         self.scroll = QScrollArea(self)
         self.scroll.setWidgetResizable(True)
         self.scroll.setWidget(self.vbox)
@@ -1089,7 +1089,7 @@ class PlotSensors(QWidget):
             p.setLabel('bottom', '', '')
             p.setXLink(plot.getViewBox())
         self.sensors[name] = [plot, [], []]
-        self.vbox.setMinimumHeight(len(self.sensors)*18*fm.averageCharWidth())
+        self.vbox.setMinimumHeight(len(self.sensors)*10*fm.averageCharWidth())
         self.time.start()
 
     def addData(self, name, value):
