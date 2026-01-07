@@ -19,7 +19,7 @@ public:
 		float lightthreshold=0.0);
 
   /* Whether LED should blink randomly and be stored to file. */
-  bool randomBlinks() const { return RandomBlinks.value(); };
+  bool randomBlinks() const { return RandomBlinks.enumValue(); };
 
   /* Set whether LED should blink randomly. */
   void setRandomBlinks(bool random);

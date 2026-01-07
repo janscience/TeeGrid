@@ -31,7 +31,7 @@
 #define FILENAME       "LABELID2-SDATETIME"   // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME 10*60    // seconds
 #define INITIAL_DELAY  10       // seconds
-#define RANDOM_BLINKS  true     // set to true for blinking the LED randomly
+#define RANDOM_BLINKS    false    // set to true for blinking the status LED randomly (sync LED is always blinked randomly)
 #define BLINK_TIMEOUT    0      // time after which internal LEDs are switched off in seconds
 #define SYNC_TIMEOUT     0      // time after which synchronization LED is switched off in seconds
 

@@ -266,23 +266,15 @@ void Logger::start(float filetime) {
     File1.setWriteInterval(2*AIInput.DMABufferTime());
     File1.setMaxFileTime(filetime);
   }
-  if (RandomBlinks && SyncLED.available()) {
-    SyncLED.setTiming(5000, 100, 1200);
-    if (filetime > 30)
-      StatusLED.setTiming(5000);
-    else
-      StatusLED.setTiming(2000);    
-    SyncLED.clearSwitchTimes();
-  }
-  else {
-    if (RandomBlinks)
-      StatusLED.setTiming(5000, 100, 1200);
-    else if (filetime > 30)
-      StatusLED.setTiming(5000);
-    else
-      StatusLED.setTiming(2000);
-    StatusLED.clearSwitchTimes();
-  }
+  if (RandomBlinks)
+    StatusLED.setTiming(5000, 100, 1200);
+  else if (filetime > 30)
+    StatusLED.setTiming(5000);
+  else
+    StatusLED.setTiming(2000);
+  StatusLED.clearSwitchTimes();
+  SyncLED.setTiming(5000, 100, 1200);
+  SyncLED.clearSwitchTimes();
   if (BlinkTimeout > 0)
     BlinkTimeout += millis();
   if (SyncTimeout > 0)
@@ -294,8 +286,7 @@ void Logger::start(float filetime) {
   open(true);
   NextStore = 0;
   NextOpen = 0;
-  if (RandomBlinks)
-    openBlinkFiles();
+  openBlinkFiles();
 }
 
 
@@ -345,18 +336,16 @@ void Logger::open(bool backup) {
     Serial.printf("and %sSD card)\n", File1.sdcard()->name());
   }
   else {
-    StatusLED.setSingle();
-    StatusLED.blinkSingle(0, 2000);
     if (RandomBlinks) {
-      if (SyncLED.available()) {
-	SyncLED.setRandom();
-	SyncLED.blinkMultiple(5, 0, 200, 200);
-      }
-      else {
-	StatusLED.setRandom();
-	StatusLED.blinkMultiple(5, 0, 200, 200);
-      }
+      StatusLED.setRandom();
+      StatusLED.blinkMultiple(5, 0, 200, 200);
     }
+    else {
+      StatusLED.setSingle();
+      StatusLED.blinkSingle(0, 2000);
+    }
+    SyncLED.setRandom();
+    SyncLED.blinkMultiple(5, 0, 200, 200);
     String fname(Filename);
     char cs[16];
     sprintf(cs, "%04d", FileCounter + 1);
@@ -400,12 +389,10 @@ void Logger::open(bool backup) {
       FsFile mf = SDCard0->openWrite(mfs);
       mf.close();
     }
-    if (File1.sdcard() != NULL && File1.sdcard()->available()) {
-      Serial.print(File0.name());
+    Serial.print("Write recording   to ");
+    Serial.print(File0.name());
+    if (File1.sdcard() != NULL && File1.sdcard()->available())
       Serial.printf(" (on %s", File0.sdcard()->name());
-    }
-    else
-      Serial.println(File0.name());
   }
 }
 
@@ -517,44 +504,48 @@ void Logger::writeMetadata(Config &config) {
     config.write(file1, config.FileOutput | config.Report);
     file1.close();
   }
-  Serial.print("Wrote metadata to ");
+  Serial.print("Wrote metadata    to ");
   Serial.println(fname);
 }
 
 
 void Logger::openBlinkFiles() {
-  String fname = File0.name();
-  fname.replace(".wav", "-blinks.csv");
-  BlinkFile0 = SDCard0->openWrite(fname.c_str());
-  BlinkFile0.write("time/ms,on\n");
-  if (SDCard1 != NULL && SDCard1->available()) {
-    BlinkFile1 = SDCard1->openWrite(fname.c_str());
-    BlinkFile1.write("time/ms,on\n");
+  if (RandomBlinks || SyncLED.available()) {
+    String fname = File0.name();
+    fname.replace(".wav", "-blinks.csv");
+    BlinkFile0 = SDCard0->openWrite(fname.c_str());
+    BlinkFile0.write("time/ms,on\n");
+    if (SDCard1 != NULL && SDCard1->available()) {
+      BlinkFile1 = SDCard1->openWrite(fname.c_str());
+      BlinkFile1.write("time/ms,on\n");
+    }
+    Serial.print("Store blink times in ");
+    Serial.println(fname);
   }
-  Serial.print("Store blink times in ");
-  Serial.println(fname);
 }
 
 
 void Logger::storeBlinks() {
-  Blink &led = SyncLED.available() ? SyncLED : StatusLED;
+  if (RandomBlinks || SyncLED.available()) {
+    Blink &led = RandomBlinks ? StatusLED : SyncLED;
 
-  if (led.nswitchTimes() < Blink::MaxTimes/2)
-    return;
-  uint32_t tstart = File0.startWriteTime();
-  uint32_t times[Blink::MaxTimes];
-  bool states[Blink::MaxTimes];
-  size_t n;
-  led.getSwitchTimes(times, states, &n);
-  char buffer[Blink::MaxTimes*14];
-  size_t m = 0;
-  for (size_t k=0; k<n; k++)
-    m += sprintf(buffer + m, "%lu,%u\n", times[k] - tstart, states[k]);
-  BlinkFile0.write(buffer, m);
-  BlinkFile0.flush();
-  if (SDCard1 != NULL && SDCard1->available()) {
-    BlinkFile1.write(buffer, m);
-    BlinkFile1.flush();
+    if (led.nswitchTimes() < Blink::MaxTimes/2)
+      return;
+    uint32_t tstart = File0.startWriteTime();
+    uint32_t times[Blink::MaxTimes];
+    bool states[Blink::MaxTimes];
+    size_t n;
+    led.getSwitchTimes(times, states, &n);
+    char buffer[Blink::MaxTimes*14];
+    size_t m = 0;
+    for (size_t k=0; k<n; k++)
+      m += sprintf(buffer + m, "%lu,%u\n", times[k] - tstart, states[k]);
+    BlinkFile0.write(buffer, m);
+    BlinkFile0.flush();
+    if (SDCard1 != NULL && SDCard1->available()) {
+      BlinkFile1.write(buffer, m);
+      BlinkFile1.flush();
+    }
   }
 }
 
@@ -600,8 +591,7 @@ void Logger::update() {
       NextOpen = 0;
     }
   }
-  if (RandomBlinks)
-    storeBlinks();
+  storeBlinks();
   if ((BlinkTimeout > 0) && (millis() > BlinkTimeout))
     StatusLED.disablePin(0);
   if ((BlinkTimeout > 0) && (millis() > 2*BlinkTimeout))

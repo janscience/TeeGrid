@@ -40,7 +40,7 @@
 #define FILENAME         "LABELID2-SDATETIME"  // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
 #define FILE_SAVE_TIME   5*60     // seconds
 #define INITIAL_DELAY    10       // seconds
-#define RANDOM_BLINKS    true     // set to true for blinking the LED randomly
+#define RANDOM_BLINKS    false    // set to true for blinking the status LED randomly (sync LED is always blinked randomly)
 #define BLINK_TIMEOUT    0        // time after which status LEDs are switched off in seconds
 #define SYNC_TIMEOUT     0        // time after which synchronization LEDs are switched off in seconds
 #define SENSORS_INTERVAL 30.0     // interval between sensors readings in seconds
@@ -126,12 +126,7 @@ void setupLEDs() {
 
 
 void setupMenu() {
-  if (syncblink.nPins() > 1) {
-    blinksettings.disable("RandomBlinks");
-    blinksettings.setRandomBlinks(true);
-  }
-  else
-    blinksettings.enable("RandomBlinks");
+  blinksettings.enable("RandomBlinks");
   blinksettings.enable("BlinkTimeout");
   blinksettings.enable("SyncTimeout");
   settings.enable("SensorsInterval");
