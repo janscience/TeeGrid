@@ -13,28 +13,32 @@ bool R40SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
   if (aidata.nchannels() < aisettings.nchannels()) {
     if (aisettings.nchannels() - aidata.nchannels() == 2) {
       if (aisettings.pregain() == 1.0) {
-        cpcm.setupTDM(aidata, ControlPCM186x::CH3L, ControlPCM186x::CH3R,
-	              offs, ControlPCM186x::INVERTED);
+	cpcm.setupChannels(ControlPCM186x::CH3L, ControlPCM186x::CH3R,
+			   ControlPCM186x::INVERTED);
+        cpcm.setupTDM(aidata, offs);
         Serial.println("configured for 2 channels without preamplifier");
       }
       else {
-        cpcm.setupTDM(aidata, ControlPCM186x::CH1L, ControlPCM186x::CH1R,
-	              offs, ControlPCM186x::INVERTED);
+        cpcm.setupChannels(ControlPCM186x::CH1L, ControlPCM186x::CH1R,
+			   ControlPCM186x::INVERTED);
+        cpcm.setupTDM(aidata, offs);
         Serial.printf("configured for 2 channels with preamplifier x%.0f\n",
 		      aisettings.pregain());
       }
     }
     else {
       if (aisettings.pregain() == 1.0) {
-        cpcm.setupTDM(aidata, ControlPCM186x::CH3L, ControlPCM186x::CH3R,
-                      ControlPCM186x::CH4L, ControlPCM186x::CH4R,
-		      offs, ControlPCM186x::INVERTED);
+        cpcm.setupChannels(ControlPCM186x::CH3L, ControlPCM186x::CH3R,
+			   ControlPCM186x::CH4L, ControlPCM186x::CH4R,
+			   ControlPCM186x::INVERTED);
+        cpcm.setupTDM(aidata, offs);
         Serial.println("configured for 4 channels without preamplifier");
       }
       else {
-        cpcm.setupTDM(aidata, ControlPCM186x::CH1L, ControlPCM186x::CH1R,
-                      ControlPCM186x::CH2L, ControlPCM186x::CH2R,
-		      offs, ControlPCM186x::INVERTED);
+        cpcm.setupChannels(ControlPCM186x::CH1L, ControlPCM186x::CH1R,
+			   ControlPCM186x::CH2L, ControlPCM186x::CH2R,
+			   ControlPCM186x::INVERTED);
+        cpcm.setupTDM(aidata, offs);
         Serial.printf("configured for 4 channels with preamplifier x%.0f\n",
 		      aisettings.pregain());
       }
@@ -44,8 +48,9 @@ bool R40SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
     cpcm.setFilters(ControlPCM186x::FIR, false);
   }
   else {
-    // channels not recorded, but need to be configured to not corupt TDM bus:
-    cpcm.setupTDM(ControlPCM186x::CH1L, ControlPCM186x::CH1R, offs);
+    // channels not recorded, but need to be configured to not corrupt TDM bus:
+    cpcm.setupChannels(ControlPCM186x::CH1L, ControlPCM186x::CH1R);
+    cpcm.setupTDM(offs);
     cpcm.powerdown();
     Serial.println("powered down");
   }
@@ -80,14 +85,16 @@ bool R4SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
   cpcm.setRate(aidata, rate);
   if (aidata.nchannels() < nchannels) {
     if (nchannels - aidata.nchannels() == 2) {
-      cpcm.setupTDM(aidata, ControlPCM186x::CH2L, ControlPCM186x::CH2R,
-                    offs, ControlPCM186x::INVERTED);
+      cpcm.setupChannels(ControlPCM186x::CH2L, ControlPCM186x::CH2R,
+			 ControlPCM186x::INVERTED);
+      cpcm.setupTDM(aidata, offs);
       Serial.println("configured for 2 channels");
     }
     else {
-      cpcm.setupTDM(aidata, ControlPCM186x::CH2L, ControlPCM186x::CH2R,
-                    ControlPCM186x::CH3L, ControlPCM186x::CH3R,
-                    offs, ControlPCM186x::INVERTED);
+      cpcm.setupChannels(ControlPCM186x::CH2L, ControlPCM186x::CH2R,
+			 ControlPCM186x::CH3L, ControlPCM186x::CH3R,
+			 ControlPCM186x::INVERTED);
+      cpcm.setupTDM(aidata, offs);
       Serial.println("configured for 4 channels");
     }
     cpcm.setSmoothGainChange(false);
@@ -95,8 +102,9 @@ bool R4SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
     cpcm.setFilters(ControlPCM186x::FIR, false);
   }
   else {
-    // channels not recorded, but need to be configured to not corupt TDM bus:
-    cpcm.setupTDM(ControlPCM186x::CH2L, ControlPCM186x::CH2R, offs);
+    // channels not recorded, but need to be configured to not corrupt TDM bus:
+    cpcm.setupChannels(ControlPCM186x::CH2L, ControlPCM186x::CH2R);
+    cpcm.setupTDM(offs);
     cpcm.powerdown();
     Serial.println("powered down");
   }
