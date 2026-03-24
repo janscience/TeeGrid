@@ -22,7 +22,7 @@
 // (may be overwritten by config file logger.cfg)
 #define NCHANNELS       4       // number of channels (even, from 2 to 16)
 #define SAMPLING_RATE  48000    // samples per second and channel in Hertz
-#define PREGAIN        0.0     // gain factor of preamplifier
+#define PREGAIN        1.0     // gain factor of preamplifier
 #define GAIN           20.0     // dB
 
 #define LABEL          "logger"               // may be used for naming files
