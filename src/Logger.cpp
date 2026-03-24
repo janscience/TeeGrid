@@ -393,6 +393,7 @@ void Logger::open(bool backup) {
     Serial.print(File0.name());
     if (File1.sdcard() != NULL && File1.sdcard()->available())
       Serial.printf(" (on %s", File0.sdcard()->name());
+    Serial.println();
   }
 }
 

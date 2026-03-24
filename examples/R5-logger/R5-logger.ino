@@ -1,0 +1,129 @@
+#include <TeeGridBanner.h>
+#include <Wire.h>
+#include <ControlTLV320.h>
+#include <InputTDM.h>
+#include <SDCard.h>
+#include <RTClockDS1307.h>
+#include <DeviceID.h>
+#include <Blink.h>
+#include <MicroConfig.h>
+#include <LoggerSettings.h>
+#include <BlinkSettings.h>
+#include <InputTDMSettings.h>
+#include <SetupTLV.h>
+#include <InputMenu.h>
+#include <RTClockMenu.h>
+#include <SDCardMenu.h>
+#include <DiagnosticMenu.h>
+#include <TeensyBoard.h>
+#include <Logger.h>
+
+// Default settings: ----------------------------------------------------------
+// (may be overwritten by config file logger.cfg)
+#define NCHANNELS       4       // number of channels (even, from 2 to 16)
+#define SAMPLING_RATE  48000    // samples per second and channel in Hertz
+#define PREGAIN        0.0     // gain factor of preamplifier
+#define GAIN           20.0     // dB
+
+#define LABEL          "logger"               // may be used for naming files
+#define DEVICEID       -1                     // may be used for naming files
+#define PATH           "LABELID2-SDATETIMEM"  // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
+#define FILENAME       "LABELID2-SDATETIME"   // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define FILE_SAVE_TIME 10       // seconds
+#define INITIAL_DELAY   4       // seconds
+#define RANDOM_BLINKS    false    // set to true for blinking the status LED randomly (sync LED is always blinked randomly)
+#define BLINK_TIMEOUT    0      // time after which internal LEDs are switched off in seconds
+#define SYNC_TIMEOUT     0      // time after which synchronization LED is switched off in seconds
+
+// ----------------------------------------------------------------------------
+
+#define LED_PIN        26       // R4.1
+//#define LED_PIN      27       // R4.2
+
+
+// ----------------------------------------------------------------------------
+
+#define SOFTWARE      "TeeGrid R5-logger v0.1"
+
+EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
+InputTDM aidata(AIBuffer, NAIBuffer);
+#define NTLVS 1
+ControlTLV320 tlv1(Wire, TLV320_I2C_ADDR1, InputTDM::TDM1);
+//ControlTLV320 tlv2(Wire, TLV320_I2C_ADDR2, InputTDM::TDM1);
+//ControlTLV320 tlv3(Wire1, TLV320_I2C_ADDR1, InputTDM::TDM2);
+//ControlTLV320 tlv4(Wire1, TLV320_I2C_ADDR2, InputTDM::TDM2);
+Device *tlvs[NTLVS] = {&tlv1}; // , &tlv2, &tlv3, &tlv4};
+
+RTClockDS1307 rtclock;
+DeviceID deviceid(DEVICEID);
+Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
+SDCard sdcard;
+
+Config config("logger.cfg", &sdcard);
+LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
+                        FILE_SAVE_TIME, INITIAL_DELAY);
+InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
+BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT, SYNC_TIMEOUT);
+
+RTClockMenu datetime_menu(config, rtclock);
+ConfigurationMenu configuration_menu(config, sdcard);
+SDCardMenu sdcard_menu(config, sdcard);
+FirmwareMenu firmware_menu(config, sdcard);
+InputMenu input_menu(config, aidata, aisettings, tlvs, NTLVS, R5SetupTLVs);
+DiagnosticMenu diagnostic_menu(config, &tlv1, &rtclock);  // , &tlv2, &tlv3, &tlv4);
+DeviceIDAction deviceid_act(diagnostic_menu, &deviceid); 
+Menu ampl_info(diagnostic_menu, "Amplifier board", Action::StreamIO | Action::Report);
+HelpAction help_act(config, "Help");
+
+Logger logger(aidata, sdcard, rtclock, blink);
+
+
+void setupMenu() {
+  blinksettings.enable("RandomBlinks");
+  blinksettings.enable("BlinkTimeout");
+  blinksettings.enable("SyncTimeout");
+  aisettings.setRateSelection(ControlTLV320::SamplingRates,
+                              ControlTLV320::MaxSamplingRates);
+  aisettings.enable("Pregain");
+  sdcard_menu.CleanRecsAct.setRemove(true);
+}
+
+
+void setupBoard() {
+  Wire.begin();
+  Wire1.begin();
+  rtclock.begin();
+  rtclock.check();
+  ampl_info.addConstString("Version", "R5.0");
+  sdcard.begin();
+}
+
+
+// -----------------------------------------------------------------------------
+
+void setup() {
+  blink.switchOn();
+  setupMenu();
+  Serial.begin(9600);
+  while (!Serial && millis() < 2000) {};
+  printTeeGridBanner(SOFTWARE);
+  setupBoard();
+  logger.configure(config);
+  logger.setCPUSpeed(aisettings.rate());
+  deviceid.setID(settings.deviceID());
+  settings.preparePaths(deviceid);
+  R5SetupTLVs(aidata, aisettings, tlvs, NTLVS);
+  logger.startInput(aisettings.nchannels());
+  logger.setup(settings.path(), settings.fileName(),
+               SOFTWARE, blinksettings.randomBlinks(),
+    	       blinksettings.blinkTimeout(),
+	       blinksettings.syncTimeout());
+  logger.initialDelay(settings.initialDelay());
+  diagnostic_menu.updateCPUSpeed();
+  logger.start(settings.fileTime(), config, ampl_info);
+}
+
+
+void loop() {
+  logger.update();
+}
