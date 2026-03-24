@@ -4,7 +4,6 @@
 #include <InputTDM.h>
 #include <SDCard.h>
 #include <RTClockDS1307.h>
-#include <DeviceID.h>
 #include <Blink.h>
 #include <MicroConfig.h>
 #include <LoggerSettings.h>
@@ -26,7 +25,7 @@
 #define GAIN           20.0     // dB
 
 #define LABEL          "logger"               // may be used for naming files
-#define DEVICEID       -1                     // may be used for naming files
+#define DEVICEID       1                      // may be used for naming files
 #define PATH           "LABELID2-SDATETIMEM"  // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
 #define FILENAME       "LABELID2-SDATETIME"   // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME 10       // seconds
@@ -55,7 +54,6 @@ ControlTLV320 tlv1(Wire, TLV320_I2C_ADDR1, InputTDM::TDM1);
 Device *tlvs[NTLVS] = {&tlv1}; // , &tlv2, &tlv3, &tlv4};
 
 RTClockDS1307 rtclock;
-DeviceID deviceid(DEVICEID);
 Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
 SDCard sdcard;
 
@@ -71,7 +69,6 @@ SDCardMenu sdcard_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, tlvs, NTLVS, R5SetupTLVs);
 DiagnosticMenu diagnostic_menu(config, &tlv1, &rtclock);  // , &tlv2, &tlv3, &tlv4);
-DeviceIDAction deviceid_act(diagnostic_menu, &deviceid); 
 Menu ampl_info(diagnostic_menu, "Amplifier board", Action::StreamIO | Action::Report);
 HelpAction help_act(config, "Help");
 
@@ -110,8 +107,7 @@ void setup() {
   setupBoard();
   logger.configure(config);
   logger.setCPUSpeed(aisettings.rate());
-  deviceid.setID(settings.deviceID());
-  settings.preparePaths(deviceid);
+  settings.preparePaths();
   R5SetupTLVs(aidata, aisettings, tlvs, NTLVS);
   logger.startInput(aisettings.nchannels());
   logger.setup(settings.path(), settings.fileName(),
