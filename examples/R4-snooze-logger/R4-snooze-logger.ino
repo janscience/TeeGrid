@@ -1,4 +1,7 @@
+// requires Snooze library
 #include <TeeGridBanner.h>
+#include <TimeLib.h>
+#include <Snooze.h>
 #include <Wire.h>
 #include <ControlPCM186x.h>
 #include <InputTDM.h>
@@ -39,7 +42,6 @@
 #define PATH             "LABELID2-SDATETIMEM" // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
 #define FILENAME         "LABELID2-SDATETIME"  // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
 #define FILE_SAVE_TIME   5*60     // seconds
-#define INITIAL_DELAY    10       // seconds
 #define RANDOM_BLINKS    false    // set to true for blinking the status LED randomly (sync LED is always blinked randomly)
 #define BLINK_TIMEOUT    0        // time after which status LEDs are switched off in seconds
 #define SYNC_TIMEOUT     0        // time after which synchronization LEDs are switched off in seconds
@@ -60,7 +62,7 @@ int DIPPins[] = { 34, 35, 36, 37, -1 }; // Device ID pins:
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid R4-sensors-logger v3.6"
+#define SOFTWARE      "TeeGrid R4-snooze-logger v1.0"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -86,10 +88,13 @@ TemperatureSTS4x tempsts(&sensors);
 LightBH1750 light1(&sensors);
 LightBH1750 light2(&sensors);
 
+SnoozeAlarm alarm;
+SnoozeSPI snoozesdcard;
+SnoozeBlock snooze(alarm, snoozesdcard);
+
 Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
-                        FILE_SAVE_TIME, INITIAL_DELAY,
-			SENSORS_INTERVAL);
+                        FILE_SAVE_TIME, -1.0, SENSORS_INTERVAL);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT, SYNC_TIMEOUT,
 			    LIGHT_THRESHOLD);
@@ -126,7 +131,6 @@ void setupLEDs() {
 
 
 void setupMenu() {
-  settings.setDeviceIDDevice();
   blinksettings.enable("RandomBlinks");
   blinksettings.enable("BlinkTimeout");
   blinksettings.enable("SyncTimeout");
@@ -153,6 +157,7 @@ bool setupBoard() {
      logger.R41powerDownCAN();
      ampl_info.addConstString("Version", "R4.1");
   }
+  snoozesdcard.setClockPin(BUILTIN_SDCARD);
   sdcard.begin();
   return R41b;
 }
@@ -195,6 +200,7 @@ void setup() {
   bool R41b = setupBoard();
   setupSensors(R41b ? TEMP_PIN_R41b : TEMP_PIN_R41);
   logger.configure(config);
+  alarm.setAlarm(start_time);
   logger.startSensors(settings.sensorsInterval(), blinksettings.lightThreshold());
   logger.reportBlink();
   logger.setCPUSpeed(aisettings.rate());

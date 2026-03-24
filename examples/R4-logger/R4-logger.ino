@@ -82,6 +82,7 @@ Logger logger(aidata, sdcard, rtclock, blink);
 
 
 void setupMenu() {
+  settings.setDeviceIDDevice();
   blinksettings.enable("RandomBlinks");
   blinksettings.enable("BlinkTimeout");
   blinksettings.enable("SyncTimeout");

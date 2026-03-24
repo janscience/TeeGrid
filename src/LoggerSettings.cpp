@@ -9,15 +9,18 @@ LoggerSettings::LoggerSettings(Menu &menu, const char *label, int deviceid,
 			       float sensorsinterval) :
   Menu(menu, "Settings"),
   Label(*this, "Label", label),
-  ID(*this, "DeviceID", deviceid, -1, 127, "%d"),
+  ID(*this, "DeviceID", 1, 1, 127, "%d"),
   Path(*this, "Path", path, Admin),
   FileName(*this, "FileName", filename, Admin),
   FileTime(*this, "FileTime", filetime, 1.0, 8640.0, "%.0f", "s"),
   InitialDelay(*this, "InitialDelay", initialdelay, 0.0, 1e8, "%.0f", "s"),
-  SensorsInterval(*this, "SensorsInterval", sensorsinterval, 1.0, 1e8, "%.0f", "s")
- {
-  ID.setSpecial(-1, "device");
+  SensorsInterval(*this, "SensorsInterval", sensorsinterval, 1.0, 1e8, "%.0f", "s") {
+  if (deviceid < 0)
+    setDeviceIDDevice();
+  ID.setValue(deviceid);
   SensorsInterval.disable();
+  if (initialdelay < 0)
+    InitialDelay.disable();
 }
 
 
@@ -33,6 +36,12 @@ void LoggerSettings::setDeviceID(int id) {
 
 void LoggerSettings::setDeviceIDAdmin() {
   ID.setMode(Action::Admin);
+}
+
+
+void LoggerSettings::setDeviceIDDevice() {
+  ID.setMinimum(-1);
+  ID.setSpecial(-1, "device");
 }
 
 
