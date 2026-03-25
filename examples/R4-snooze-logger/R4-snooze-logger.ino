@@ -1,6 +1,4 @@
 #include <TeeGridBanner.h>
-#include <TimeLib.h>
-#include <Snooze.h>
 #include <Wire.h>
 #include <ControlPCM186x.h>
 #include <InputTDM.h>
@@ -87,10 +85,6 @@ TemperatureSTS4x tempsts(&sensors);
 LightBH1750 light1(&sensors);
 LightBH1750 light2(&sensors);
 
-SnoozeAlarm alarm;
-SnoozeSPI snoozesdcard;
-SnoozeBlock snooze(alarm, snoozesdcard);
-
 Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
                         FILE_SAVE_TIME, -1.0, SENSORS_INTERVAL);
@@ -159,7 +153,6 @@ bool setupBoard() {
      logger.R41powerDownCAN();
      ampl_info.addConstString("Version", "R4.1");
   }
-  snoozesdcard.setClockPin(BUILTIN_SDCARD);
   sdcard.begin();
   return R41b;
 }
@@ -191,41 +184,6 @@ void setupSensors(int temp_pin) {
 }
 
 
-void snooze_until() {
-  tmElements_t ttm;
-  tmElements_t ctm;
-  if (rtclock.parseDateTimeStr(start_time.value(), ttm)) {
-    time_t tt = makeTime(ttm);
-    //alarm.setAlarm(tt);   // does not wake up
-    breakTime(now(), ctm);
-    int dhour = ttm.Hour - ctm.Hour;
-    int dmin = ttm.Minute - ctm.Minute;
-    int dsec = ttm.Second - ctm.Second;
-    if (dsec < 0) {
-      dsec += 60;
-      dmin -= 1;
-    }
-    if (dmin < 0) {
-      dmin += 60;
-      dhour -= 1;
-    }
-    if (dhour < 0)
-      dhour += 24;
-    Serial.printf("dhour=%d dmin=%d dsec=%d\n", dhour, dmin, dsec);
-    alarm.setRtcTimer(dhour, dmin, dsec);
-    char dts[24];
-    rtclock.dateTime(dts, tt);
-    Serial.printf("Going to sleep until %s ... \n", dts);
-    Serial.flush();
-    // todo: shut off LED
-    delay(1000);
-    Snooze.sleep(snooze);
-    Serial.println("\n... woke up!\n");
-    // todo: resume LED
-  }
-}
-
-
 // -----------------------------------------------------------------------------
 
 void setup() {
@@ -237,7 +195,7 @@ void setup() {
   bool R41b = setupBoard();
   setupSensors(R41b ? TEMP_PIN_R41b : TEMP_PIN_R41);
   logger.configure(config);
-  snooze_until();
+  logger.snooze(start_time.value());
   logger.startSensors(settings.sensorsInterval(), blinksettings.lightThreshold());
   logger.reportBlink();
   logger.setCPUSpeed(aisettings.rate());
@@ -251,7 +209,7 @@ void setup() {
                SOFTWARE, blinksettings.randomBlinks(),
 	       blinksettings.blinkTimeout(),
 	       blinksettings.syncTimeout());
-  logger.initialDelay(0);
+  logger.initialDelay(settings.initialDelay(), stop_time.value());
   diagnostic_menu.updateCPUSpeed();
   logger.start(settings.fileTime(), config, ampl_info);
 }

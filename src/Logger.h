@@ -6,6 +6,8 @@
 #ifndef Logger_h
 #define Logger_h
 
+#include <TimeLib.h>
+#include <Snooze.h>
 #include <Input.h>
 #include <SDCard.h>
 #include <SDWriter.h>
@@ -41,6 +43,9 @@ public:
   // load configuration file, execute menu, and report on serial.
   void configure(Config &config);
 
+  // Hibernate until start_time is reached.
+  void snooze(const char *start_time);
+
   // Reduce CPU speed according to sampling rate.
   void setCPUSpeed(uint32_t rate);
 
@@ -56,7 +61,9 @@ public:
 	     float blinktimeout=0.0, float synctimeout=0.0);
 
   // Delay with double blinks for initial_delay seconds.
-  void initialDelay(float initial_delay, Stream &stream=Serial);
+  // Initialize a potential stop time.
+  void initialDelay(float initial_delay, const char *stop_time=0,
+		    Stream &stream=Serial);
 
   // Open files.
   void start(float filetime);
@@ -126,6 +133,12 @@ protected:
   int Restarts;
   int NextStore;
   int NextOpen;
+  
+  time_t StartTime;
+  time_t StopTime;
+  SnoozeAlarm Alarm;
+  SnoozeSPI SnoozeSDCard;
+  SnoozeBlock SnoozeConfig;
   
 };
 

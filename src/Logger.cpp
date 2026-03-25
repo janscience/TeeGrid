@@ -32,7 +32,12 @@ Logger::Logger(Input &aiinput, SDCard &sdcard,
   FileCounter(0),
   Restarts(0),
   NextStore(0),
-  NextOpen(0) {
+  NextOpen(0),
+  StartTime(0),
+  StopTime(0),
+  Alarm(),
+  SnoozeSDCard(),
+  SnoozeConfig(Alarm, SnoozeSDCard) {
 }
 
 
@@ -58,7 +63,12 @@ Logger::Logger(Input &aiinput, SDCard &sdcard,
   FileCounter(0),
   Restarts(0),
   NextStore(0),
-  NextOpen(0) {
+  NextOpen(0),
+  StartTime(0),
+  StopTime(0),
+  Alarm(),
+  SnoozeSDCard(),
+  SnoozeConfig(Alarm, SnoozeSDCard) {
 }
 
 
@@ -83,7 +93,12 @@ Logger::Logger(Input &aiinput, SDCard &sdcard0,
   FileCounter(0),
   Restarts(0),
   NextStore(0),
-  NextOpen(0) {
+  NextOpen(0),
+  StartTime(0),
+  StopTime(0),
+  Alarm(),
+  SnoozeSDCard(),
+  SnoozeConfig(Alarm, SnoozeSDCard) {
 }
 
 
@@ -174,6 +189,36 @@ void Logger::configure(Config &config) {
 }
 
 
+void Logger::snooze(const char *start_time) {
+  StartTime = 0;
+  if (start_time == 0 || strlen(start_time) == 0)
+    return;
+  SnoozeSDCard.setClockPin(BUILTIN_SDCARD);
+  tmElements_t ttm;
+  if (!Clock.parseDateTimeStr(start_time, ttm))
+    return;
+  time_t StartTime = makeTime(ttm);
+  //Alarm.setAlarm(StartTime);   // does not wake up
+  time_t dt = StartTime - now();
+  if (dt < 0)
+    dt += SECS_PER_DAY;
+  tmElements_t dtm;
+  breakTime(dt, dtm);
+  Alarm.setRtcTimer(dtm.Hour, dtm.Minute, dtm.Second);
+  char dts[24];
+  Clock.dateTime(dts, StartTime);
+  Serial.printf("Going to sleep until %s ... \n", dts);
+  Serial.flush();
+  bool on = StatusLED.isOn();
+  StatusLED.switchOff();
+  delay(1000);
+  Snooze.sleep(SnoozeConfig);
+  Serial.println("\n... woke up!\n");
+  if (on)
+    StatusLED.switchOn();
+}
+
+
 void Logger::setCPUSpeed(uint32_t rate) {
   if (SDCard1 != NULL && !SDCard1->available()) {
     setTeensySpeed(150);
@@ -216,6 +261,7 @@ void Logger::setup(const char *path, const char *filename,
   RandomBlinks = randomblinks;
   BlinkTimeout = (unsigned long)(1000*blinktimeout);
   SyncTimeout = (unsigned long)(1000*synctimeout);
+  StopTime = 0;
   Filename = filename;
   int i = Filename.lastIndexOf('.');
   if (i >= 0)
@@ -239,8 +285,11 @@ void Logger::setup(const char *path, const char *filename,
 }
 
 
-void Logger::initialDelay(float initial_delay, Stream &stream) {
+void Logger::initialDelay(float initial_delay, const char *stop_time,
+			  Stream &stream) {
   shutdown_usb();   // saves power!
+  if (StartTime > 0)
+    initial_delay = 0;
   if (initial_delay < 1e-8) {
     StatusLED.setDouble();
   }
@@ -255,6 +304,18 @@ void Logger::initialDelay(float initial_delay, Stream &stream) {
       delay(uint32_t(1000.0*initial_delay));
     stream.println();
     stream.println();
+  }
+  StopTime = 0;
+  if (stop_time != 0 and strlen(stop_time) > 0) {
+    tmElements_t ttm;
+    if (Clock.parseDateTimeStr(stop_time, ttm)) {
+      StopTime = makeTime(ttm);
+      if (StopTime < now() + 10)
+	StopTime += SECS_PER_DAY;
+      char dts[24];
+      Clock.dateTime(dts, StopTime);
+      stream.printf("Stop recording at %s.\n\n", dts);
+    }
   }
 }
 
@@ -579,15 +640,29 @@ void Logger::update() {
 	yield();
       }
 #endif
-      synchronize(); // TODO: make this working also for backup.
-      open(false);
       if (SDCard1 != NULL && SDCard1->available())
 	NextOpen = 1;
+      else if (StopTime > 0 && now() >= StopTime) {
+	char dts[24];
+	Clock.dateTime(dts, StopTime);
+	Serial.printf("\nStop time %s reached: stop recording and reboot.\n", dts);
+	delay(100);
+	reboot();
+      }
+      synchronize(); // TODO: make this working also for backup.
+      open(false);
     }
   }
   if (NextOpen == 1) {
     if (File1.endWrite()) {
       File1.close();  // file size was set by openWave()
+      if (StopTime > 0 && now() >= StopTime) {
+	char dts[24];
+	Clock.dateTime(dts, StopTime);
+	Serial.printf("\nStop time %s reached: stop recording and reboot.\n",dts);
+	delay(100);
+	reboot();
+      }
       open(true);
       NextOpen = 0;
     }
