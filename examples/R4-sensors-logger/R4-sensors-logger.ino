@@ -10,6 +10,7 @@
 #include <LoggerSettings.h>
 #include <BlinkSettings.h>
 #include <InputTDMSettings.h>
+#include <Timing.h>
 #include <SetupPCM.h>
 #include <InputMenu.h>
 #include <RTClockMenu.h>
@@ -60,7 +61,7 @@ int DIPPins[] = { 34, 35, 36, 37, -1 }; // Device ID pins:
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid R4-sensors-logger v3.6"
+#define SOFTWARE      "TeeGrid R4-sensors-logger v3.8"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -87,10 +88,9 @@ LightBH1750 light1(&sensors);
 LightBH1750 light2(&sensors);
 
 Config config("logger.cfg", &sdcard);
-LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
-                        FILE_SAVE_TIME, INITIAL_DELAY,
-			SENSORS_INTERVAL);
+LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME, FILE_SAVE_TIME);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
+Timing timing(config, INITIAL_DELAY, "", "", SENSORS_INTERVAL);
 BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT, SYNC_TIMEOUT,
 			    LIGHT_THRESHOLD);
 
@@ -127,13 +127,15 @@ void setupLEDs() {
 
 void setupMenu() {
   settings.setDeviceIDDevice();
-  blinksettings.enable("RandomBlinks");
-  blinksettings.enable("BlinkTimeout");
-  blinksettings.enable("SyncTimeout");
-  settings.enable("SensorsInterval");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
+  timing.enable("StartTime");
+  timing.enable("StopTime");
+  timing.enable("SensorsInterval");
+  blinksettings.enable("RandomBlinks");
+  blinksettings.enable("BlinkTimeout");
+  blinksettings.enable("SyncTimeout");
   sdcard_menu.CleanRecsAct.setRemove(true);
 }
 
@@ -195,7 +197,8 @@ void setup() {
   bool R41b = setupBoard();
   setupSensors(R41b ? TEMP_PIN_R41b : TEMP_PIN_R41);
   logger.configure(config);
-  logger.startSensors(settings.sensorsInterval(), blinksettings.lightThreshold());
+  logger.snooze(timing.startTime());
+  logger.startSensors(timing.sensorsInterval(), blinksettings.lightThreshold());
   logger.reportBlink();
   logger.setCPUSpeed(aisettings.rate());
   deviceid.setID(settings.deviceID());
@@ -208,7 +211,7 @@ void setup() {
                SOFTWARE, blinksettings.randomBlinks(),
 	       blinksettings.blinkTimeout(),
 	       blinksettings.syncTimeout());
-  logger.initialDelay(settings.initialDelay());
+  logger.initialDelay(timing.initialDelay(), timing.stopTime());
   diagnostic_menu.updateCPUSpeed();
   logger.start(settings.fileTime(), config, ampl_info);
 }

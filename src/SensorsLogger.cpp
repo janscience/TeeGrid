@@ -75,6 +75,8 @@ void SensorsLogger::openSensorsFile() {
   String sname = File0.name();
   sname.replace(".wav", "-sensors");
   Sensors.openCSV(*SDCard0, sname.c_str());
+  Serial.print("Write sensor data to ");
+  Serial.println(sname);
 }
 
 

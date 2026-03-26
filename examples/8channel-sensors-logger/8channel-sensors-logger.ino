@@ -7,6 +7,7 @@
 #include <MicroConfig.h>
 #include <LoggerSettings.h>
 #include <InputADCSettings.h>
+#include <Timing.h>
 #include <InputMenu.h>
 #include <RTClockMenu.h>
 #include <SDCardMenu.h>
@@ -71,9 +72,10 @@ IlluminanceTSL2591 illum(&tsl, &sensors);
 
 Config config("teegrid.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
-                        FILE_SAVE_TIME, INITIAL_DELAY, SENSORS_INTERVAL);
+                        FILE_SAVE_TIME);
 InputADCSettings aisettings(config, SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE, PREGAIN);
+Timing timing(INITIAL_DELAY, 0, 0, SENSORS_INTERVAL);	    
 RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
 SDCardMenu sdcard_menu(config, sdcard);
@@ -87,9 +89,9 @@ SensorsLogger logger(aidata, sensors, sdcard, rtclock, blink);
 
 
 void setupMenu() {
-  settings.enable("SensorsInterval");
   aisettings.disable("Reference");
   aisettings.enable("Pregain");
+  timing.enable("SensorsInterval");
   sdcard_menu.CleanRecsAct.setRemove(true);
 }
 
@@ -128,14 +130,14 @@ void setup() {
   setupBoard();
   setupSensors();
   logger.configure(config);
-  logger.startSensors(settings.sensorsInterval());
+  logger.startSensors(timing.sensorsInterval());
   tsl.setTemperature(bme.temperature());
   aisettings.configure(&aidata);
   settings.preparePaths();
   setupTestSignals(signalPins, PULSE_FREQUENCY);
   logger.startInput();
   logger.setup(settings.path(), settings.fileName(), SOFTWARE);
-  logger.initialDelay(settings.initialDelay());
+  logger.initialDelay(timing.initialDelay());
   diagnostic_menu.updateCPUSpeed();
   logger.start(settings.fileTime(), config);
 }

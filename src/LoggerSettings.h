@@ -19,8 +19,7 @@ public:
   LoggerSettings(Menu &menu, const char *label="logger", int deviceid=0,
 		 const char *path="LABELID2-SDATETIMEM",
 		 const char *filename="LABELID2-SDATETIME",
-		 float filetime=10.0, float initialdelay=0.0,
-		 float sensorsinterval=30.0);
+		 float filetime=10.0, float initialdelay=-1.0);
   
   static const size_t MaxStr = 64;
 
@@ -72,12 +71,6 @@ public:
 
   /* Set initial delay to time seconds. */
   void setInitialDelay(float time);
-  
-  /* Time in seconds between sensor readings. */
-  float sensorsInterval() const { return SensorsInterval.value(); };
-
-  /* Set time between sensor readings to time seconds. */
-  void setSensorsInterval(float time);
 
 
 protected:
@@ -88,7 +81,6 @@ protected:
   StringParameter<MaxStr> FileName;
   NumberParameter<float> FileTime;
   NumberParameter<float> InitialDelay;
-  NumberParameter<float> SensorsInterval;
   
 };
 

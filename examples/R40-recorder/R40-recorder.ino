@@ -54,7 +54,7 @@ SDCard sdcard;
 
 Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
-                        FILE_SAVE_TIME, 0);
+                        FILE_SAVE_TIME);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 BlinkSettings blinksettings(config, RANDOM_BLINKS);
 

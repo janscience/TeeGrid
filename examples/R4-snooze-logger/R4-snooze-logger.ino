@@ -10,6 +10,7 @@
 #include <LoggerSettings.h>
 #include <BlinkSettings.h>
 #include <InputTDMSettings.h>
+#include <Timing.h>
 #include <SetupPCM.h>
 #include <InputMenu.h>
 #include <RTClockMenu.h>
@@ -39,6 +40,7 @@
 #define PATH             "LABELID2-SDATETIMEM" // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
 #define FILENAME         "LABELID2-SDATETIME"  // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM, ANUM, COUNT
 #define FILE_SAVE_TIME   5*60     // seconds
+#define INITIAL_DELAY    10       // seconds
 #define RANDOM_BLINKS    false    // set to true for blinking the status LED randomly (sync LED is always blinked randomly)
 #define BLINK_TIMEOUT    0        // time after which status LEDs are switched off in seconds
 #define SYNC_TIMEOUT     0        // time after which synchronization LEDs are switched off in seconds
@@ -91,9 +93,7 @@ LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT, SYNC_TIMEOUT,
 			    LIGHT_THRESHOLD);
-Menu timing_menu(config, "Timing");
-StringParameter<10> start_time(timing_menu, "StartTime", "14:00:00");
-StringParameter<10> stop_time(timing_menu, "StopTime", "22:00:00");
+Timing timing(INITIAL_DELAY, "12:00:00", "22:00:00", SENSORS_INTERVAL);
 
 RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
@@ -127,13 +127,15 @@ void setupLEDs() {
 
 
 void setupMenu() {
-  blinksettings.enable("RandomBlinks");
-  blinksettings.enable("BlinkTimeout");
-  blinksettings.enable("SyncTimeout");
-  settings.enable("SensorsInterval");
   aisettings.setRateSelection(ControlPCM186x::SamplingRates,
                               ControlPCM186x::MaxSamplingRates);
   aisettings.enable("Pregain");
+  timing.enable("StartTime");
+  timing.enable("StopTime");
+  timing.enable("SensorsInterval");
+  blinksettings.enable("RandomBlinks");
+  blinksettings.enable("BlinkTimeout");
+  blinksettings.enable("SyncTimeout");
   sdcard_menu.CleanRecsAct.setRemove(true);
 }
 
@@ -195,8 +197,8 @@ void setup() {
   bool R41b = setupBoard();
   setupSensors(R41b ? TEMP_PIN_R41b : TEMP_PIN_R41);
   logger.configure(config);
-  logger.snooze(start_time.value());
-  logger.startSensors(settings.sensorsInterval(), blinksettings.lightThreshold());
+  logger.snooze(timing.stopTime());
+  logger.startSensors(timing.sensorsInterval(), blinksettings.lightThreshold());
   logger.reportBlink();
   logger.setCPUSpeed(aisettings.rate());
   deviceid.setID(settings.deviceID());
@@ -209,7 +211,7 @@ void setup() {
                SOFTWARE, blinksettings.randomBlinks(),
 	       blinksettings.blinkTimeout(),
 	       blinksettings.syncTimeout());
-  logger.initialDelay(settings.initialDelay(), stop_time.value());
+  logger.initialDelay(timing.initialDelay(), timing.startTime());
   diagnostic_menu.updateCPUSpeed();
   logger.start(settings.fileTime(), config, ampl_info);
 }

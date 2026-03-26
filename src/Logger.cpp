@@ -197,11 +197,18 @@ void Logger::snooze(const char *start_time) {
   tmElements_t ttm;
   if (!Clock.parseDateTimeStr(start_time, ttm))
     return;
-  time_t StartTime = makeTime(ttm);
+  StartTime = makeTime(ttm);
   //Alarm.setAlarm(StartTime);   // does not wake up
   time_t dt = StartTime - now();
   if (dt < 0)
     dt += SECS_PER_DAY;
+  dt -= 1;           // make up for delay until first file is recorded
+  if (dt <= 0)
+    return;          // no hibernate required
+  if (dt <= 5) {
+    delay(1000*dt);  // no hibernate required
+    return;
+  }
   tmElements_t dtm;
   breakTime(dt, dtm);
   Alarm.setRtcTimer(dtm.Hour, dtm.Minute, dtm.Second);
@@ -214,6 +221,7 @@ void Logger::snooze(const char *start_time) {
   delay(1000);
   Snooze.sleep(SnoozeConfig);
   Serial.println("\n... woke up!\n");
+  Clock.sync();
   if (on)
     StatusLED.switchOn();
 }
@@ -289,7 +297,7 @@ void Logger::initialDelay(float initial_delay, const char *stop_time,
 			  Stream &stream) {
   shutdown_usb();   // saves power!
   if (StartTime > 0)
-    initial_delay = 0;
+    initial_delay = 0.0;
   if (initial_delay < 1e-8) {
     StatusLED.setDouble();
   }

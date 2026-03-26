@@ -5,20 +5,17 @@
 
 LoggerSettings::LoggerSettings(Menu &menu, const char *label, int deviceid,
 			       const char *path, const char *filename,
-			       float filetime, float initialdelay,
-			       float sensorsinterval) :
+			       float filetime, float initialdelay) :
   Menu(menu, "Settings"),
   Label(*this, "Label", label),
   ID(*this, "DeviceID", 1, 1, 127, "%d"),
   Path(*this, "Path", path, Admin),
   FileName(*this, "FileName", filename, Admin),
   FileTime(*this, "FileTime", filetime, 1.0, 8640.0, "%.0f", "s"),
-  InitialDelay(*this, "InitialDelay", initialdelay, 0.0, 1e8, "%.0f", "s"),
-  SensorsInterval(*this, "SensorsInterval", sensorsinterval, 1.0, 1e8, "%.0f", "s") {
+  InitialDelay(*this, "InitialDelay", initialdelay, 0.0, 1e8, "%.0f", "s") {
   if (deviceid < 0)
     setDeviceIDDevice();
   ID.setValue(deviceid);
-  SensorsInterval.disable();
   if (initialdelay < 0)
     InitialDelay.disable();
 }
@@ -86,9 +83,3 @@ void LoggerSettings::setFileTime(float time) {
 void LoggerSettings::setInitialDelay(float time) {
   InitialDelay.setValue(time);
 }
-
-
-void LoggerSettings::setSensorsInterval(float time) {
-  SensorsInterval.setValue(time);
-}
-
