@@ -48,9 +48,12 @@ protected:
   
   // Store sensor readings in file.
   bool storeSensors();
+  
+  // Close sensors file.
+  void closeSensorsFile();
 
-  // Write recorded data to files.
-  bool store(SDWriter &sdfile, bool backup);
+  // Close all files and reboot.
+  virtual void stop();  
 
   ESensors &Sensors;
 

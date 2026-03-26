@@ -107,7 +107,19 @@ bool SensorsLogger::storeSensors() {
 }
 
 
+void SensorsLogger::closeSensorsFile() {
+  Sensors.closeCSV();
+}
+
+
 bool SensorsLogger::update() {
   Logger::update();
   return storeSensors();
 }
+
+
+void SensorsLogger::stop() {
+  closeSensorsFile();
+  Logger::stop();
+}
+

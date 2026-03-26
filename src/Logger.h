@@ -102,9 +102,15 @@ protected:
   
   // Store blink times in files.
   void storeBlinks();
+  
+  // Close blink files.
+  void closeBlinks();
 
   // Write recorded data to files.
   bool store(SDWriter &sdfile, bool backup);
+
+  // Close all files and reboot.
+  virtual void stop();  
 
   // Derived classes can insert code here before the next file is opened.
   virtual bool synchronize() { return false; };

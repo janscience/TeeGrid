@@ -199,9 +199,10 @@ void Logger::snooze(const char *start_time) {
     return;
   StartTime = makeTime(ttm);
   //Alarm.setAlarm(StartTime);   // does not wake up
-  time_t dt = StartTime - now();
-  if (dt < 0)
-    dt += SECS_PER_DAY;
+  time_t ct = now();
+  while (StartTime < ct)
+    StartTime += SECS_PER_DAY;
+  time_t dt = StartTime - ct;
   dt -= 1;           // make up for delay until first file is recorded
   if (dt <= 0)
     return;          // no hibernate required
@@ -420,6 +421,11 @@ void Logger::open(bool backup) {
     sprintf(cs, "%04d", FileCounter + 1);
     fname.replace("COUNT", cs);
     time_t t = now();
+    // align on StartTime:
+    while (StartTime > 0 && t < StartTime && StartTime - t < 2) {
+      delay(100);
+      t = now();
+    }
     fname = Clock.makeStr(fname, t, true);
     if (fname != PrevFilename) {
       File0.sdcard()->resetFileCounter();
@@ -589,7 +595,7 @@ void Logger::openBlinkFiles() {
       BlinkFile1 = SDCard1->openWrite(fname.c_str());
       BlinkFile1.write("time/ms,on\n");
     }
-    Serial.print("Store blink times in ");
+    Serial.print("Write blink times to ");
     Serial.println(fname);
   }
 }
@@ -620,14 +626,28 @@ void Logger::storeBlinks() {
 }
 
 
+void Logger::closeBlinks() {
+  BlinkFile0.close();
+  if (SDCard1 != NULL && SDCard1->available())
+    BlinkFile1.close();
+}
+
+
 void Logger::update() {
   if (NextStore == 0) {
-    if (store(File0, false) && SDCard1 != NULL && SDCard1->available())
-      NextStore = 1;
+    if (store(File0, false)) {
+      if (SDCard1 != NULL && SDCard1->available())
+	NextStore = 1;
+      else if (StopTime > 0 && now() >= StopTime)
+	stop();
+    }
   }
   if (NextStore == 1) {
-    if (store(File1, true))
+    if (store(File1, true)) {
+      if (StopTime > 0 && now() >= StopTime)
+	stop();
       NextStore = 0;
+    }
   }
   if (NextOpen == 0) {
     if (File0.endWrite()) {
@@ -650,13 +670,8 @@ void Logger::update() {
 #endif
       if (SDCard1 != NULL && SDCard1->available())
 	NextOpen = 1;
-      else if (StopTime > 0 && now() >= StopTime) {
-	char dts[24];
-	Clock.dateTime(dts, StopTime);
-	Serial.printf("\nStop time %s reached: stop recording and reboot.\n", dts);
-	delay(100);
-	reboot();
-      }
+      else if (StopTime > 0 && now() >= StopTime)
+	stop();
       synchronize(); // TODO: make this working also for backup.
       open(false);
     }
@@ -664,13 +679,8 @@ void Logger::update() {
   if (NextOpen == 1) {
     if (File1.endWrite()) {
       File1.close();  // file size was set by openWave()
-      if (StopTime > 0 && now() >= StopTime) {
-	char dts[24];
-	Clock.dateTime(dts, StopTime);
-	Serial.printf("\nStop time %s reached: stop recording and reboot.\n",dts);
-	delay(100);
-	reboot();
-      }
+      if (StopTime > 0 && now() >= StopTime)
+	stop();
       open(true);
       NextOpen = 0;
     }
@@ -684,6 +694,16 @@ void Logger::update() {
     SyncLED.clearPins();
   StatusLED.update();
   SyncLED.update();
+}
+
+
+void Logger::stop() {
+  closeBlinks();
+  char dts[24];
+  Clock.dateTime(dts, StopTime);
+  Serial.printf("\nStop time %s reached: stop recording and reboot.\n", dts);
+  delay(100);
+  reboot();
 }
 
 
