@@ -55,3 +55,11 @@ void R5SetupTLVs(Input &aidata, const InputSettings &aisettings,
   stream.println();
 }
 
+
+void powerdownTLVs(Device **controls, size_t ncontrols) {
+  ControlTLV320 **tlvs = reinterpret_cast<ControlTLV320**>(controls);
+  for (size_t k=0; k<ncontrols; k++) {
+    ControlTLV320 &tlv = static_cast<ControlTLV320&>(*tlvs[k]);
+    tlv.powerdown();
+  }
+}

@@ -17,6 +17,7 @@ bool R5SetupTLV(InputTDM &aidata, ControlTLV320 &ctlv, bool offs,
 void R5SetupTLVs(Input &aidata, const InputSettings &aisettings,
 		 Device **controls, size_t ncontrols,
 		 Stream &stream=Serial);
+void powerdownTLVs(Device **controls, size_t ncontrols);
 
 
 #endif

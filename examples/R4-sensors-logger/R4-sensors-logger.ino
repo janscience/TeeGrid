@@ -197,6 +197,7 @@ void setup() {
   bool R41b = setupBoard();
   setupSensors(R41b ? TEMP_PIN_R41b : TEMP_PIN_R41);
   logger.configure(config);
+  powerdownPCMs(pcms, NPCMS);
   logger.snooze(timing.startTime());
   logger.startSensors(timing.sensorsInterval(), blinksettings.lightThreshold());
   logger.reportBlink();

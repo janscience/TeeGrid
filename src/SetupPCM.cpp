@@ -134,3 +134,11 @@ void R4SetupPCMs(Input &aidata, const InputSettings &aisettings,
   stream.println();
 }
 
+
+void powerdownPCMs(Device **controls, size_t ncontrols) {
+  ControlPCM186x **pcms = reinterpret_cast<ControlPCM186x**>(controls);
+  for (size_t k=0; k<ncontrols; k++) {
+    ControlPCM186x &pcm = static_cast<ControlPCM186x&>(*pcms[k]);
+    pcm.powerdown();
+  }
+}

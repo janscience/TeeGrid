@@ -27,6 +27,7 @@ bool R4SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
 void R4SetupPCMs(Input &aidata, const InputSettings &aisettings,
 		 Device **controls, size_t ncontrols,
 		 Stream &stream=Serial);
+void powerdownPCMs(Device **controls, size_t ncontrols);
 
 
 #endif
