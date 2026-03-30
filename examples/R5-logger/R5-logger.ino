@@ -1,6 +1,6 @@
 #include <TeeGridBanner.h>
 #include <Wire.h>
-#include <ControlTLV320.h>
+#include <ControlTLV320ADC.h>
 #include <InputTDM.h>
 #include <SDCard.h>
 #include <RTClockDS1307.h>
@@ -47,10 +47,10 @@
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
 #define NTLVS 1
-ControlTLV320 tlv1(Wire, TLV320_I2C_ADDR1, InputTDM::TDM1);
-//ControlTLV320 tlv2(Wire, TLV320_I2C_ADDR2, InputTDM::TDM1);
-//ControlTLV320 tlv3(Wire1, TLV320_I2C_ADDR1, InputTDM::TDM2);
-//ControlTLV320 tlv4(Wire1, TLV320_I2C_ADDR2, InputTDM::TDM2);
+ControlTLV320ADC tlv1(Wire, TLV320_I2C_ADDR1, InputTDM::TDM1);
+//ControlTLV320ADC tlv2(Wire, TLV320_I2C_ADDR2, InputTDM::TDM1);
+//ControlTLV320ADC tlv3(Wire1, TLV320_I2C_ADDR1, InputTDM::TDM2);
+//ControlTLV320ADC tlv4(Wire1, TLV320_I2C_ADDR2, InputTDM::TDM2);
 Device *tlvs[NTLVS] = {&tlv1}; // , &tlv2, &tlv3, &tlv4};
 
 RTClockDS1307 rtclock;
@@ -79,8 +79,8 @@ void setupMenu() {
   blinksettings.enable("RandomBlinks");
   blinksettings.enable("BlinkTimeout");
   blinksettings.enable("SyncTimeout");
-  aisettings.setRateSelection(ControlTLV320::SamplingRates,
-                              ControlTLV320::MaxSamplingRates);
+  aisettings.setRateSelection(ControlTLV320ADC::SamplingRates,
+                              ControlTLV320ADC::MaxSamplingRates);
   aisettings.enable("Pregain");
   sdcard_menu.CleanRecsAct.setRemove(true);
 }
