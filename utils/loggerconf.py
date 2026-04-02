@@ -835,7 +835,7 @@ class PlotRecording(QWidget):
     def plot_data(self, rate, bits, gain, unit, data):
         self.time = np.arange(len(data))/rate
         self.data = data
-        self.amax = 2**bits
+        self.amax = 2**(bits - 1)
         self.unit = unit
         self.gain = gain
         fm = self.fontMetrics()
