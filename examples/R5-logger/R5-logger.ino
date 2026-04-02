@@ -21,6 +21,7 @@
 // (may be overwritten by config file logger.cfg)
 #define NCHANNELS       4       // number of channels (even, from 2 to 16)
 #define SAMPLING_RATE  48000    // samples per second and channel in Hertz
+#define SOURCE         InputTDMSettings::SINGLE_ENDED
 #define PREGAIN        1.0     // gain factor of preamplifier
 #define GAIN           20.0     // dB
 
@@ -60,7 +61,8 @@ SDCard sdcard;
 Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
                         FILE_SAVE_TIME, INITIAL_DELAY);
-InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
+InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS,
+                            GAIN, PREGAIN, SOURCE);
 BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT, SYNC_TIMEOUT);
 
 RTClockMenu datetime_menu(config, rtclock);
@@ -81,6 +83,7 @@ void setupMenu() {
   blinksettings.enable("SyncTimeout");
   aisettings.setRateSelection(ControlTLV320ADC::SamplingRates,
                               ControlTLV320ADC::MaxSamplingRates);
+  aisettings.enable("Source");
   aisettings.enable("Pregain");
   sdcard_menu.CleanRecsAct.setRemove(true);
 }

@@ -3,6 +3,16 @@
 
 bool R5SetupTLV(InputTDM &aidata, ControlTLV320ADC &ctlv, bool offs,
 		const InputTDMSettings &aisettings) {
+  ControlTLV320ADC::SOURCE source = ControlTLV320ADC::SINGLE_ENDED_INPUT;
+  Serial.printf("SETTINGS SOURCE %d\n", aisettings.source());
+  if (aisettings.source() == InputTDMSettings::DIFFERENTIAL)
+    source = ControlTLV320ADC::DIFFERENTIAL_INPUT;
+  else if (aisettings.source() == InputTDMSettings::DIGITAL)
+    source = ControlTLV320ADC::DIGITAL_INPUT;
+  Serial.printf("SOURCE %d\n", source);
+  ControlTLV320ADC::IMPEDANCE impedance = ControlTLV320ADC::IMP_025;
+  //ControlTLV320ADC::COUPLING coupling = ControlTLV320ADC::AC_CPL;
+  ControlTLV320ADC::COUPLING coupling = ControlTLV320ADC::DC_CPL;
   ctlv.begin();
   if (!ctlv.available()) {
     Serial.println("not available");
@@ -13,15 +23,11 @@ bool R5SetupTLV(InputTDM &aidata, ControlTLV320ADC &ctlv, bool offs,
   ctlv.setFilters(ControlTLV320ADC::LINEAR, ControlTLV320ADC::LOW_HP);
   if (aidata.nchannels() < aisettings.nchannels()) {
     if (aisettings.nchannels() - aidata.nchannels() == 2) {
-      ctlv.setupChannels(2, ControlTLV320ADC::SINGLE_ENDED_INPUT,
-                         ControlTLV320ADC::IMP_025, ControlTLV320ADC::AC_CPL,
-			 -1, slot_offs);
+      ctlv.setupChannels(2, source, impedance, coupling, -1, slot_offs);
       Serial.println("configured for 2 channels");
     }
     else {
-      ctlv.setupChannels(4, ControlTLV320ADC::SINGLE_ENDED_INPUT,
-                         ControlTLV320ADC::IMP_025, ControlTLV320ADC::AC_CPL,
-			 -1, slot_offs);
+      ctlv.setupChannels(4, source, impedance, coupling, -1, slot_offs);
       Serial.println("configured for 4 channels");
     }
     ctlv.setSmoothGainChange(false);
@@ -30,9 +36,7 @@ bool R5SetupTLV(InputTDM &aidata, ControlTLV320ADC &ctlv, bool offs,
   }
   else {
     // channels not recorded, but need to be configured to not corrupt TDM bus:
-    ctlv.setupChannels(4, ControlTLV320ADC::SINGLE_ENDED_INPUT,
-		       ControlTLV320ADC::IMP_025, ControlTLV320ADC::AC_CPL,
-		       -1, slot_offs);
+    ctlv.setupChannels(4, source, impedance, coupling, -1, slot_offs);
     ctlv.setupTDM(aidata);
     ctlv.powerdown();
     Serial.println("powered down");
