@@ -4,12 +4,10 @@
 bool R5SetupTLV(InputTDM &aidata, ControlTLV320ADC &ctlv, bool offs,
 		const InputTDMSettings &aisettings) {
   ControlTLV320ADC::SOURCE source = ControlTLV320ADC::SINGLE_ENDED_INPUT;
-  Serial.printf("SETTINGS SOURCE %d\n", aisettings.source());
   if (aisettings.source() == InputTDMSettings::DIFFERENTIAL)
     source = ControlTLV320ADC::DIFFERENTIAL_INPUT;
   else if (aisettings.source() == InputTDMSettings::DIGITAL)
     source = ControlTLV320ADC::DIGITAL_INPUT;
-  Serial.printf("SOURCE %d\n", source);
   ControlTLV320ADC::IMPEDANCE impedance = ControlTLV320ADC::IMP_025;
   //ControlTLV320ADC::COUPLING coupling = ControlTLV320ADC::AC_CPL;
   ControlTLV320ADC::COUPLING coupling = ControlTLV320ADC::DC_CPL;
