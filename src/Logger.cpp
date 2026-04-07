@@ -223,6 +223,10 @@ void Logger::snooze(const char *start_time) {
   Snooze.sleep(SnoozeConfig);
   Serial.println("\n... woke up!\n");
   Clock.sync();
+  if (SDCard0 != 0)
+    SDCard0->restart();
+  if (SDCard1 != 0)
+    SDCard1->restart();
   if (on)
     StatusLED.switchOn();
 }
