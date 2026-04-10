@@ -200,8 +200,8 @@ void Logger::snooze(const char *start_time) {
   StartTime = makeTime(ttm);
   //Alarm.setAlarm(StartTime);   // does not wake up
   time_t ct = now();
-  while (StartTime < ct)
-    StartTime += SECS_PER_DAY;
+  //while (StartTime < ct)
+  //  StartTime += SECS_PER_DAY;
   time_t dt = StartTime - ct;
   dt -= 1;           // make up for delay until first file is recorded
   if (dt <= 0)
