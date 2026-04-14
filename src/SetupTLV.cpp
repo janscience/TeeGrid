@@ -4,7 +4,7 @@
 bool R5SetupTLV(InputTDM &aidata, ControlTLV320ADC &ctlv, bool offs,
 		const InputTDMSettings &aisettings) {
   Input::SOURCE source = aisettings.source();
-  ControlTLV320ADC::IMPEDANCE impedance = ControlTLV320ADC::IMP_025;
+  ControlTLV320ADC::IMPEDANCE impedance = ControlTLV320ADC::IMP_100;
   //ControlTLV320ADC::COUPLING coupling = ControlTLV320ADC::AC_CPL;
   ControlTLV320ADC::COUPLING coupling = ControlTLV320ADC::DC_CPL;
   ctlv.begin();
@@ -15,6 +15,7 @@ bool R5SetupTLV(InputTDM &aidata, ControlTLV320ADC &ctlv, bool offs,
   uint8_t slot_offs = offs ? 4 : 0;
   ctlv.setRate(aidata, aisettings.rate());
   ctlv.setFilters(ControlTLV320ADC::LINEAR, ControlTLV320ADC::LOW_HP);
+  ctlv.setBias();
   if (aidata.nchannels() < aisettings.nchannels()) {
     if (aisettings.nchannels() - aidata.nchannels() == 2) {
       ctlv.setupChannels(2, source, impedance, coupling, -1, slot_offs);
