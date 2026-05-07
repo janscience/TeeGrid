@@ -610,6 +610,8 @@ class InputData(ReportButton):
             except ValueError:
                 print('Error in parsing line', s)
         if len(data) > 0:
+            min_len = np.min([len(d) for d in data])
+            data = [d[:min_len] for d in data]
             self.plot.plot_data(rate, bits, gain, unit, np.array(data))
 
     def stop(self):
