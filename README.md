@@ -55,10 +55,25 @@ supports a variety of environmental sensors. [Read
 more](examples/8channel-sensors-logger/).
 
 
-## SdFormatter
+## Configuration and testing GUI
 
-The SDFat SDFormatter sketch without the interaction on the Serial
-console.  [Read more](examples/SdFormatter/)
+The [`loggerconf`](utils(loggerconf.py) GUI allows you to configure
+the loggers, set the real-time clock, and provides many diagnostic features.
+
+![loggerconf](utils/docs/loggerconf.png)
+
+You need to install `pymicroconfig` first, as described
+[here](https://github.com/janscience/MicroConfig/tree/main/pymicroconfig).
+
+And you need to install [`pyqtgraph`](https://www.pyqtgraph.org/):
+```
+pip install pyqtgraph
+```
+
+Then navigate to `Arduion/libraries/TeeGrid/utils` and run
+```
+python loggerconf.py
+```
 
 
 ## Housings
