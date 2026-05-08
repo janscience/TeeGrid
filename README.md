@@ -57,7 +57,7 @@ more](examples/8channel-sensors-logger/).
 
 ## Configuration and testing GUI
 
-The [`loggerconf`](utils(loggerconf.py) GUI allows you to configure
+The [`loggerconf`](utils/loggerconf.py) GUI allows you to configure
 the loggers, set the real-time clock, and provides many diagnostic features.
 
 ![loggerconf](utils/docs/loggerconf.png)
