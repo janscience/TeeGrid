@@ -65,7 +65,7 @@ void R40SetupPCMs(Input &aidata, const InputSettings &aisettings,
   aisettings.configure(&aidata);
   static_cast<InputTDM&>(aidata).setSwapLR();
   for (size_t k=0; k<ncontrols; k++) {
-    stream.printf("Setup PCM186x %d on TDM %d: ", k, pcms[k]->TDMBus());
+    stream.printf("Setup PCM186x %d with I2C address %02x on TDM data pin %c on TDM bus %d: ", k, pcms[k]->address(), 'A' + pcms[k]->TDMPin(), pcms[k]->TDMBus());
     R40SetupPCM(static_cast<InputTDM&>(aidata),
 		static_cast<ControlPCM186x&>(*pcms[k]), k%2==1,
 		static_cast<const InputTDMSettings&>(aisettings));
@@ -126,7 +126,7 @@ void R4SetupPCMs(Input &aidata, const InputSettings &aisettings,
   aisettings.configure(&aidata);
   static_cast<InputTDM&>(aidata).setSwapLR();
   for (size_t k=0; k<ncontrols; k++) {
-    stream.printf("Setup PCM186x %d on TDM %d: ", k, pcms[k]->TDMBus());
+    stream.printf("Setup PCM186x %d with I2C address %02x on TDM data pin %c on TDM bus %d: ", k, pcms[k]->address(), 'A' + pcms[k]->TDMPin(), pcms[k]->TDMBus());
     R4SetupPCM(static_cast<InputTDM&>(aidata),
 	       static_cast<ControlPCM186x&>(*pcms[k]), k%2==1,
 	       static_cast<const InputTDMSettings&>(aisettings));
