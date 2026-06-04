@@ -46,7 +46,9 @@ void R5SetupTLVs(Input &aidata, const InputSettings &aisettings,
   ControlTLV320ADC **tlvs = reinterpret_cast<ControlTLV320ADC**>(controls);
   aisettings.configure(&aidata);
   for (size_t k=0; k<ncontrols; k++) {
-    stream.printf("Setup TLV320ADC %d with I2C address %02x on TDM data pin %c on TDM bus %d: ", k, tlvs[k]->address(), 'A' + tlvs[k]->TDMPin(), tlvs[k]->TDMBus());
+    stream.printf("Setup TLV320ADC %d on %s address %02x for TDM bus %d data pin %c: ",
+		  k, tlvs[k]->busStr(), tlvs[k]->address(),
+		  tlvs[k]->TDMBus(), 'A' + tlvs[k]->TDMPin());
     R5SetupTLV(static_cast<InputTDM&>(aidata),
 	       static_cast<ControlTLV320ADC&>(*tlvs[k]), k%2==1,
 	       static_cast<const InputTDMSettings&>(aisettings));
