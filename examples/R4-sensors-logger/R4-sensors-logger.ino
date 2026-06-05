@@ -66,10 +66,10 @@ int DIPPins[] = { 34, 35, 36, 37, -1 }; // Device ID pins:
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
 #define NPCMS 4
-ControlPCM186x pcm1(Wire, PCM186x_I2C_ADDR1, InputTDM::TDM1);
-ControlPCM186x pcm2(Wire, PCM186x_I2C_ADDR2, InputTDM::TDM1);
-ControlPCM186x pcm3(Wire1, PCM186x_I2C_ADDR1, InputTDM::TDM2);
-ControlPCM186x pcm4(Wire1, PCM186x_I2C_ADDR2, InputTDM::TDM2);
+ControlPCM186x pcm1(Wire, PCM186x_I2C_ADDR1, InputTDM::TDM1, InputTDM::DATA_A);
+ControlPCM186x pcm2(Wire, PCM186x_I2C_ADDR2, InputTDM::TDM1, InputTDM::DATA_A);
+ControlPCM186x pcm3(Wire1, PCM186x_I2C_ADDR1, InputTDM::TDM1, InputTDM::DATA_A);
+ControlPCM186x pcm4(Wire1, PCM186x_I2C_ADDR2, InputTDM::TDM1, InputTDM::DATA_A);
 Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 
 RTClockDS1307 rtclock;

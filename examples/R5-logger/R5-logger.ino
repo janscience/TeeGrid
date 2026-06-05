@@ -48,10 +48,14 @@
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
 #define NTLVS 1
-ControlTLV320ADC tlv1(Wire, TLV320_I2C_ADDR1, InputTDM::TDM1);
-//ControlTLV320ADC tlv2(Wire, TLV320_I2C_ADDR2, InputTDM::TDM1);
-//ControlTLV320ADC tlv3(Wire1, TLV320_I2C_ADDR1, InputTDM::TDM2);
-//ControlTLV320ADC tlv4(Wire1, TLV320_I2C_ADDR2, InputTDM::TDM2);
+ControlTLV320ADC tlv1(Wire, TLV320_I2C_ADDR1, InputTDM::TDM1, InputTDM::DATA_A);
+//ControlTLV320ADC tlv2(Wire, TLV320_I2C_ADDR2, InputTDM::TDM1, InputTDM::DATA_A);
+//ControlTLV320ADC tlv3(Wire, TLV320_I2C_ADDR3, InputTDM::TDM1, InputTDM::DATA_B);
+//ControlTLV320ADC tlv4(Wire, TLV320_I2C_ADDR4, InputTDM::TDM1, InputTDM::DATA_B);
+//ControlTLV320ADC tlv3(Wire1, TLV320_I2C_ADDR1, InputTDM::TDM1, InputTDM::DATA_C);
+//ControlTLV320ADC tlv4(Wire1, TLV320_I2C_ADDR2, InputTDM::TDM1, InputTDM::DATA_C);
+//ControlTLV320ADC tlv3(Wire1, TLV320_I2C_ADDR3, InputTDM::TDM1, InputTDM::DATA_D);
+//ControlTLV320ADC tlv4(Wire1, TLV320_I2C_ADDR4, InputTDM::TDM1, InputTDM::DATA_D);
 Device *tlvs[NTLVS] = {&tlv1}; // , &tlv2, &tlv3, &tlv4};
 
 RTClockDS1307 rtclock;
