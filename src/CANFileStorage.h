@@ -6,7 +6,7 @@
 #ifndef CANFileStorage_h
 #define CANFileStorage_h
 
-#include <R41CAN.h>
+#include <CANFD.h>
 #include <TeensyBoard.h>
 #include <Logger.h>
 
@@ -17,7 +17,7 @@ class CANFileStorage : public Logger {
 public:
 
   CANFileStorage(Input &aiinput, SDCard &sdcard,
-		 R41CAN &can, bool master, RTClock &rtclock,
+		 CANFD &can, bool master, RTClock &rtclock,
 		 Blink &blink);
 
 protected:
@@ -25,7 +25,7 @@ protected:
   // Use CAN bus to synchronize opening of next file.
   virtual bool synchronize();
 
-  R41CAN &CAN;
+  CANFD &CAN;
   bool Master;
   
 };

@@ -14,7 +14,7 @@
 #include <SDCardMenu.h>
 #include <DiagnosticMenu.h>
 #include <CANFileStorage.h>
-#include <R41CAN.h>
+#include <CANFD.h>
 
 // Default settings: ----------------------------------------------------------
 // (may be overwritten by config file logger.cfg and by can bus communication)
@@ -35,6 +35,11 @@
 
 #define LED_PIN        26    // R4.1
 
+#define CAN_IO_UP_PIN 41
+#define CAN_IO_DOWN_PIN 40
+
+#define CAN_SHDN_PIN 37
+#define CAN_STB_PIN 36
 
 // ----------------------------------------------------------------------------
 
@@ -48,10 +53,10 @@ ControlPCM186x pcm1(Wire, PCM186x_I2C_ADDR1, InputTDM::TDM1);
 ControlPCM186x pcm2(Wire, PCM186x_I2C_ADDR2, InputTDM::TDM1);
 ControlPCM186x pcm3(Wire1, PCM186x_I2C_ADDR1, InputTDM::TDM2);
 ControlPCM186x pcm4(Wire1, PCM186x_I2C_ADDR2, InputTDM::TDM2);
-ControlPCM186x *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
+Device *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 ControlPCM186x *pcm = 0;
 
-R41CAN can;
+CANFD can(CAN_IO_UP_PIN, CAN_IO_DOWN_PIN, CAN_SHDN_PIN, CAN_STB_PIN);
 RTClock rtclock;
 Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
 SDCard sdcard;
@@ -62,9 +67,9 @@ LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);                  
 RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
-SDCardMenu sdcard_menu(config, sdcard, settings);
+SDCardMenu sdcard_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
-DiagnosticMenu diagnostic_menu(config, &pcm1, &pcm2, &pcm3, &pcm4, rtclock);
+DiagnosticMenu diagnostic_menu(config, &pcm1, &pcm2, &pcm3, &pcm4, &rtclock);
 HelpAction help_act(config, "Help");
 
 CANFileStorage files(aidata, sdcard, can, false,
@@ -132,7 +137,6 @@ void setup() {
   rtclock.begin();
   rtclock.check();
   sdcard.begin();
-  files.check(true);
   rtclock.setFromFile(sdcard);
   config.load();
   if (Serial)
@@ -144,10 +148,7 @@ void setup() {
   aidata.setSwapLR();
   Wire.begin();
   Wire1.begin();
-  for (int k=0;k < NPCMS; k++) {
-    Serial.printf("Setup PCM186x %d on TDM %d: ", k, pcms[k]->TDMBus());
-    R4SetupPCM(aidata, *pcms[k], k%2==1, aisettings, &pcm);
-  }
+  R4SetupPCMs(aidata, aisettings, pcms, NPCMS);
   Serial.println();
   // TODO: check number of available channels!
   aidata.begin();
@@ -158,15 +159,14 @@ void setup() {
   }
   aidata.start();
   aidata.report();
-  files.report();
   if (can.id() > 0)
     can.receiveStart();
   else {
     blink.switchOff();
     files.initialDelay(settings.initialDelay());
   }
-  files.start(settings.path(), settings.fileName(), settings.fileTime(),
-              SOFTWARE);
+  // files.setup()
+  files.start(settings.fileTime(), config);
 }
 
 

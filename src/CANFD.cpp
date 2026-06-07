@@ -1,10 +1,8 @@
-#ifndef CANBase_h
-#define CANBase_h
-
-#include <Arduino.h>
-#include <FlexCAN_T4.h>
+#include <CANFD.h>
 #include <RTClock.h>
 #include <Blink.h>
+
+#ifdef TEENSY4
 
 #define CAN_ID_CLEAR_DEVICES 0x01
 #define CAN_ID_FIND_DEVICES  0x02
@@ -26,109 +24,63 @@ extern RTClock rtclock;
 extern Blink blink;
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-class CANBase {
-  
-public:
-
-  CANBase(uint8_t up_pin, uint8_t down_pin);
-
-  void begin();
-
-  int id() const { return DeviceID; };
-  int numDevices() const { return NumDevices; };
-
-  // write CAN2.0 messages (brs = edl = false)
-  virtual int write20(CAN_MSG &msg);
-
-  // wait for maximum timeout ms and poll for a message with specific ID
-  bool read(CAN_MSG &msg, unsigned int id, unsigned int timeout=1000);
-  
-  int detectDevices();
-  int detectOtherDevices();
-  int assignDevice();
-
-  void setupControllerMBs();
-  void setupRecorderMBs();
-
-  void sendTime();
-  void receiveTime();
-
-  void sendGrid(const char gs[8]);
-  void receiveGrid(char gs[8]);
-
-  void sendSamplingRate(int rate);
-  int receiveSamplingRate();
-
-  void sendGain(float gain);
-  float receiveGain();
-
-  void sendFileTime(float filetime);
-  float receiveFileTime();
-
-  void sendStart();
-  void receiveStart();
-
-  void sendEndFile();
-  bool receiveEndFile();
-
-  uint64_t events() { return Can.events(); };
-
-  
-protected:
-
-  CANCLASS<BUS, RX_SIZE_16, TX_SIZE_8> Can;
-  uint8_t UpPin;
-  uint8_t DownPin;
-
-  int DeviceID;
-  int NumDevices;
-  
-};
-
-
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-CANBase<CANCLASS, BUS, CAN_MSG>::CANBase(uint8_t up_pin, uint8_t down_pin) :
+CANFD::CANFD(uint8_t up_pin, uint8_t down_pin,
+	     int8_t shutdown_pin, int8_t standby_pin) :
   UpPin(up_pin),
   DownPin(down_pin),
+  ShutdownPin(shutdown_pin),
+  StandbyPin(standby_pin),
   DeviceID(0),
   NumDevices(0) {
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-void CANBase<CANCLASS, BUS, CAN_MSG>::begin() {
+void CANFD::begin() {
   pinMode(UpPin, INPUT);
   pinMode(DownPin, OUTPUT);
   digitalWrite(DownPin, LOW);
+  if (ShutdownPin >= 0) {
+    pinMode(ShutdownPin, OUTPUT);
+    digitalWrite(ShutdownPin, LOW);
+  }
+  if (StandbyPin >= 0) {
+    pinMode(StandbyPin, OUTPUT);
+    digitalWrite(StandbyPin, LOW);
+  }
   Can.begin();
+  CANFD_timings_t config;
+  config.clock = CLK_24MHz;
+  config.baudrate = 500000;
+  config.baudrateFD = 2000000;
+  config.propdelay = 190;
+  config.bus_length = 1;
+  config.sample = 70;
+  Can.setBaudRate(config);
+  
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-int CANBase<CANCLASS, BUS, CAN_MSG>::write20(CAN_MSG &msg) {
+void CANFD::powerDown() {
+  if (ShutdownPin >= 0)
+    digitalWrite(ShutdownPin, HIGH);
+}
+
+
+void CANFD::powerUp() {
+  if (ShutdownPin >= 0)
+    digitalWrite(ShutdownPin, LOW);
+}
+
+
+int CANFD::write20(CANFD_message_t &msg) {
+  msg.brs = false;
+  msg.edl = false;
   return Can.write(msg);
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-bool CANBase<CANCLASS, BUS, CAN_MSG>::read(CAN_MSG &msg, unsigned int id,
-					   unsigned int timeout) {
+bool CANFD::read(CANFD_message_t &msg, unsigned int id,
+		 unsigned int timeout) {
   elapsedMillis timepassed = 0;
   msg.id = 0;
   memset(msg.buf, 0, 8);
@@ -141,12 +93,8 @@ bool CANBase<CANCLASS, BUS, CAN_MSG>::read(CAN_MSG &msg, unsigned int id,
 }
 
   
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-int CANBase<CANCLASS, BUS, CAN_MSG>::detectDevices() {
-  CAN_MSG msg;
+int CANFD::detectDevices() {
+  CANFD_message_t msg;
   elapsedMillis timeout;
 
   Serial.println("Detect all devices:");
@@ -192,12 +140,8 @@ int CANBase<CANCLASS, BUS, CAN_MSG>::detectDevices() {
 }
 
   
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-int CANBase<CANCLASS, BUS, CAN_MSG>::detectOtherDevices() {
-  CAN_MSG msg;
+int CANFD::detectOtherDevices() {
+  CANFD_message_t msg;
   elapsedMillis timeout;
 
   Serial.println("Detect all devices:");
@@ -245,12 +189,8 @@ int CANBase<CANCLASS, BUS, CAN_MSG>::detectOtherDevices() {
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-int CANBase<CANCLASS, BUS, CAN_MSG>::assignDevice() {
-  CAN_MSG msg;
+int CANFD::assignDevice() {
+  CANFD_message_t msg;
   elapsedMillis timeout;
 
   Serial.println("Setting up device ID:");
@@ -308,11 +248,7 @@ int CANBase<CANCLASS, BUS, CAN_MSG>::assignDevice() {
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-void CANBase<CANCLASS, BUS, CAN_MSG>::setupControllerMBs() {
+void CANFD::setupControllerMBs() {
   // Can.setMaxMB(10); only for CAN2.0
   int i;
   for (i=0; i<5; i++)
@@ -329,19 +265,14 @@ void CANBase<CANCLASS, BUS, CAN_MSG>::setupControllerMBs() {
 }
 
 
-template <typename CAN_MSG>
-void setTime(const CAN_MSG &msg) {
+void setTime(const CANFD_message_t &msg) {
   time_t t = *(time_t *)(&msg.buf[0]);
   rtclock.set(t);
   rtclock.report();
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-void CANBase<CANCLASS, BUS, CAN_MSG>::setupRecorderMBs() {
+void CANFD::setupRecorderMBs() {
   int i;
   for (i=0; i<5; i++)
     Can.setMB((FLEXCAN_MAILBOX)i, RX, STD);
@@ -357,12 +288,8 @@ void CANBase<CANCLASS, BUS, CAN_MSG>::setupRecorderMBs() {
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-void CANBase<CANCLASS, BUS, CAN_MSG>::sendTime() {
-  CAN_MSG msg;
+void CANFD::sendTime() {
+  CANFD_message_t msg;
   time_t t = now();
   char ds[10];
   rtclock.date(ds, t, true);
@@ -379,12 +306,8 @@ void CANBase<CANCLASS, BUS, CAN_MSG>::sendTime() {
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-void CANBase<CANCLASS, BUS, CAN_MSG>::receiveTime() {
-  CAN_MSG msg;
+void CANFD::receiveTime() {
+  CANFD_message_t msg;
   if (!read(msg, CAN_ID_SET_DATE))
     return;
   char s[8];
@@ -415,12 +338,8 @@ void CANBase<CANCLASS, BUS, CAN_MSG>::receiveTime() {
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-void CANBase<CANCLASS, BUS, CAN_MSG>::sendGrid(const char gs[8]) {
-  CAN_MSG msg;
+void CANFD::sendGrid(const char gs[8]) {
+  CANFD_message_t msg;
   msg.id = CAN_ID_SET_GRID;
   strncpy((char *)msg.buf, gs, 7);
   Can.write(msg);
@@ -428,24 +347,16 @@ void CANBase<CANCLASS, BUS, CAN_MSG>::sendGrid(const char gs[8]) {
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-void CANBase<CANCLASS, BUS, CAN_MSG>::receiveGrid(char gs[8]) {
-  CAN_MSG msg;
+void CANFD::receiveGrid(char gs[8]) {
+  CANFD_message_t msg;
   Serial.println("wait for grid name message");
   read(msg, CAN_ID_SET_GRID);
   memcpy((void *)&gs[0], (void *)&msg.buf[0], 8);
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-void CANBase<CANCLASS, BUS, CAN_MSG>::sendSamplingRate(int rate) {
-  CAN_MSG msg;
+void CANFD::sendSamplingRate(int rate) {
+  CANFD_message_t msg;
   msg.id = CAN_ID_SET_RATE;
   *(int *)(&msg.buf[0]) = rate;
   Can.write(msg);
@@ -453,12 +364,8 @@ void CANBase<CANCLASS, BUS, CAN_MSG>::sendSamplingRate(int rate) {
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-int CANBase<CANCLASS, BUS, CAN_MSG>::receiveSamplingRate() {
-  CAN_MSG msg;
+int CANFD::receiveSamplingRate() {
+  CANFD_message_t msg;
   Serial.println("wait for sampling rate message");
   read(msg, CAN_ID_SET_RATE);
   int rate = *(int *)(&msg.buf[0]);
@@ -466,12 +373,8 @@ int CANBase<CANCLASS, BUS, CAN_MSG>::receiveSamplingRate() {
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-void CANBase<CANCLASS, BUS, CAN_MSG>::sendGain(float gain) {
-  CAN_MSG msg;
+void CANFD::sendGain(float gain) {
+  CANFD_message_t msg;
   msg.id = CAN_ID_SET_GAIN;
   *(float *)(&msg.buf[0]) = gain;
   Can.write(msg);
@@ -479,12 +382,8 @@ void CANBase<CANCLASS, BUS, CAN_MSG>::sendGain(float gain) {
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-float CANBase<CANCLASS, BUS, CAN_MSG>::receiveGain() {
-  CAN_MSG msg;
+float CANFD::receiveGain() {
+  CANFD_message_t msg;
   Serial.println("wait for gain message");
   float gain = -1000.0;
   if (read(msg, CAN_ID_SET_GAIN)) {
@@ -495,12 +394,8 @@ float CANBase<CANCLASS, BUS, CAN_MSG>::receiveGain() {
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-void CANBase<CANCLASS, BUS, CAN_MSG>::sendFileTime(float filetime) {
-  CAN_MSG msg;
+void CANFD::sendFileTime(float filetime) {
+  CANFD_message_t msg;
   msg.id = CAN_ID_SET_FILE_TIME;
   *(float *)(&msg.buf[0]) = filetime;
   Can.write(msg);
@@ -508,12 +403,8 @@ void CANBase<CANCLASS, BUS, CAN_MSG>::sendFileTime(float filetime) {
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-float CANBase<CANCLASS, BUS, CAN_MSG>::receiveFileTime() {
-  CAN_MSG msg;
+float CANFD::receiveFileTime() {
+  CANFD_message_t msg;
   Serial.println("wait for file time message");
   read(msg, CAN_ID_SET_FILE_TIME);
   float filetime = *(float *)(&msg.buf[0]);
@@ -522,35 +413,23 @@ float CANBase<CANCLASS, BUS, CAN_MSG>::receiveFileTime() {
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-void CANBase<CANCLASS, BUS, CAN_MSG>::sendStart() {
-  CAN_MSG msg;
+void CANFD::sendStart() {
+  CANFD_message_t msg;
   msg.id = CAN_ID_START_REC;
   Can.write(msg);
   Serial.println("sent start recording");
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-void CANBase<CANCLASS, BUS, CAN_MSG>::receiveStart() {
-  CAN_MSG msg;
+void CANFD::receiveStart() {
+  CANFD_message_t msg;
   Serial.println("wait for start recording message");
   read(msg, CAN_ID_START_REC, 0);
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-void CANBase<CANCLASS, BUS, CAN_MSG>::sendEndFile() {
-  CAN_MSG msg;
+void CANFD::sendEndFile() {
+  CANFD_message_t msg;
   msg.id = CAN_ID_END_FILE;
   *(int *)(&msg.buf[0]) = DeviceID;
   Can.write(msg);
@@ -558,12 +437,8 @@ void CANBase<CANCLASS, BUS, CAN_MSG>::sendEndFile() {
 }
 
 
-template <template<CAN_DEV_TABLE, FLEXCAN_RXQUEUE_TABLE,
-		   FLEXCAN_TXQUEUE_TABLE> typename CANCLASS,
-	  CAN_DEV_TABLE BUS,
-	  typename CAN_MSG>
-bool CANBase<CANCLASS, BUS, CAN_MSG>::receiveEndFile() {
-  CAN_MSG msg;
+bool CANFD::receiveEndFile() {
+  CANFD_message_t msg;
   elapsedMillis timepassed = 0;
   Serial.println("wait for end file messages");
   int ndevices = 0;
@@ -584,6 +459,5 @@ bool CANBase<CANCLASS, BUS, CAN_MSG>::receiveEndFile() {
   Serial.printf("Got end of file message from %d devices\n", ndevices);
   return ((NumDevices > 0) && (ndevices == NumDevices));
 }
-
 
 #endif

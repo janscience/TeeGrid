@@ -7,7 +7,7 @@
 #include <Blink.h>
 #include <SetupPCM.h>
 #include <CANFileStorage.h>
-#include <R41CAN.h>
+#include <CANFD.h>
 
 #define NCHANNELS      16       // number of channels (even, from 2 to 16)
 #define GRID              "grid1"    // unique name of the grid
@@ -25,6 +25,13 @@ String LoggerFileName = "loggergrid-RECNUM4-DEV.wav";
 // ----------------------------------------------------------------------------
 
 #define LED_PIN        26    // R4.1
+
+#define CAN_IO_UP_PIN 41
+#define CAN_IO_DOWN_PIN 40
+
+#define CAN_SHDN_PIN 37
+#define CAN_STB_PIN 36
+
 #define SOFTWARE      "TeeGrid R41-CAN-recorder-controller v1.0"
 
 //DATA_BUFFER(AIBuffer, NAIBuffer, 512*256)
@@ -38,7 +45,7 @@ ControlPCM186x pcm4(Wire1, PCM186x_I2C_ADDR2, InputTDM::TDM2);
 ControlPCM186x *pcms[NPCMS] = {&pcm1, &pcm2, &pcm3, &pcm4};
 ControlPCM186x *pcm = 0;
 
-R41CAN can;
+CANFD can(CAN_IO_UP_PIN, CAN_IO_DOWN_PIN, CAN_SHDN_PIN, CAN_STB_PIN);
 SDCard sdcard;
 SDWriter file(sdcard, aidata);
 RTClock rtclock;

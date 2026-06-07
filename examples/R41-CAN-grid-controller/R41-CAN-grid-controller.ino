@@ -4,7 +4,7 @@
 #include <TeeGridBanner.h>
 #include <RTClock.h>
 #include <Blink.h>
-#include <R41CAN.h>
+#include <CANFD.h>
 #ifdef SENSORS
 #include <SDWriter.h>
 #include <ESensors.h>
@@ -25,10 +25,17 @@
 #define SENSORS_INTERVAL  10.0       // interval between sensors readings in seconds
 
 #define LED_PIN        26    // R4.1
+
+#define CAN_IO_UP_PIN 41
+#define CAN_IO_DOWN_PIN 40
+
+#define CAN_SHDN_PIN 37
+#define CAN_STB_PIN 36
+
 #define SOFTWARE      "TeeGrid R41-CAN-grid-controller v1.0"
 
 
-R41CAN can;
+CANFD can(CAN_IO_UP_PIN, CAN_IO_DOWN_PIN, CAN_SHDN_PIN, CAN_STB_PIN);
 RTClock rtclock;
 Blink blink("status", LED_PIN, true, LED_BUILTIN, false);
 
