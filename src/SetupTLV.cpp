@@ -57,10 +57,28 @@ void R5SetupTLVs(Input &aidata, const InputSettings &aisettings,
 }
 
 
-void powerdownTLVs(Device **controls, size_t ncontrols) {
+void powerupTLVs(Device **controls, size_t ncontrols, int8_t shdnzpin) {
+  if (shdnzpin >= 0) {
+    pinMode(shdnzpin, OUTPUT);
+    digitalWrite(shdnzpin, HIGH);
+    delay(10);
+  }
+  ControlTLV320ADC **tlvs = reinterpret_cast<ControlTLV320ADC**>(controls);
+  for (size_t k=0; k<ncontrols; k++) {
+    ControlTLV320ADC &tlv = static_cast<ControlTLV320ADC&>(*tlvs[k]);
+    tlv.powerup();
+  }
+}
+
+
+void powerdownTLVs(Device **controls, size_t ncontrols, int8_t shdnzpin) {
   ControlTLV320ADC **tlvs = reinterpret_cast<ControlTLV320ADC**>(controls);
   for (size_t k=0; k<ncontrols; k++) {
     ControlTLV320ADC &tlv = static_cast<ControlTLV320ADC&>(*tlvs[k]);
     tlv.powerdown();
+  }
+  if (shdnzpin >= 0) {
+    digitalWrite(shdnzpin, LOW);
+    delay(10);
   }
 }
