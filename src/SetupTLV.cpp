@@ -40,12 +40,21 @@ bool R5SetupTLV(InputTDM &aidata, ControlTLV320ADC &ctlv, bool offs,
 }
 
 
+static const char *nochip_chans[4] = {"X0", "X1", "X2", "X3"};
+
+
 void R5SetupTLVs(Input &aidata, const InputSettings &aisettings,
 		 Device **controls, size_t ncontrols, Stream &stream) {
   aidata.clearChannels();
   ControlTLV320ADC **tlvs = reinterpret_cast<ControlTLV320ADC**>(controls);
   aisettings.configure(&aidata);
   for (size_t k=0; k<ncontrols; k++) {
+    if (k==2) {
+      stream.printf("Setup no chip %d on       address    for TDM bus %d data pin %c: ",
+		    k, InputTDM::TDM1, 'B');
+      static_cast<InputTDM&>(aidata).addNChannels(InputTDM::TDM1, InputTDM::DATA_B, 4, nochip_chans);
+      static_cast<InputTDM&>(aidata).addNChannels(InputTDM::TDM1, InputTDM::DATA_B, 4, nochip_chans);
+    }
     stream.printf("Setup TLV320ADC %d on %s address %02x for TDM bus %d data pin %c: ",
 		  k, tlvs[k]->busStr(), tlvs[k]->address(),
 		  tlvs[k]->TDMBus(), 'A' + tlvs[k]->TDMPin());

@@ -66,10 +66,10 @@ ControlTLV320ADC tlv1(Wire, TLV320_I2C_ADDR2, InputTDM::TDM1, InputTDM::DATA_A);
 ControlTLV320ADC tlv2(Wire, TLV320_I2C_ADDR1, InputTDM::TDM1, InputTDM::DATA_A);
 //ControlTLV320ADC tlv3(Wire, TLV320_I2C_ADDR4, InputTDM::TDM1, InputTDM::DATA_B);
 //ControlTLV320ADC tlv4(Wire, TLV320_I2C_ADDR3, InputTDM::TDM1, InputTDM::DATA_B);
-ControlTLV320ADC tlv5(Wire1, TLV320_I2C_ADDR2, InputTDM::TDM1, InputTDM::DATA_C);
-ControlTLV320ADC tlv6(Wire1, TLV320_I2C_ADDR1, InputTDM::TDM1, InputTDM::DATA_C);
-ControlTLV320ADC tlv7(Wire1, TLV320_I2C_ADDR4, InputTDM::TDM1, InputTDM::DATA_D);
-ControlTLV320ADC tlv8(Wire1, TLV320_I2C_ADDR3, InputTDM::TDM1, InputTDM::DATA_D);
+ControlTLV320ADC tlv5(Wire1, TLV320_I2C_ADDR4, InputTDM::TDM1, InputTDM::DATA_C);
+ControlTLV320ADC tlv6(Wire1, TLV320_I2C_ADDR3, InputTDM::TDM1, InputTDM::DATA_C);
+ControlTLV320ADC tlv7(Wire1, TLV320_I2C_ADDR2, InputTDM::TDM1, InputTDM::DATA_D);
+ControlTLV320ADC tlv8(Wire1, TLV320_I2C_ADDR1, InputTDM::TDM1, InputTDM::DATA_D);
 Device *tlvs[NTLVS] = {&tlv1, &tlv2, &tlv5, &tlv6, &tlv7, &tlv8};
 
 RTClockDS1307 rtclock;
