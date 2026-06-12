@@ -49,8 +49,9 @@ void R5SetupTLVs(Input &aidata, const InputSettings &aisettings,
   ControlTLV320ADC **tlvs = reinterpret_cast<ControlTLV320ADC**>(controls);
   aisettings.configure(&aidata);
   for (size_t k=0; k<ncontrols; k++) {
-    if (k==2) {
-      stream.printf("Setup no chip %d on       address    for TDM bus %d data pin %c: ",
+    if ((k==2) &&
+	(aidata.nchannels() < static_cast<const InputTDMSettings&>(aisettings).nchannels())) {
+      stream.printf("Setup no chip %d on       address    for TDM bus %d data pin %c: configured for 8 channels\n",
 		    k, InputTDM::TDM1, 'B');
       static_cast<InputTDM&>(aidata).addNChannels(InputTDM::TDM1, InputTDM::DATA_B, 4, nochip_chans);
       static_cast<InputTDM&>(aidata).addNChannels(InputTDM::TDM1, InputTDM::DATA_B, 4, nochip_chans);

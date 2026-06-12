@@ -23,6 +23,7 @@
 #include <TemperatureSTS4x.h>
 #include <LightBH1750.h>
 #include <DigitalIOPCA9536.h>
+#include <ESensorsMenu.h>
 
 
 // Default settings: ----------------------------------------------------------
@@ -43,7 +44,7 @@
 #define BLINK_TIMEOUT    0      // time after which internal LEDs are switched off in seconds
 #define SYNC_TIMEOUT     0      // time after which synchronization LED is switched off in seconds
 #define SENSORS_INTERVAL 30.0     // interval between sensors readings in seconds
-#define LIGHT_THRESHOLD  50.0     // threshold for switching off LEDs in lux.
+#define LIGHT_THRESHOLD  10.0     // threshold for switching off LEDs in lux.
 
 // ----------------------------------------------------------------------------
 
@@ -99,10 +100,11 @@ ConfigurationMenu configuration_menu(config, sdcard);
 SDCardMenu sdcard_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, tlvs, NTLVS, R5SetupTLVs);
+ESensorsMenu sensors_menu(config, sensors);
 DiagnosticMenu diagnostic_menu(config, &tlv1, &tlv2, &tlv5, &tlv6, &tlv7, &tlv8,
                                &rtclock, &gpio);
 BlinkMenu blink_menu(diagnostic_menu, &blink, &errorblink, &syncblink);
-Menu ampl_info(diagnostic_menu, "Amplifier board", Action::StreamIO | Action::Report);
+Menu ampl_info(diagnostic_menu, "Amplifier board");
 HelpAction help_act(config, "Help");
 
 SensorsLogger logger(aidata, sensors, sdcard, rtclock,
@@ -124,17 +126,17 @@ void setupLEDs() {
 
 
 void setupMenu() {
-  blinksettings.enable("RandomBlinks");
-  blinksettings.enable("BlinkTimeout");
-  blinksettings.enable("SyncTimeout");
   aisettings.setRateSelection(ControlTLV320ADC::SamplingRates,
                               ControlTLV320ADC::MaxSamplingRates);
   aisettings.enable("Source");
   aisettings.enable("Pregain");
-  timing.enable("StartTime");
-  timing.enable("StopTime");
+  //timing.enable("StartTime");
+  //timing.enable("StopTime");
   timing.enable("SensorsInterval");
   sdcard_menu.CleanRecsAct.setRemove(true);
+  blinksettings.enable("RandomBlinks");
+  blinksettings.enable("BlinkTimeout");
+  blinksettings.enable("SyncTimeout");
 }
 
 
@@ -144,12 +146,12 @@ void setupBoard() {
   rtclock.begin();
   rtclock.check();
   ampl_info.addConstString("Version", "R5.0");
+  // TODO: power down CAN
   sdcard.begin();
-  powerupTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
 }
 
 
-void setupSensors(int temp_pin) {
+void setupSensors() {
   temprtc.begin(Wire);
   temprtc.setName("logger-temperature");
   temprtc.setSymbol("Ti");
@@ -166,6 +168,7 @@ void setupSensors(int temp_pin) {
   light2.setSymbol("I2");
   tempsts.begin(Wire2, STS4x_ADDR);
   tempsts.setPrecision(STS4x_HIGH);
+  tempsts.setSymbol("Tw");
   logger.setupSensors();
   if (light1.available() || light2.available())
     blinksettings.enable("LightThreshold");
@@ -180,11 +183,14 @@ void setup() {
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
+  powerupTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
   setupBoard();
+  setupSensors();
   logger.configure(config);
-  logger.snooze(timing.startTime());
+  //powerdownTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
+  //logger.snooze(timing.startTime());
+  //powerupTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
   logger.startSensors(timing.sensorsInterval(), blinksettings.lightThreshold());
-  logger.reportBlink();
   logger.setCPUSpeed(aisettings.rate());
   settings.preparePaths();
   R5SetupTLVs(aidata, aisettings, tlvs, NTLVS);
