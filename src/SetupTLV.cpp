@@ -4,8 +4,7 @@
 bool R5SetupTLV(InputTDM &aidata, ControlTLV320ADC &ctlv, bool offs,
 		const InputTDMSettings &aisettings) {
   Input::SOURCE source = aisettings.source();
-  ControlTLV320ADC::IMPEDANCE impedance = ControlTLV320ADC::IMP_100;
-  //ControlTLV320ADC::COUPLING coupling = ControlTLV320ADC::AC_CPL;
+  ControlTLV320ADC::IMPEDANCE impedance = ControlTLV320ADC::IMP_025;
   ControlTLV320ADC::COUPLING coupling = ControlTLV320ADC::DC_CPL;
   ctlv.begin();
   if (!ctlv.available()) {
@@ -32,7 +31,7 @@ bool R5SetupTLV(InputTDM &aidata, ControlTLV320ADC &ctlv, bool offs,
   else {
     // channels not recorded, but need to be configured to not corrupt TDM bus:
     ctlv.setupChannels(4, source, impedance, coupling, -1, slot_offs);
-    ctlv.setupTDM(aidata);
+    ctlv.setupTDM();
     ctlv.powerdown();
     Serial.println("powered down");
   }
@@ -45,22 +44,22 @@ static const char *nochip_chans[4] = {"X0", "X1", "X2", "X3"};
 
 void R5SetupTLVs(Input &aidata, const InputSettings &aisettings,
 		 Device **controls, size_t ncontrols, Stream &stream) {
-  aidata.clearChannels();
+  InputTDM& inputdata = static_cast<InputTDM&>(aidata);
   ControlTLV320ADC **tlvs = reinterpret_cast<ControlTLV320ADC**>(controls);
-  aisettings.configure(&aidata);
+  inputdata.clearChannels();
+  aisettings.configure(&inputdata);
   for (size_t k=0; k<ncontrols; k++) {
     if ((k==2) &&
-	(aidata.nchannels() < static_cast<const InputTDMSettings&>(aisettings).nchannels())) {
-      stream.printf("Setup no chip %d on       address    for TDM bus %d data pin %c: configured for 8 channels\n",
+	(inputdata.nchannels() < static_cast<const InputTDMSettings&>(aisettings).nchannels())) {
+      stream.printf("Setup no chip   %d                     for TDM bus %d data pin %c: configured for 8 channels\n",
 		    k, InputTDM::TDM1, 'B');
-      static_cast<InputTDM&>(aidata).addNChannels(InputTDM::TDM1, InputTDM::DATA_B, 4, nochip_chans);
-      static_cast<InputTDM&>(aidata).addNChannels(InputTDM::TDM1, InputTDM::DATA_B, 4, nochip_chans);
+      inputdata.addNChannels(InputTDM::TDM1, InputTDM::DATA_B, 4, nochip_chans);
+      inputdata.addNChannels(InputTDM::TDM1, InputTDM::DATA_B, 4, nochip_chans);
     }
     stream.printf("Setup TLV320ADC %d on %s address %02x for TDM bus %d data pin %c: ",
 		  k, tlvs[k]->busStr(), tlvs[k]->address(),
 		  tlvs[k]->TDMBus(), 'A' + tlvs[k]->TDMPin());
-    R5SetupTLV(static_cast<InputTDM&>(aidata),
-	       static_cast<ControlTLV320ADC&>(*tlvs[k]), k%2==1,
+    R5SetupTLV(inputdata, *tlvs[k], k%2==1,
 	       static_cast<const InputTDMSettings&>(aisettings));
   }
   stream.println();
@@ -74,19 +73,15 @@ void powerupTLVs(Device **controls, size_t ncontrols, int8_t shdnzpin) {
     delay(10);
   }
   ControlTLV320ADC **tlvs = reinterpret_cast<ControlTLV320ADC**>(controls);
-  for (size_t k=0; k<ncontrols; k++) {
-    ControlTLV320ADC &tlv = static_cast<ControlTLV320ADC&>(*tlvs[k]);
-    tlv.powerup();
-  }
+  for (size_t k=0; k<ncontrols; k++)
+    tlvs[k]->powerup();
 }
 
 
 void powerdownTLVs(Device **controls, size_t ncontrols, int8_t shdnzpin) {
   ControlTLV320ADC **tlvs = reinterpret_cast<ControlTLV320ADC**>(controls);
-  for (size_t k=0; k<ncontrols; k++) {
-    ControlTLV320ADC &tlv = static_cast<ControlTLV320ADC&>(*tlvs[k]);
-    tlv.powerdown();
-  }
+  for (size_t k=0; k<ncontrols; k++)
+    tlvs[k]->powerdown();
   if (shdnzpin >= 0) {
     digitalWrite(shdnzpin, LOW);
     delay(10);

@@ -123,8 +123,8 @@ bool R4SetupPCM(InputTDM &aidata, ControlPCM186x &cpcm, bool offs,
 
 void R4SetupPCMs(Input &aidata, const InputSettings &aisettings,
 		 Device **controls, size_t ncontrols, Stream &stream) {
-  aidata.clearChannels();
   ControlPCM186x **pcms = reinterpret_cast<ControlPCM186x**>(controls);
+  aidata.clearChannels();
   aisettings.configure(&aidata);
   static_cast<InputTDM&>(aidata).setSwapLR();
   for (size_t k=0; k<ncontrols; k++) {
@@ -132,7 +132,7 @@ void R4SetupPCMs(Input &aidata, const InputSettings &aisettings,
 		  k, pcms[k]->busStr(), pcms[k]->address(),
 		  pcms[k]->TDMBus(), 'A' + pcms[k]->TDMPin());
     R4SetupPCM(static_cast<InputTDM&>(aidata),
-	       static_cast<ControlPCM186x&>(*pcms[k]), k%2==1,
+	       *pcms[k], k%2==1,
 	       static_cast<const InputTDMSettings&>(aisettings));
   }
   stream.println();
@@ -141,8 +141,6 @@ void R4SetupPCMs(Input &aidata, const InputSettings &aisettings,
 
 void powerdownPCMs(Device **controls, size_t ncontrols) {
   ControlPCM186x **pcms = reinterpret_cast<ControlPCM186x**>(controls);
-  for (size_t k=0; k<ncontrols; k++) {
-    ControlPCM186x &pcm = static_cast<ControlPCM186x&>(*pcms[k]);
-    pcm.powerdown();
-  }
+  for (size_t k=0; k<ncontrols; k++)
+    pcms[k]->powerdown();
 }

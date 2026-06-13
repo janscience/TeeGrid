@@ -146,8 +146,9 @@ void setupBoard() {
   rtclock.begin();
   rtclock.check();
   ampl_info.addConstString("Version", "R5.0");
-  // TODO: power down CAN
   sdcard.begin();
+  powerupTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
+  // TODO: power down CAN
 }
 
 
@@ -183,7 +184,6 @@ void setup() {
   Serial.begin(9600);
   while (!Serial && millis() < 2000) {};
   printTeeGridBanner(SOFTWARE);
-  powerupTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
   setupBoard();
   setupSensors();
   logger.configure(config);
