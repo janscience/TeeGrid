@@ -72,6 +72,8 @@ ControlTLV320ADC tlv6(Wire1, TLV320_I2C_ADDR3, InputTDM::TDM1, InputTDM::DATA_C)
 ControlTLV320ADC tlv7(Wire1, TLV320_I2C_ADDR2, InputTDM::TDM1, InputTDM::DATA_D);
 ControlTLV320ADC tlv8(Wire1, TLV320_I2C_ADDR1, InputTDM::TDM1, InputTDM::DATA_D);
 Device *tlvs[NTLVS] = {&tlv1, &tlv2, &tlv5, &tlv6, &tlv7, &tlv8};
+#define NPREGAINS 2
+float pregains[NPREGAINS] = {2.0, 0.125};
 
 RTClockDS1307 rtclock;
 Blink blink("Status", LED_BUILTIN);
@@ -130,6 +132,8 @@ void setupMenu() {
                               ControlTLV320ADC::MaxSamplingRates);
   aisettings.enable("Source");
   aisettings.enable("Pregain");
+  aisettings.setPreGainFormat("%g");
+  aisettings.setPreGainSelection(pregains, NPREGAINS);
   //timing.enable("StartTime");
   //timing.enable("StopTime");
   timing.enable("SensorsInterval");
