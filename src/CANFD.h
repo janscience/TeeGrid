@@ -14,7 +14,7 @@ class CANFD {
   
 public:
 
-  CANFD(uint8_t up_pin, uint8_t down_pin,
+  CANFD(uint8_t in_pin, uint8_t out_pin,
 	int8_t shutdown_pin=-1, int8_t standby_pin=-1);
 
   void begin();
@@ -38,26 +38,29 @@ public:
   void setupControllerMBs();
   void setupRecorderMBs();
 
-  void sendTime();
+  void transmitTime();
   void receiveTime();
 
-  void sendGrid(const char gs[8]);
+  void transmitGrid(const char gs[8]);
   void receiveGrid(char gs[8]);
 
-  void sendSamplingRate(int rate);
+  void transmitSamplingRate(int rate);
   int receiveSamplingRate();
 
-  void sendGain(float gain);
+  void transmitGain(float gain);
   float receiveGain();
 
-  void sendFileTime(float filetime);
+  void transmitFileTime(float filetime);
   float receiveFileTime();
 
-  void sendStart();
+  void transmitStart();
   void receiveStart();
 
-  void sendEndFile();
+  void transmitEndFile();
   bool receiveEndFile();
+
+  void setOutPin(uint8_t value);
+  uint8_t readInPin();
 
   uint64_t events() { return Can.events(); };
 
@@ -65,8 +68,8 @@ public:
 protected:
 
   FlexCAN_T4FD<CAN3, RX_SIZE_16, TX_SIZE_8> Can;
-  uint8_t UpPin;
-  uint8_t DownPin;
+  uint8_t InPin;
+  uint8_t OutPin;
   int8_t ShutdownPin;
   int8_t StandbyPin;
 

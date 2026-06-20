@@ -14,9 +14,9 @@ CANFileStorage::CANFileStorage(Input &aiinput, SDCard &sdcard,
 
 bool CANFileStorage::synchronize() {
   if (!Master)
-    CAN.sendEndFile();
+    CAN.transmitEndFile();
   if (Master)
-    CAN.sendStart();
+    CAN.transmitStart();
   else if (CAN.id() > 0)
     CAN.receiveStart();
   return false;

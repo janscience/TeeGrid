@@ -24,10 +24,10 @@ extern RTClock rtclock;
 extern Blink blink;
 
 
-CANFD::CANFD(uint8_t up_pin, uint8_t down_pin,
+CANFD::CANFD(uint8_t in_pin, uint8_t out_pin,
 	     int8_t shutdown_pin, int8_t standby_pin) :
-  UpPin(up_pin),
-  DownPin(down_pin),
+  InPin(in_pin),
+  OutPin(out_pin),
   ShutdownPin(shutdown_pin),
   StandbyPin(standby_pin),
   DeviceID(0),
@@ -36,9 +36,9 @@ CANFD::CANFD(uint8_t up_pin, uint8_t down_pin,
 
 
 void CANFD::begin() {
-  pinMode(UpPin, INPUT);
-  pinMode(DownPin, OUTPUT);
-  digitalWrite(DownPin, LOW);
+  pinMode(InPin, INPUT);
+  pinMode(OutPin, OUTPUT);
+  digitalWrite(OutPin, LOW);
   if (ShutdownPin >= 0) {
     pinMode(ShutdownPin, OUTPUT);
     digitalWrite(ShutdownPin, LOW);
@@ -98,7 +98,7 @@ int CANFD::detectDevices() {
   elapsedMillis timeout;
 
   Serial.println("Detect all devices:");
-  digitalWrite(DownPin, HIGH);
+  digitalWrite(OutPin, HIGH);
   // clear device IDs:
   msg.id = CAN_ID_CLEAR_DEVICES;
   int r = write20(msg);
@@ -131,7 +131,7 @@ int CANFD::detectDevices() {
   msg.id = CAN_ID_GOT_DEVICES;
   r = write20(msg);
   Serial.printf("  write got devices message, r=%d\n", r);
-  digitalWrite(DownPin, LOW);
+  digitalWrite(OutPin, LOW);
   delay(10);
   Serial.printf("  got %d devices\n", id-1);
   Serial.println();
@@ -145,7 +145,7 @@ int CANFD::detectOtherDevices() {
   elapsedMillis timeout;
 
   Serial.println("Detect all devices:");
-  digitalWrite(DownPin, HIGH);
+  digitalWrite(OutPin, HIGH);
   // clear device IDs:
   msg.id = CAN_ID_CLEAR_DEVICES;
   int r = write20(msg);
@@ -180,7 +180,7 @@ int CANFD::detectOtherDevices() {
   msg.id = CAN_ID_GOT_DEVICES;
   r = write20(msg);
   Serial.printf("  write got devices message, r=%d\n", r);
-  digitalWrite(DownPin, LOW);
+  digitalWrite(OutPin, LOW);
   delay(10);
   Serial.printf("  got %d devices\n", id-1);
   Serial.println();
@@ -208,7 +208,7 @@ int CANFD::assignDevice() {
     return 0;
   }
   DeviceID = 0;
-  digitalWrite(DownPin, LOW);
+  digitalWrite(OutPin, LOW);
 
   // assign device ID:
   while (true) {
@@ -221,7 +221,7 @@ int CANFD::assignDevice() {
     Serial.printf("    got message 0x%02x\n", msg.id);
     if (msg.id != CAN_ID_FIND_DEVICES)
       break;
-    if (digitalRead(UpPin)) {
+    if (digitalRead(InPin)) {
       DeviceID = *(int *)(&msg.buf[0]);
       Serial.printf("    assign ID %d\n", DeviceID);
       msg.id = CAN_ID_REPORT_DEVICE;
@@ -229,7 +229,7 @@ int CANFD::assignDevice() {
       int r = write20(msg);
       Serial.printf("    write report device message, r=%d\n", r);
       delay(10);
-      digitalWrite(DownPin, HIGH);
+      digitalWrite(OutPin, HIGH);
       break;
     }
     else {
@@ -241,7 +241,7 @@ int CANFD::assignDevice() {
   while (!Can.read(msg) || msg.id != CAN_ID_GOT_DEVICES) {
     delay(10);
   };
-  digitalWrite(DownPin, LOW);
+  digitalWrite(OutPin, LOW);
   Serial.println("  done");
   Serial.println();
   return DeviceID;
@@ -288,7 +288,7 @@ void CANFD::setupRecorderMBs() {
 }
 
 
-void CANFD::sendTime() {
+void CANFD::transmitTime() {
   CANFD_message_t msg;
   time_t t = now();
   char ds[10];
@@ -338,7 +338,7 @@ void CANFD::receiveTime() {
 }
 
 
-void CANFD::sendGrid(const char gs[8]) {
+void CANFD::transmitGrid(const char gs[8]) {
   CANFD_message_t msg;
   msg.id = CAN_ID_SET_GRID;
   strncpy((char *)msg.buf, gs, 7);
@@ -355,7 +355,7 @@ void CANFD::receiveGrid(char gs[8]) {
 }
 
 
-void CANFD::sendSamplingRate(int rate) {
+void CANFD::transmitSamplingRate(int rate) {
   CANFD_message_t msg;
   msg.id = CAN_ID_SET_RATE;
   *(int *)(&msg.buf[0]) = rate;
@@ -373,7 +373,7 @@ int CANFD::receiveSamplingRate() {
 }
 
 
-void CANFD::sendGain(float gain) {
+void CANFD::transmitGain(float gain) {
   CANFD_message_t msg;
   msg.id = CAN_ID_SET_GAIN;
   *(float *)(&msg.buf[0]) = gain;
@@ -394,7 +394,7 @@ float CANFD::receiveGain() {
 }
 
 
-void CANFD::sendFileTime(float filetime) {
+void CANFD::transmitFileTime(float filetime) {
   CANFD_message_t msg;
   msg.id = CAN_ID_SET_FILE_TIME;
   *(float *)(&msg.buf[0]) = filetime;
@@ -413,7 +413,7 @@ float CANFD::receiveFileTime() {
 }
 
 
-void CANFD::sendStart() {
+void CANFD::transmitStart() {
   CANFD_message_t msg;
   msg.id = CAN_ID_START_REC;
   Can.write(msg);
@@ -428,7 +428,7 @@ void CANFD::receiveStart() {
 }
 
 
-void CANFD::sendEndFile() {
+void CANFD::transmitEndFile() {
   CANFD_message_t msg;
   msg.id = CAN_ID_END_FILE;
   *(int *)(&msg.buf[0]) = DeviceID;
@@ -459,5 +459,16 @@ bool CANFD::receiveEndFile() {
   Serial.printf("Got end of file message from %d devices\n", ndevices);
   return ((NumDevices > 0) && (ndevices == NumDevices));
 }
+
+
+void CANFD::setOutPin(uint8_t value) {
+  digitalWrite(OutPin, value);
+}
+
+
+uint8_t CANFD::readInPin() {
+  return digitalRead(InPin);
+}
+
 
 #endif
