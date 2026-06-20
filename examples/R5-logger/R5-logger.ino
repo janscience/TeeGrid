@@ -19,6 +19,7 @@
 #include <TeensyBoard.h>
 #include <SensorsLogger.h>
 #include <ESensors.h>
+#include <VoltageADC.h>
 #include <TemperatureDS3231.h>
 #include <TemperatureSTS4x.h>
 #include <LightBH1750.h>
@@ -82,6 +83,7 @@ Blink syncblink("Synchronization", SYNC_LED_PIN, true);
 SDCard sdcard;
 
 ESensors sensors;
+VoltageADC vbat(&sensors, A0, 2*3.3);
 DigitalIOPCA9536 gpio;
 TemperatureDS3231 temprtc(&sensors);
 TemperatureSTS4x tempsts(&sensors);
@@ -160,6 +162,9 @@ void setupSensors() {
   temprtc.begin(Wire);
   temprtc.setName("logger-temperature");
   temprtc.setSymbol("Ti");
+  vbat.setName("battery-voltage");
+  vbat.setSymbol("Vbat");
+  vbat.setAveraging(32);
   gpio.setMode(2, INPUT);
   light1.begin(Wire2, BH1750_TO_GROUND);
   //light1.setAutoRanging();
