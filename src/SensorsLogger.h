@@ -3,7 +3,7 @@
   Created by Jan Benda, January 4th, 2025.
 */
 
-#ifndef SenorsLogger_h
+#ifndef SensorsLogger_h
 #define SensorsLogger_h
 
 #include <ESensors.h>

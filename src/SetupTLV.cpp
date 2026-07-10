@@ -49,6 +49,7 @@ void R5SetupTLVs(Input &aidata, const InputSettings &aisettings,
   inputdata.clearChannels();
   aisettings.configure(&inputdata);
   for (size_t k=0; k<ncontrols; k++) {
+    /*
     if ((k==2) &&
 	(inputdata.nchannels() < static_cast<const InputTDMSettings&>(aisettings).nchannels())) {
       stream.printf("Setup no chip   %d                     for TDM bus %d data pin %c: configured for 8 channels\n",
@@ -56,6 +57,7 @@ void R5SetupTLVs(Input &aidata, const InputSettings &aisettings,
       inputdata.addNChannels(InputTDM::TDM1, InputTDM::DATA_B, 4, nochip_chans);
       inputdata.addNChannels(InputTDM::TDM1, InputTDM::DATA_B, 4, nochip_chans);
     }
+    */
     stream.printf("Setup TLV320ADC %d on %s address %02x for TDM bus %d data pin %c: ",
 		  k, tlvs[k]->busStr(), tlvs[k]->address(),
 		  tlvs[k]->TDMBus(), 'A' + tlvs[k]->TDMPin());
