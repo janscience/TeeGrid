@@ -64,27 +64,15 @@
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
 
-#ifdef ALPHA
-#define NTLVS 6
-ControlTLV320ADC tlv1(Wire, TLV320_I2C_ADDR2, InputTDM::TDM1, InputTDM::DATA_A);
-ControlTLV320ADC tlv2(Wire, TLV320_I2C_ADDR1, InputTDM::TDM1, InputTDM::DATA_A);
-ControlTLV320ADC tlv5(Wire1, TLV320_I2C_ADDR4, InputTDM::TDM1, InputTDM::DATA_C);
-ControlTLV320ADC tlv6(Wire1, TLV320_I2C_ADDR3, InputTDM::TDM1, InputTDM::DATA_C);
-ControlTLV320ADC tlv7(Wire1, TLV320_I2C_ADDR2, InputTDM::TDM1, InputTDM::DATA_D);
-ControlTLV320ADC tlv8(Wire1, TLV320_I2C_ADDR1, InputTDM::TDM1, InputTDM::DATA_D);
-Device *tlvs[NTLVS] = {&tlv1, &tlv2, &tlv5, &tlv6, &tlv7, &tlv8};
-#else
 #define NTLVS 8
 ControlTLV320ADC tlv1(Wire, TLV320_I2C_ADDR2, InputTDM::TDM1, InputTDM::DATA_A);
 ControlTLV320ADC tlv2(Wire, TLV320_I2C_ADDR1, InputTDM::TDM1, InputTDM::DATA_A);
 ControlTLV320ADC tlv3(Wire1, TLV320_I2C_ADDR2, InputTDM::TDM1, InputTDM::DATA_B);
 ControlTLV320ADC tlv4(Wire1, TLV320_I2C_ADDR1, InputTDM::TDM1, InputTDM::DATA_B);
-ControlTLV320ADC tlv5(Wire1, TLV320_I2C_ADDR4, InputTDM::TDM1, InputTDM::DATA_C);
 ControlTLV320ADC tlv6(Wire1, TLV320_I2C_ADDR3, InputTDM::TDM1, InputTDM::DATA_C);
 ControlTLV320ADC tlv7(Wire, TLV320_I2C_ADDR4, InputTDM::TDM1, InputTDM::DATA_D);
 ControlTLV320ADC tlv8(Wire, TLV320_I2C_ADDR3, InputTDM::TDM1, InputTDM::DATA_D);
 Device *tlvs[NTLVS] = {&tlv1, &tlv2, &tlv3, &tlv4, &tlv5, &tlv6, &tlv7, &tlv8};
-#endif
 
 #define NPREGAINS 2
 float pregains[NPREGAINS] = {2.0, 0.125};
@@ -130,6 +118,7 @@ SensorsLogger logger(aidata, sensors, sdcard, rtclock,
 
 void setupLEDs() {
   Wire2.begin();
+  //Wire2.setClock(10000);
   gpio.begin(Wire2);
   if (gpio.available()) {
     blink.setPin(gpio, 0);
