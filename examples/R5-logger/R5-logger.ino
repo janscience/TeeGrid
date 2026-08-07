@@ -28,8 +28,8 @@
 
 
 // Default settings: ----------------------------------------------------------
-// (may be overwritten by config file logger.cfg)
-#define NCHANNELS       8       // number of channels (even, from 2 to 16)
+// (may be overwritten by config file logger.cfg or EEPROM)
+#define NCHANNELS      16       // number of channels (even, from 2 to 32)
 #define SAMPLING_RATE  48000    // samples per second and channel in Hertz
 #define SOURCE         Input::SINGLE_ENDED
 #define PREGAIN        2.0     // gain factor of preamplifier
@@ -69,6 +69,7 @@ ControlTLV320ADC tlv1(Wire, TLV320_I2C_ADDR2, InputTDM::TDM1, InputTDM::DATA_A);
 ControlTLV320ADC tlv2(Wire, TLV320_I2C_ADDR1, InputTDM::TDM1, InputTDM::DATA_A);
 ControlTLV320ADC tlv3(Wire1, TLV320_I2C_ADDR2, InputTDM::TDM1, InputTDM::DATA_B);
 ControlTLV320ADC tlv4(Wire1, TLV320_I2C_ADDR1, InputTDM::TDM1, InputTDM::DATA_B);
+ControlTLV320ADC tlv5(Wire1, TLV320_I2C_ADDR4, InputTDM::TDM1, InputTDM::DATA_C);
 ControlTLV320ADC tlv6(Wire1, TLV320_I2C_ADDR3, InputTDM::TDM1, InputTDM::DATA_C);
 ControlTLV320ADC tlv7(Wire, TLV320_I2C_ADDR4, InputTDM::TDM1, InputTDM::DATA_D);
 ControlTLV320ADC tlv8(Wire, TLV320_I2C_ADDR3, InputTDM::TDM1, InputTDM::DATA_D);
@@ -106,8 +107,8 @@ SDCardMenu sdcard_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, tlvs, NTLVS, R5SetupTLVs);
 ESensorsMenu sensors_menu(config, sensors);
-DiagnosticMenu diagnostic_menu(config, &tlv1, &tlv2, &tlv5, &tlv6, &tlv7, &tlv8,
-                               &rtclock, &gpio);
+DiagnosticMenu diagnostic_menu(config, &tlv1, &tlv2, &tlv3, &tlv4, &tlv5,
+	       		       &tlv6, &tlv7, &tlv8, &rtclock, &gpio);
 BlinkMenu blink_menu(diagnostic_menu, &blink, &errorblink, &syncblink);
 Menu ampl_info(diagnostic_menu, "Amplifier board");
 HelpAction help_act(config, "Help");
@@ -169,12 +170,10 @@ void setupSensors() {
   vbat.setAveraging(32);
   gpio.setMode(2, INPUT);
   light1.begin(Wire2, BH1750_TO_GROUND);
-  //light1.setAutoRanging();
   light1.setQuality(BH1750_QUALITY_HIGH2);
   light1.setName("illuminance1");
   light1.setSymbol("I1");
   light2.begin(Wire2, BH1750_TO_VCC);
-  //light2.setAutoRanging();
   light2.setQuality(BH1750_QUALITY_HIGH2);
   light2.setName("illuminance2");
   light2.setSymbol("I2");
