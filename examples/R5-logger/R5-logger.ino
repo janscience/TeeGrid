@@ -96,7 +96,7 @@ Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
                         FILE_SAVE_TIME, INITIAL_DELAY);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS,
-                            GAIN, PREGAIN, SOURCE);
+                            GAIN, PREGAIN, SOURCE, 2);
 Timing timing(config, INITIAL_DELAY, "", "", SENSORS_INTERVAL);
 BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT, SYNC_TIMEOUT,
 			    LIGHT_THRESHOLD);
