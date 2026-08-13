@@ -30,7 +30,7 @@
 // Default settings: ----------------------------------------------------------
 // (may be overwritten by config file logger.cfg or EEPROM)
 #define NCHANNELS      16       // number of channels (even, from 2 to 32)
-#define SAMPLING_RATE  48000    // samples per second and channel in Hertz
+#define SAMPLING_RATE  24000    // samples per second and channel in Hertz
 #define SOURCE         Input::SINGLE_ENDED
 #define PREGAIN        2.0     // gain factor of preamplifier
 #define GAIN           0.0     // dB
@@ -39,8 +39,9 @@
 #define DEVICEID       1                      // may be used for naming files
 #define PATH           "LABELID2-SDATETIMEM"  // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
 #define FILENAME       "LABELID2-SDATETIME"   // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
-#define FILE_SAVE_TIME 10       // seconds
-#define INITIAL_DELAY   4       // seconds
+#define FILE_SAVE_TIME 300       // seconds
+#define INITIAL_DELAY  10        // seconds
+#define MIN_VOLTAGE    0.0       // Volt
 #define RANDOM_BLINKS    false    // set to true for blinking the status LED randomly (sync LED is always blinked randomly)
 #define BLINK_TIMEOUT    0      // time after which internal LEDs are switched off in seconds
 #define SYNC_TIMEOUT     0      // time after which synchronization LED is switched off in seconds
@@ -94,7 +95,7 @@ LightBH1750 light2(&sensors);
 
 Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
-                        FILE_SAVE_TIME, INITIAL_DELAY);
+                        FILE_SAVE_TIME, INITIAL_DELAY, MIN_VOLTAGE);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS,
                             GAIN, PREGAIN, SOURCE, 2);
 Timing timing(config, INITIAL_DELAY, "", "", SENSORS_INTERVAL);
@@ -119,7 +120,7 @@ SensorsLogger logger(aidata, sensors, sdcard, rtclock,
 
 void setupLEDs() {
   Wire2.begin();
-  //Wire2.setClock(10000);
+  //Wire2.setClock(100000);
   gpio.begin(Wire2);
   if (gpio.available()) {
     blink.setPin(gpio, 0);
@@ -133,6 +134,7 @@ void setupLEDs() {
 
 
 void setupMenu() {
+  settings.enable("MinimumVoltage");
   aisettings.setRateSelection(ControlTLV320ADC::SamplingRates,
                               ControlTLV320ADC::MaxSamplingRates);
   aisettings.enable("Source");
