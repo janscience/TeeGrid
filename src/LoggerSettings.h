@@ -19,7 +19,8 @@ public:
   LoggerSettings(Menu &menu, const char *label="logger", int deviceid=0,
 		 const char *path="LABELID2-SDATETIMEM",
 		 const char *filename="LABELID2-SDATETIME",
-		 float filetime=10.0, float initialdelay=-1.0);
+		 float filetime=10.0, float initialdelay=-1.0,
+		 float minvoltage=0.0);
   
   static const size_t MaxStr = 64;
 
@@ -72,6 +73,12 @@ public:
   /* Set initial delay to time seconds. */
   void setInitialDelay(float time);
 
+  /* Minimum battery voltage required to start logging data. */
+  float minimumVoltage() const { return MinimumVoltage.value(); };
+
+  /* Set minimum battery voltage required to start logging data. */
+  void setMinimumVoltage(float minvoltage);
+
 
 protected:
 
@@ -81,6 +88,7 @@ protected:
   StringParameter<MaxStr> FileName;
   NumberParameter<float> FileTime;
   NumberParameter<float> InitialDelay;
+  NumberParameter<float> MinimumVoltage;
   
 };
 
