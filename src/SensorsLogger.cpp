@@ -1,3 +1,4 @@
+#include <LoggerSettings.h>
 #include <SensorsLogger.h>
 
 
@@ -35,6 +36,43 @@ void SensorsLogger::setupSensors() {
 	(NLightSensors < MaxLight))
       LightSensors[NLightSensors++] = &Sensors[k];
   }
+}
+
+
+void SensorsLogger::configure(Config &config) {
+  // get configuration from EEPROM:
+  config.get();
+  Serial.println();
+  // check SD card:
+  check(config);
+  Clock.setFromFile(*SDCard0);
+  // cleanup previous recordings:
+  char folder[64];
+  SDCard0->latestDir("/", folder, 64);
+  if (strlen(folder) > 0) {
+    SDCard0->cleanDir(folder, 1024, ".wav", true, ".csv", true);
+    if (SDCard1 != NULL && SDCard1->available())
+      SDCard1->cleanDir(folder, 1024, ".wav", true, ".csv", true);
+  }
+  Serial.println();
+  // get configuration from file:
+  config.load();
+  // check voltage:
+  LoggerSettings *settings = static_cast<LoggerSettings*>(config.action("Settings"));
+  float minvoltage = settings != 0 ? settings->minimumVoltage() : 0.0;
+  ESensor *vbat = Sensors.sensor("battery-voltage");
+  if (vbat != 0 && minvoltage > 0.0) {
+    float volt = vbat->read();
+    if (volt < minvoltage) {
+      Serial.printf("HALT --- battery voltage %.2fV lower than %.2fV!\n", volt, minvoltage);
+      while (true)
+	yield();
+    }
+  }
+  if (Serial)
+    config.execute();
+  config.report();
+  Serial.println();
 }
 
 

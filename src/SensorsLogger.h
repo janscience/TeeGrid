@@ -20,6 +20,10 @@ public:
 		RTClock &rtclock, Blink &blink,
 		Blink &errorblink, Blink &syncblink);
 
+  // Check availability of SD card, set real-time clock from file,
+  // load configuration file, check battery voltage, execute menu, and report on serial.
+  void configure(Config &config);
+
   // Initialize environmental sensors.
   void setupSensors();
 
