@@ -5,7 +5,8 @@
 
 LoggerSettings::LoggerSettings(Menu &menu, const char *label, int deviceid,
 			       const char *path, const char *filename,
-			       float filetime, float initialdelay, float minvoltage) :
+			       float filetime, float initialdelay,
+			       float startvoltage, float stopvoltage) :
   Menu(menu, "Settings"),
   Label(*this, "Label", label),
   ID(*this, "DeviceID", 1, 1, 127, "%d"),
@@ -13,14 +14,15 @@ LoggerSettings::LoggerSettings(Menu &menu, const char *label, int deviceid,
   FileName(*this, "FileName", filename, Admin),
   FileTime(*this, "FileTime", filetime, 1.0, 8640.0, "%.0f", "s"),
   InitialDelay(*this, "InitialDelay", initialdelay, 0.0, 1e8, "%.0f", "s"),
-  MinimumVoltage(*this, "MinimumVoltage", minvoltage, 0.0, 10.0, "%.2f", "V", "V", Admin) {
+  StartVoltage(*this, "StartVoltage", startvoltage, 0.0, 10.0, "%.2f", "V", "V", Admin),
+  StopVoltage(*this, "StopVoltage", stopvoltage, 0.0, 10.0, "%.2f", "V", "V", Admin) {
   if (deviceid < 0)
     setDeviceIDDevice();
   ID.setValue(deviceid);
   if (initialdelay < 0)
     InitialDelay.disable();
-  //MinimumVoltage.setSpecial(0.0, "none");   // float special values not supported by spinbox
-  MinimumVoltage.disable();
+  StartVoltage.disable();
+  StopVoltage.disable();
 }
 
 
@@ -87,6 +89,12 @@ void LoggerSettings::setInitialDelay(float time) {
   InitialDelay.setValue(time);
 }
 
-void LoggerSettings::setMinimumVoltage(float minvoltage) {
-  MinimumVoltage.setValue(minvoltage);
+
+void LoggerSettings::setStartVoltage(float startvoltage) {
+  StartVoltage.setValue(startvoltage);
+}
+
+
+void LoggerSettings::setStopVoltage(float stopvoltage) {
+  StopVoltage.setValue(stopvoltage);
 }

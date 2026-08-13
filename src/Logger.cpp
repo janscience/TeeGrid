@@ -182,6 +182,7 @@ void Logger::configure(Config &config) {
   Serial.println();
   // get configuration from file:
   config.load();
+  // menu:
   if (Serial)
     config.execute();
   config.report();
