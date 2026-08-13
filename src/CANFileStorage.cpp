@@ -12,14 +12,13 @@ CANFileStorage::CANFileStorage(Input &aiinput, SDCard &sdcard,
 }
 
 
-bool CANFileStorage::synchronize() {
+void CANFileStorage::synchronize(float stopvoltage) {
   if (!Master)
     CAN.transmitEndFile();
   if (Master)
     CAN.transmitStart();
   else if (CAN.id() > 0)
     CAN.receiveStart();
-  return false;
 }
 
 

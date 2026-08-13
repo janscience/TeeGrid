@@ -222,5 +222,5 @@ void setup() {
 
 
 void loop() {
-  logger.update();
+  logger.update(settings.stopVoltage());
 }

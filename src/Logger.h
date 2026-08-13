@@ -73,7 +73,7 @@ public:
   void close();
 
   // Call this in loop() for writing data to files.
-  void update();
+  void update(float stopvoltage=0.0);
 
   // True, if data are stored in files.
   bool saving() const { return Saving; };
@@ -107,7 +107,7 @@ protected:
   virtual void stop();  
 
   // Derived classes can insert code here before the next file is opened.
-  virtual bool synchronize() { return false; };
+  virtual void synchronize(float stopvoltage) {};
 
   Input &AIInput;
   SDCard *Disk;

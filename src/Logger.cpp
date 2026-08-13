@@ -508,10 +508,12 @@ void Logger::closeBlinks() {
 }
 
 
-void Logger::update() {
+void Logger::update(float stopvoltage) {
   if (store(File)) {
-    if (StopTime > 0 && now() >= StopTime)
+    if (StopTime > 0 && now() >= StopTime) {
+      File.closeWave();
       stop();
+    }
   }
   if (File.endWrite()) {
     File.close();  // file size was set by openWave()
@@ -533,7 +535,7 @@ void Logger::update() {
 #endif
     if (StopTime > 0 && now() >= StopTime)
       stop();
-    synchronize(); // TODO: make this working also for backup.
+    synchronize(stopvoltage);
     open();
   }
   storeBlinks();

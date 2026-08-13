@@ -39,12 +39,14 @@ void SensorsLogger::setupSensors() {
 }
 
 
-void SensorsLogger::checkVoltage(float startvoltage) {
+void SensorsLogger::checkVoltage(float minvoltage) {
   ESensor *vbat = Sensors.sensor("battery-voltage");
-  if (vbat != 0 && startvoltage > 0.0) {
+  if (vbat != 0 && minvoltage > 0.0) {
     float volt = vbat->read();
-    if (volt < startvoltage) {
-      Serial.printf("HALT --- battery voltage %.2fV lower than %.2fV!\n", volt, startvoltage);
+    if (volt < minvoltage) {
+      Serial.printf("HALT --- battery voltage %.2fV lower than %.2fV!\n",
+		    volt, minvoltage);
+      Serial.flush();
       while (true)
 	yield();
     }
@@ -126,9 +128,14 @@ void SensorsLogger::closeSensorsFile() {
 }
 
 
-bool SensorsLogger::update() {
-  Logger::update();
+bool SensorsLogger::update(float stopvoltage) {
+  Logger::update(stopvoltage);
   return storeSensors();
+}
+
+
+void SensorsLogger::synchronize(float stopvoltage) {
+  checkVoltage(stopvoltage);
 }
 
 

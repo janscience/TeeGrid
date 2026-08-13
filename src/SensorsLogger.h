@@ -21,7 +21,7 @@ public:
 		Blink &errorblink, Blink &syncblink);
 
   // Check battery voltage.
-  void checkVoltage(float startvoltage);
+  void checkVoltage(float minvoltage);
 
   // Initialize environmental sensors.
   void setupSensors();
@@ -41,7 +41,7 @@ public:
 
   // Call this in loop() for writing data to files.
   // Returns true if sensors have been updated.
-  bool update();
+  bool update(float stopvoltage=0.0);
 
 
 protected:
@@ -54,6 +54,9 @@ protected:
   
   // Close sensors file.
   void closeSensorsFile();
+
+  // Stop recording if battery voltage is too low.
+  virtual void synchronize(float stopvoltage);
 
   // Close all files and reboot.
   virtual void stop();  

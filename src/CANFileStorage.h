@@ -23,7 +23,7 @@ public:
 protected:
 
   // Use CAN bus to synchronize opening of next file.
-  virtual bool synchronize();
+  virtual void synchronize(float stopvoltage);
 
   CANFD &CAN;
   bool Master;
