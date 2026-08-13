@@ -14,9 +14,9 @@ class SensorsLogger : public Logger {
   
 public:
 
-  SensorsLogger(Input &aiinput, ESensors &sensors, SDCard &sdcard0,
+  SensorsLogger(Input &aiinput, ESensors &sensors, SDCard &sdcard,
 		RTClock &rtclock, Blink &blink);
-  SensorsLogger(Input &aiinput, ESensors &sensors, SDCard &sdcard0,
+  SensorsLogger(Input &aiinput, ESensors &sensors, SDCard &sdcard,
 		RTClock &rtclock, Blink &blink,
 		Blink &errorblink, Blink &syncblink);
 

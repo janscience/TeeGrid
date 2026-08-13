@@ -75,7 +75,7 @@ LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
                         FILE_SAVE_TIME);
 InputADCSettings aisettings(config, SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE, PREGAIN);
-Timing timing(INITIAL_DELAY, 0, 0, SENSORS_INTERVAL);	    
+Timing timing(config, INITIAL_DELAY, 0, 0, SENSORS_INTERVAL);	    
 RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
 SDCardMenu sdcard_menu(config, sdcard);

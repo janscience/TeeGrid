@@ -25,19 +25,13 @@ public:
   Logger(Input &aiinput, SDCard &sdcard,
 	 RTClock &rtclock, Blink &blink,
 	 Blink &errorblink, Blink &syncblink);
-  Logger(Input &aiinput, SDCard &sdcard0, SDCard &sdcard1,
-	 RTClock &rtclock, Blink &blink);
 
   // Halt with error message and blinking.
   void halt(int errorcode=0, Stream &stream=Serial);
 
   // Check accessibility of SD cards.
   // Run menu and halt if the main SD card can not be written.
-  // If check_backup force checking backup SD card as well.
-  bool check(Config &config, bool check_backup=false);
-
-  // If secondary SD card is not available, end its usage.
-  void endBackup(SPIClass *spi=NULL);
+  bool check(Config &config);
 
   // Check availability of SD card, set real-time clock from file,
   // load configuration file, execute menu, and report on serial.
@@ -84,7 +78,7 @@ public:
   // True, if data are stored in files.
   bool saving() const { return Saving; };
 
-  String baseName() const { return File0.baseName(); };
+  String baseName() const { return File.baseName(); };
 
   void R41powerDownCAN();
   
@@ -92,7 +86,7 @@ public:
 protected:
   
   // Generate file name, open main file and write first chunk of data.
-  void open(bool backup);
+  void open();
 
   // Write all metadata into file.
   void writeMetadata(Config &config);
@@ -107,7 +101,7 @@ protected:
   void closeBlinks();
 
   // Write recorded data to files.
-  bool store(SDWriter &sdfile, bool backup);
+  bool store(SDWriter &sdfile);
 
   // Close all files and reboot.
   virtual void stop();  
@@ -116,10 +110,8 @@ protected:
   virtual bool synchronize() { return false; };
 
   Input &AIInput;
-  SDCard *SDCard0;
-  SDCard *SDCard1;
-  SDWriter File0;
-  SDWriter File1;
+  SDCard *Disk;
+  SDWriter File;
   RTClock &Clock;
   Blink NoBlink;
   Blink &StatusLED;
@@ -127,8 +119,7 @@ protected:
   Blink &SyncLED;
   
   bool RandomBlinks;
-  FsFile BlinkFile0;
-  FsFile BlinkFile1;
+  FsFile BlinkFile;
   unsigned long BlinkTimeout;
   unsigned long SyncTimeout;
   
@@ -137,8 +128,6 @@ protected:
   bool Saving;
   int FileCounter;
   int Restarts;
-  int NextStore;
-  int NextOpen;
   
   time_t StartTime;
   time_t StopTime;

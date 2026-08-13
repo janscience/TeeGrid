@@ -14,10 +14,8 @@
 Logger::Logger(Input &aiinput, SDCard &sdcard,
 	       RTClock &rtclock, Blink &blink) :
   AIInput(aiinput),
-  SDCard0(&sdcard),
-  SDCard1(0),
-  File0(sdcard, aiinput, 5),
-  File1(),
+  Disk(&sdcard),
+  File(sdcard, aiinput, 5),
   Clock(rtclock),
   NoBlink(""),
   StatusLED(blink),
@@ -31,8 +29,6 @@ Logger::Logger(Input &aiinput, SDCard &sdcard,
   Saving(false),
   FileCounter(0),
   Restarts(0),
-  NextStore(0),
-  NextOpen(0),
   StartTime(0),
   StopTime(0),
   Alarm(),
@@ -45,10 +41,8 @@ Logger::Logger(Input &aiinput, SDCard &sdcard,
 	       RTClock &rtclock, Blink &blink,
 	       Blink &errorblink, Blink &syncblink) :
   AIInput(aiinput),
-  SDCard0(&sdcard),
-  SDCard1(0),
-  File0(sdcard, aiinput, 5),
-  File1(),
+  Disk(&sdcard),
+  File(sdcard, aiinput, 5),
   Clock(rtclock),
   NoBlink(""),
   StatusLED(blink),
@@ -62,38 +56,6 @@ Logger::Logger(Input &aiinput, SDCard &sdcard,
   Saving(false),
   FileCounter(0),
   Restarts(0),
-  NextStore(0),
-  NextOpen(0),
-  StartTime(0),
-  StopTime(0),
-  Alarm(),
-  SnoozeSDCard(),
-  SnoozeConfig(Alarm, SnoozeSDCard) {
-}
-
-
-Logger::Logger(Input &aiinput, SDCard &sdcard0,
-	       SDCard &sdcard1, RTClock &rtclock,
-	       Blink &blink) :
-  AIInput(aiinput),
-  SDCard0(&sdcard0),
-  SDCard1(&sdcard1),
-  File0(sdcard0, aiinput, 5),
-  File1(sdcard1, aiinput, 5),
-  Clock(rtclock),
-  NoBlink(""),
-  StatusLED(blink),
-  ErrorLED(NoBlink),
-  SyncLED(NoBlink),
-  RandomBlinks(false),
-  BlinkTimeout(0),
-  SyncTimeout(0),
-  Filename(""),
-  PrevFilename(""),
-  FileCounter(0),
-  Restarts(0),
-  NextStore(0),
-  NextOpen(0),
   StartTime(0),
   StopTime(0),
   Alarm(),
@@ -132,10 +94,10 @@ void Logger::halt(int errorcode, Stream &stream) {
 }
 
 
-bool Logger::check(Config &config, bool check_backup) {
+bool Logger::check(Config &config) {
   // check for enough space:
-  if (!SDCard0->check(1e9)) {
-    SDCard0->end();
+  if (!Disk->check(1e9)) {
+    Disk->end();
     StatusLED.switchOff();
     if (Serial) {
       config.execute(Serial);
@@ -146,21 +108,7 @@ bool Logger::check(Config &config, bool check_backup) {
     halt(1);
     return false;
   }
-  if (SDCard1 != NULL && (SDCard1->available() || check_backup)) {
-    if (!SDCard1->check(SDCard0->free()))
-      SDCard1->end();
-  }
   return true;
-}
-
-
-void Logger::endBackup(SPIClass *spi) {
-  if (SDCard1 != NULL && !SDCard1->available()) {
-    SDCard1->end();
-    if (spi != NULL)
-      spi->end();
-    StatusLED.reset();
-  }
 }
 
 
@@ -170,15 +118,12 @@ void Logger::configure(Config &config) {
   Serial.println();
   // check SD card:
   check(config);
-  Clock.setFromFile(*SDCard0);
+  Clock.setFromFile(*Disk);
   // cleanup previous recordings:
   char folder[64];
-  SDCard0->latestDir("/", folder, 64);
-  if (strlen(folder) > 0) {
-    SDCard0->cleanDir(folder, 1024, ".wav", true, ".csv", true);
-    if (SDCard1 != NULL && SDCard1->available())
-      SDCard1->cleanDir(folder, 1024, ".wav", true, ".csv", true);
-  }
+  Disk->latestDir("/", folder, 64);
+  if (strlen(folder) > 0)
+    Disk->cleanDir(folder, 1024, ".wav", true, ".csv", true);
   Serial.println();
   // get configuration from file:
   config.load();
@@ -224,26 +169,19 @@ void Logger::snooze(const char *start_time) {
   Snooze.sleep(SnoozeConfig);
   Serial.println("\n... woke up!\n");
   Clock.sync();
-  if (SDCard0 != 0)
-    SDCard0->restart();
-  if (SDCard1 != 0)
-    SDCard1->restart();
+  if (Disk != 0)
+    Disk->restart();
   if (on)
     StatusLED.switchOn();
 }
 
 
 void Logger::setCPUSpeed(uint32_t rate) {
-  if (SDCard1 != NULL && !SDCard1->available()) {
-    setTeensySpeed(150);
-  }
-  else {
-    rate /= 1000;                    // sampling rate in kHz
-    int speed = ((12+rate/2)/24)*24; // CPU speed in MHz, steps of 24, TODO: take channels into account?
-    if (speed < 24)
-      speed = 24;
-    setTeensySpeed(speed);
-  }
+  rate /= 1000;                    // sampling rate in kHz
+  int speed = ((12+rate/2)/24)*24; // CPU speed in MHz, steps of 24, TODO: take channels into account?
+  if (speed < 24)
+    speed = 24;
+  setTeensySpeed(speed);
   Serial.printf("Set CPU speed to %dMHz\n\n", teensySpeed());
 }
 
@@ -286,16 +224,11 @@ void Logger::setup(const char *path, const char *filename,
   String path_name = path;
   time_t t = now();
   path_name = Clock.makeStr(path_name, t, true);
-  if (File0.sdcard()->dataDir(path_name.c_str(), true))
+  if (File.sdcard()->dataDir(path_name.c_str(), true))
     Serial.printf("Save recorded data in folder \"%s\" on %sSD card.\n\n",
-		  File0.sdcard()->workingDir(), File0.sdcard()->name());
-  File0.header().setSoftware(software);
-  File0.header().setCPUSpeed();
-  if (File1.sdcard() != NULL) {
-    File1.sdcard()->dataDir(File0.sdcard()->workingDir());
-    File1.header().setSoftware(software);
-    File1.header().setCPUSpeed();
-  }
+		  File.sdcard()->workingDir(), File.sdcard()->name());
+  File.header().setSoftware(software);
+  File.header().setCPUSpeed();
 }
 
 
@@ -335,12 +268,8 @@ void Logger::initialDelay(float initial_delay, const char *stop_time,
 
 
 void Logger::start(float filetime) {
-  File0.setWriteInterval(2*AIInput.DMABufferTime());
-  File0.setMaxFileTime(filetime);
-  if (File1.sdcard() != NULL) {
-    File1.setWriteInterval(2*AIInput.DMABufferTime());
-    File1.setMaxFileTime(filetime);
-  }
+  File.setWriteInterval(2*AIInput.DMABufferTime());
+  File.setMaxFileTime(filetime);
   if (RandomBlinks)
     StatusLED.setTiming(5000, 100, 1200);
   else if (filetime > 30)
@@ -354,13 +283,8 @@ void Logger::start(float filetime) {
     BlinkTimeout += millis();
   if (SyncTimeout > 0)
     SyncTimeout += millis();
-  File0.start();
-  if (File1.sdcard() != NULL)
-    File1.start(File0);
-  open(false);
-  open(true);
-  NextStore = 0;
-  NextOpen = 0;
+  File.start();
+  open();
   openBlinkFiles();
 }
 
@@ -374,123 +298,100 @@ void Logger::start(float filetime, Config &config) {
 void Logger::start(float filetime, Config &config, Menu &amplifier) {
   start(filetime);
   InfoAction ampl(amplifier, 0);
-  if (strlen(File0.header().channels()) > 0)
-    ampl.add("Channels", File0.header().channels());
-  if (strlen(File0.header().averaging()) > 0)
-    ampl.add("Averaging", File0.header().averaging());
-  if (strlen(File0.header().conversionSpeed()) > 0)
-    ampl.add("Conversion speed", File0.header().conversionSpeed());
-  if (strlen(File0.header().samplingSpeed()) > 0)
-    ampl.add("Sampling speed", File0.header().samplingSpeed());
-  if (strlen(File0.header().reference()) > 0)
-    ampl.add("Reference", File0.header().reference());
-  if (strlen(File0.header().gain()) > 0)
-    ampl.add("Gain", File0.header().gain());
-  if (strlen(File0.header().software()) > 0)
-    ampl.add("Software", File0.header().software());
+  if (strlen(File.header().channels()) > 0)
+    ampl.add("Channels", File.header().channels());
+  if (strlen(File.header().averaging()) > 0)
+    ampl.add("Averaging", File.header().averaging());
+  if (strlen(File.header().conversionSpeed()) > 0)
+    ampl.add("Conversion speed", File.header().conversionSpeed());
+  if (strlen(File.header().samplingSpeed()) > 0)
+    ampl.add("Sampling speed", File.header().samplingSpeed());
+  if (strlen(File.header().reference()) > 0)
+    ampl.add("Reference", File.header().reference());
+  if (strlen(File.header().gain()) > 0)
+    ampl.add("Gain", File.header().gain());
+  if (strlen(File.header().software()) > 0)
+    ampl.add("Software", File.header().software());
   writeMetadata(config);
 }
 
 
-void Logger::open(bool backup) {
-  if (backup) {
-    if (File1.sdcard() == NULL || !File1.sdcard()->available())
-      return;
-    File1.openWave(File0.name().c_str(), File0.header());
-    ssize_t samples = File1.write();
-    if (samples == -4) {   // overrun
-      File1.start(AIInput.nbuffer()/2);   // skip half a buffer
-      File1.write();                      // write all available data
-      // report overrun:
-      char mfs[100];
-      sprintf(mfs, "%s-backup-error0-overrun.msg", File1.baseName().c_str());
-      Serial.println(mfs);
-      FsFile mf = SDCard1->openWrite(mfs);
-      mf.close();
-    }
-    Serial.printf("and %sSD card)\n", File1.sdcard()->name());
+void Logger::open() {
+  if (RandomBlinks) {
+    StatusLED.setRandom();
+    StatusLED.blinkMultiple(5, 0, 200, 200);
   }
   else {
-    if (RandomBlinks) {
-      StatusLED.setRandom();
-      StatusLED.blinkMultiple(5, 0, 200, 200);
-    }
-    else {
-      StatusLED.setSingle();
-      StatusLED.blinkSingle(0, 2000);
-    }
-    SyncLED.setRandom();
-    SyncLED.blinkMultiple(5, 0, 200, 200);
-    String fname(Filename);
-    char cs[16];
-    sprintf(cs, "%04d", FileCounter + 1);
-    fname.replace("COUNT", cs);
-    time_t t = now();
-    // align on StartTime:
-    while (StartTime > 0 && t < StartTime && StartTime - t < 2) {
-      delay(100);
-      t = now();
-    }
-    fname = Clock.makeStr(fname, t, true);
-    if (fname != PrevFilename) {
-      File0.sdcard()->resetFileCounter();
-      PrevFilename = fname;
-    }
-    fname = File0.sdcard()->incrementFileName(fname);
-    if (fname.length() == 0) {
-      StatusLED.clear();
-      SyncLED.clear();
-      AIInput.stop();
-      halt(3);
-      return;
-    }
-    char dts[20];
-    Clock.dateTime(dts, t);
-    if (! File0.openWave(fname.c_str(), -1, dts)) {
-      StatusLED.clear();
-      SyncLED.clear();
-      Serial.println();
-      Serial.printf("WARNING: failed to open file on %sSD card.\n", File0.sdcard()->name());
-      Serial.println("SD card probably not inserted or full -> ");
-      AIInput.stop();
-      halt(4);
-      return;
-    }
-    Saving = true;
-    FileCounter++;
-    ssize_t samples = File0.write();
-    if (samples == -4) {   // overrun
-      File0.start(AIInput.nbuffer()/2);   // skip half a buffer
-      File0.write();                      // write all available data
-      // report overrun:
-      char mfs[100];
-      sprintf(mfs, "%s-error0-overrun.msg", File0.baseName().c_str());
-      Serial.println(mfs);
-      FsFile mf = SDCard0->openWrite(mfs);
-      mf.close();
-    }
-    Serial.print("Write recording   to ");
-    Serial.print(File0.name());
-    if (File1.sdcard() != NULL && File1.sdcard()->available())
-      Serial.printf(" (on %s", File0.sdcard()->name());
-    Serial.println();
+    StatusLED.setSingle();
+    StatusLED.blinkSingle(0, 2000);
   }
+  SyncLED.setRandom();
+  SyncLED.blinkMultiple(5, 0, 200, 200);
+  String fname(Filename);
+  char cs[16];
+  sprintf(cs, "%04d", FileCounter + 1);
+  fname.replace("COUNT", cs);
+  time_t t = now();
+  // align on StartTime:
+  while (StartTime > 0 && t < StartTime && StartTime - t < 2) {
+    delay(100);
+    t = now();
+  }
+  fname = Clock.makeStr(fname, t, true);
+  if (fname != PrevFilename) {
+    File.sdcard()->resetFileCounter();
+    PrevFilename = fname;
+  }
+  fname = File.sdcard()->incrementFileName(fname);
+  if (fname.length() == 0) {
+    StatusLED.clear();
+    SyncLED.clear();
+    AIInput.stop();
+    halt(3);
+    return;
+  }
+  char dts[20];
+  Clock.dateTime(dts, t);
+  if (! File.openWave(fname.c_str(), -1, dts)) {
+    StatusLED.clear();
+    SyncLED.clear();
+    Serial.println();
+    Serial.printf("WARNING: failed to open file on %sSD card.\n", File.sdcard()->name());
+    Serial.println("SD card probably not inserted or full -> ");
+    AIInput.stop();
+    halt(4);
+    return;
+  }
+  Saving = true;
+  FileCounter++;
+  ssize_t samples = File.write();
+  if (samples == -4) {   // overrun
+    File.start(AIInput.nbuffer()/2);   // skip half a buffer
+    File.write();                      // write all available data
+    // report overrun:
+    char mfs[100];
+    sprintf(mfs, "%s-error0-overrun.msg", File.baseName().c_str());
+    Serial.println(mfs);
+    FsFile mf = Disk->openWrite(mfs);
+    mf.close();
+  }
+  Serial.print("Write recording   to ");
+  Serial.print(File.name());
+  Serial.println();
 }
 
 
 void Logger::close() {
   if (! Saving)
     return;
-  File0.closeWave();
-  if (File1.sdcard() != NULL && File1.sdcard()->available())
-    File1.closeWave();
+  File.closeWave();
   Saving = false;
   SyncLED.clear();
   StatusLED.setDouble();
 }
 
 
-bool Logger::store(SDWriter &sdfile, bool backup) {
+bool Logger::store(SDWriter &sdfile) {
   if (!sdfile.pending())
     return false;
   ssize_t samples = sdfile.write();
@@ -520,71 +421,50 @@ bool Logger::store(SDWriter &sdfile, bool backup) {
         break;
       case -5:
         Serial.println("  failed to write anything.");
-	if (backup) {
-	  Serial.printf("  %sSD card probably full.\n", sdfile.sdcard()->name());
-	  SDCard1->end();
-	}
-	else {
-	  Serial.printf("  %sSD card probably full -> \n", sdfile.sdcard()->name());
-	  AIInput.stop();
-	  StatusLED.clear();
-	  SyncLED.clear();
-	  halt(5);
-	}
+	Serial.printf("  %sSD card probably full -> \n", sdfile.sdcard()->name());
+	AIInput.stop();
+	StatusLED.clear();
+	SyncLED.clear();
+	halt(5);
         strcpy(errorstr, "nowrite");
 	break;
     }
     sdfile.closeWave();
     // write error file:
     char mfs[100];
-    if (backup)
-      sprintf(mfs, "%s-backup-error%d-%s.msg", sdfile.baseName().c_str(),
-	      Restarts+1, errorstr);
-    else
-      sprintf(mfs, "%s-error%d-%s.msg", sdfile.baseName().c_str(),
-	      Restarts+1, errorstr);
+    sprintf(mfs, "%s-error%d-%s.msg", sdfile.baseName().c_str(),
+	    Restarts+1, errorstr);
     Serial.println(mfs);
-    FsFile mf = SDCard0->openWrite(mfs);
+    FsFile mf = Disk->openWrite(mfs);
     mf.close();
     // halt after too many errors:
     Restarts++;
     Serial.printf("Incremented restarts to %d, samples=%d on %sSD card\n", Restarts, samples, sdfile.sdcard()->name());
     if (Restarts >= 5) {
       Serial.printf("ERROR in Logger::storeData() on %sSD card: too many file errors", sdfile.sdcard()->name());
-      if (backup) {
-	Serial.println(" -> end backups");
-	SDCard1->end();
-      }
-      else {
-	AIInput.stop();
-	StatusLED.clear();
-	SyncLED.clear();
-	Serial.println(" -> ");
-	halt(6);
-      }
+      AIInput.stop();
+      StatusLED.clear();
+      SyncLED.clear();
+      Serial.println(" -> ");
+      halt(6);
     }
     // restart analog input:
     if (!AIInput.running())
       AIInput.start();
     // open next file:
     sdfile.start();
-    open(backup);
+    open();
   }
   return true;
 }
 
 
 void Logger::writeMetadata(Config &config) {
-  String fname = File0.name();
+  String fname = File.name();
   fname.replace(".wav", "-metadata.yml");
-  FsFile file0 = SDCard0->openWrite(fname.c_str());
-  config.write(file0, config.FileOutput | config.Report);
-  file0.close();
-  if (SDCard1 != NULL && SDCard1->available()) {
-    FsFile file1 = SDCard1->openWrite(fname.c_str());
-    config.write(file1, config.FileOutput | config.Report);
-    file1.close();
-  }
+  FsFile file = Disk->openWrite(fname.c_str());
+  config.write(file, config.FileOutput | config.Report);
+  file.close();
   Serial.print("Wrote metadata    to ");
   Serial.println(fname);
 }
@@ -592,14 +472,10 @@ void Logger::writeMetadata(Config &config) {
 
 void Logger::openBlinkFiles() {
   if (RandomBlinks || SyncLED.available()) {
-    String fname = File0.name();
+    String fname = File.name();
     fname.replace(".wav", "-blinks.csv");
-    BlinkFile0 = SDCard0->openWrite(fname.c_str());
-    BlinkFile0.write("time/ms,on\n");
-    if (SDCard1 != NULL && SDCard1->available()) {
-      BlinkFile1 = SDCard1->openWrite(fname.c_str());
-      BlinkFile1.write("time/ms,on\n");
-    }
+    BlinkFile = Disk->openWrite(fname.c_str());
+    BlinkFile.write("time/ms,on\n");
     Serial.print("Write blink times to ");
     Serial.println(fname);
   }
@@ -612,7 +488,7 @@ void Logger::storeBlinks() {
 
     if (led.nswitchTimes() < Blink::MaxTimes/2)
       return;
-    uint32_t tstart = File0.startWriteTime();
+    uint32_t tstart = File.startWriteTime();
     uint32_t times[Blink::MaxTimes];
     bool states[Blink::MaxTimes];
     size_t n;
@@ -621,74 +497,44 @@ void Logger::storeBlinks() {
     size_t m = 0;
     for (size_t k=0; k<n; k++)
       m += sprintf(buffer + m, "%lu,%u\n", times[k] - tstart, states[k]);
-    BlinkFile0.write(buffer, m);
-    BlinkFile0.flush();
-    if (SDCard1 != NULL && SDCard1->available()) {
-      BlinkFile1.write(buffer, m);
-      BlinkFile1.flush();
-    }
+    BlinkFile.write(buffer, m);
+    BlinkFile.flush();
   }
 }
 
 
 void Logger::closeBlinks() {
-  BlinkFile0.close();
-  if (SDCard1 != NULL && SDCard1->available())
-    BlinkFile1.close();
+  BlinkFile.close();
 }
 
 
 void Logger::update() {
-  if (NextStore == 0) {
-    if (store(File0, false)) {
-      if (SDCard1 != NULL && SDCard1->available())
-	NextStore = 1;
-      else if (StopTime > 0 && now() >= StopTime)
-	stop();
-    }
+  if (store(File)) {
+    if (StopTime > 0 && now() >= StopTime)
+      stop();
   }
-  if (NextStore == 1) {
-    if (store(File1, true)) {
-      if (StopTime > 0 && now() >= StopTime)
-	stop();
-      NextStore = 0;
-    }
-  }
-  if (NextOpen == 0) {
-    if (File0.endWrite()) {
-      File0.close();  // file size was set by openWave()
+  if (File.endWrite()) {
+    File.close();  // file size was set by openWave()
 #ifdef SINGLE_FILE_MTP
-      SyncLED.clear();
-      AIInput.stop();
-      delay(50);
-      Serial.println();
-      Serial.println("MTP file transfer.");
-      Serial.flush();
-      StatusLED.setTriple();
-      MTP.begin();
-      MTP.addFilesystem(*SDCard0, "logger");
-      while (true) {
-	MTP.loop();
-	StatusLED.update();
-	yield();
-      }
+    SyncLED.clear();
+    AIInput.stop();
+    delay(50);
+    Serial.println();
+    Serial.println("MTP file transfer.");
+    Serial.flush();
+    StatusLED.setTriple();
+    MTP.begin();
+    MTP.addFilesystem(*Disk, "logger");
+    while (true) {
+      MTP.loop();
+      StatusLED.update();
+      yield();
+    }
 #endif
-      if (SDCard1 != NULL && SDCard1->available())
-	NextOpen = 1;
-      else if (StopTime > 0 && now() >= StopTime)
-	stop();
-      synchronize(); // TODO: make this working also for backup.
-      open(false);
-    }
-  }
-  if (NextOpen == 1) {
-    if (File1.endWrite()) {
-      File1.close();  // file size was set by openWave()
-      if (StopTime > 0 && now() >= StopTime)
-	stop();
-      open(true);
-      NextOpen = 0;
-    }
+    if (StopTime > 0 && now() >= StopTime)
+      stop();
+    synchronize(); // TODO: make this working also for backup.
+    open();
   }
   storeBlinks();
   if ((BlinkTimeout > 0) && (millis() > BlinkTimeout))
