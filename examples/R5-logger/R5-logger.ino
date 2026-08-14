@@ -123,7 +123,6 @@ SensorsLogger logger(aidata, sensors, sdcard, rtclock,
 
 void setupLEDs() {
   Wire2.begin();
-  //Wire2.setClock(100000);
   gpio.begin(Wire2);
   if (gpio.available()) {
     blink.setPin(gpio, 0);
@@ -175,6 +174,9 @@ void setupSensors() {
   vbat.setSymbol("Vbat");
   vbat.setAveraging(32);
   gpio.setMode(2, INPUT);
+  tempsts.begin(Wire2, STS4x_ADDR);
+  tempsts.setPrecision(STS4x_HIGH);
+  tempsts.setSymbol("Tw");
   light1.begin(Wire2, BH1750_TO_GROUND);
   light1.setQuality(BH1750_QUALITY_HIGH2);
   light1.setName("illuminance1");
@@ -183,9 +185,6 @@ void setupSensors() {
   light2.setQuality(BH1750_QUALITY_HIGH2);
   light2.setName("illuminance2");
   light2.setSymbol("I2");
-  tempsts.begin(Wire2, STS4x_ADDR);
-  tempsts.setPrecision(STS4x_HIGH);
-  tempsts.setSymbol("Tw");
   logger.setupSensors();
   if (light1.available() || light2.available())
     blinksettings.enable("LightThreshold");
