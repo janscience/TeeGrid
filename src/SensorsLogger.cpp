@@ -44,8 +44,14 @@ void SensorsLogger::checkVoltage(float minvoltage) {
   if (vbat != 0 && minvoltage > 0.0) {
     float volt = vbat->read();
     if (volt < minvoltage) {
+      stop();
+      StatusLED.switchOff();
+      ErrorLED.switchOff();
+      SyncLED.switchOff();
       Serial.printf("HALT --- battery voltage %.2fV lower than %.2fV!\n",
 		    volt, minvoltage);
+      Serial.println();
+      Serial.println();
       Serial.flush();
       while (true)
 	yield();

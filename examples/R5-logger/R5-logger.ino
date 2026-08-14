@@ -7,6 +7,7 @@
 #include <Blink.h>
 #include <MicroConfig.h>
 #include <LoggerSettings.h>
+#include <PowerSettings.h>
 #include <BlinkSettings.h>
 #include <InputTDMSettings.h>
 #include <Timing.h>
@@ -35,19 +36,19 @@
 #define PREGAIN        2.0     // gain factor of preamplifier
 #define GAIN           0.0     // dB
 
-#define LABEL          "logger"               // may be used for naming files
-#define DEVICEID       1                      // may be used for naming files
-#define PATH           "LABELID2-SDATETIMEM"  // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
-#define FILENAME       "LABELID2-SDATETIME"   // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
-#define FILE_SAVE_TIME 300       // seconds
-#define INITIAL_DELAY  10        // seconds
-#define START_VOLTAGE    0.0       // Volt
-#define STOP_VOLTAGE     0.0       // Volt
-#define RANDOM_BLINKS    false    // set to true for blinking the status LED randomly (sync LED is always blinked randomly)
-#define BLINK_TIMEOUT    0      // time after which internal LEDs are switched off in seconds
-#define SYNC_TIMEOUT     0      // time after which synchronization LED is switched off in seconds
-#define SENSORS_INTERVAL 30.0     // interval between sensors readings in seconds
-#define LIGHT_THRESHOLD  10.0     // threshold for switching off LEDs in lux.
+#define LABEL            "logger"               // may be used for naming files
+#define DEVICEID         1                      // may be used for naming files
+#define PATH             "LABELID2-SDATETIMEM"  // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
+#define FILENAME         "LABELID2-SDATETIME"   // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define FILE_SAVE_TIME   300       // seconds
+#define INITIAL_DELAY    10        // seconds
+#define START_VOLTAGE    3.65      // Volt
+#define STOP_VOLTAGE     3.5       // Volt
+#define RANDOM_BLINKS    false     // set to true for blinking the status LED randomly (sync LED is always blinked randomly)
+#define BLINK_TIMEOUT    0         // time after which internal LEDs are switched off in seconds
+#define SYNC_TIMEOUT     0         // time after which synchronization LED is switched off in seconds
+#define SENSORS_INTERVAL 30.0      // interval between sensors readings in seconds
+#define LIGHT_THRESHOLD  10.0      // threshold for switching off LEDs in lux.
 
 // ----------------------------------------------------------------------------
 
@@ -96,8 +97,8 @@ LightBH1750 light2(&sensors);
 
 Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
-                        FILE_SAVE_TIME, INITIAL_DELAY,
-			START_VOLTAGE, STOP_VOLTAGE);
+                        FILE_SAVE_TIME, INITIAL_DELAY);
+PowerSettings powersettings(config, START_VOLTAGE, STOP_VOLTAGE);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS,
                             GAIN, PREGAIN, SOURCE, 2);
 Timing timing(config, INITIAL_DELAY, "", "", SENSORS_INTERVAL);
@@ -136,8 +137,8 @@ void setupLEDs() {
 
 
 void setupMenu() {
-  settings.enable("StartVoltage");
-  settings.enable("StopVoltage");
+  settings.setDeviceIDAdmin();
+  settings.disable("InitialDelay");
   aisettings.setRateSelection(ControlTLV320ADC::SamplingRates,
                               ControlTLV320ADC::MaxSamplingRates);
   aisettings.enable("Source");
@@ -202,7 +203,7 @@ void setup() {
   setupBoard();
   setupSensors();
   logger.configure(config);
-  logger.checkVoltage(settings.startVoltage());
+  logger.checkVoltage(powersettings.startVoltage());
   //powerdownTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
   //logger.snooze(timing.startTime());
   //powerupTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
@@ -222,5 +223,5 @@ void setup() {
 
 
 void loop() {
-  logger.update(settings.stopVoltage());
+  logger.update(powersettings.stopVoltage());
 }
