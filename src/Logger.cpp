@@ -112,9 +112,9 @@ bool Logger::check(Config &config) {
 }
 
 
-void Logger::configure(Config &config) {
+void Logger::configure(Config &config, Storage &storage) {
   // get configuration from EEPROM:
-  config.get();
+  config.get(storage);
   Serial.println();
   // check SD card:
   check(config);

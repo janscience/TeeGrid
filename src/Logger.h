@@ -11,6 +11,7 @@
 #include <Input.h>
 #include <SDCard.h>
 #include <SDWriter.h>
+#include <Storage.h>
 #include <RTClock.h>
 #include <Blink.h>
 #include <MicroConfig.h>
@@ -35,7 +36,7 @@ public:
 
   // Check availability of SD card, set real-time clock from file,
   // load configuration file, execute menu, and report on serial.
-  void configure(Config &config);
+  void configure(Config &config, Storage &storage);
 
   // Hibernate until start_time is reached.
   void snooze(const char *start_time);

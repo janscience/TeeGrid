@@ -3,6 +3,7 @@
 #include <ControlTLV320ADC.h>
 #include <InputTDM.h>
 #include <SDCard.h>
+#include <Storage.h>
 #include <RTClockDS1307.h>
 #include <Blink.h>
 #include <MicroConfig.h>
@@ -86,6 +87,7 @@ Blink blink("Status", LED_BUILTIN);
 Blink errorblink("Error", ERROR_LED_PIN, true);
 Blink syncblink("Synchronization", SYNC_LED_PIN, true);
 SDCard sdcard;
+Storage storage;
 
 ESensors sensors;
 VoltageADC vbat(&sensors, A0, 2*3.3);
@@ -106,7 +108,7 @@ BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT, SYNC_TIMEOUT,
 			    LIGHT_THRESHOLD);
 
 RTClockMenu datetime_menu(config, rtclock);
-ConfigurationMenu configuration_menu(config, sdcard);
+ConfigurationMenu configuration_menu(config, sdcard, storage);
 SDCardMenu sdcard_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, tlvs, NTLVS, R5SetupTLVs);
@@ -201,7 +203,7 @@ void setup() {
   printTeeGridBanner(SOFTWARE);
   setupBoard();
   setupSensors();
-  logger.configure(config);
+  logger.configure(config, storage);
   logger.checkVoltage(powersettings.startVoltage());
   //powerdownTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
   //logger.snooze(timing.startTime());
