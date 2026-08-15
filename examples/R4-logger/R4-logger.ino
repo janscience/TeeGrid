@@ -40,6 +40,8 @@
 #define LED_PIN        26       // R4.1
 //#define LED_PIN      27       // R4.2
 
+#define CAN_SHDN_PIN   37      // R4.1 CAN shutdown pin
+
 // Device ID pins:
 int DIPPins[] = { 34, 35, 36, 37, -1 };
 
@@ -104,7 +106,7 @@ bool setupBoard() {
      ampl_info.addConstString("Version", "R4.1b");
   }
   else {
-     logger.R41powerDownCAN();
+     logger.powerDownCAN(CAN_SHDN_PIN);
      ampl_info.addConstString("Version", "R4.1");
   }
   sdcard.begin();

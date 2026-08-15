@@ -52,6 +52,8 @@
 
 #define LED_PIN          26       // R4.1
 
+#define CAN_SHDN_PIN     37       // R4.1 CAN shutdown pin
+
 int DIPPins[] = { 34, 35, 36, 37, -1 }; // Device ID pins:
 
 #define TEMP_PIN_R41     35       // pin for DATA line of DS18x20 themperature sensor for R4.1
@@ -152,7 +154,7 @@ bool setupBoard() {
      ampl_info.addConstString("Version", "R4.1b");
   }
   else {
-     logger.R41powerDownCAN();
+     logger.powerDownCAN(CAN_SHDN_PIN);
      ampl_info.addConstString("Version", "R4.1");
   }
   sdcard.begin();

@@ -58,6 +58,9 @@
 #define SYNC_LED_PIN     11
 #define ERROR_LED_PIN    12
 
+#define CAN_SHDN_PIN     28       // R5 CAN shutdown pin
+#define CAN_STB_PIN      29       // R5 CAN standby pin
+
 #define STS4x_ADDR  STS4x_ADDR2   // I2C address of STS4x temperature sensor
 
 
@@ -165,7 +168,7 @@ void setupBoard() {
   sdcard.begin();
   storage.begin();
   powerupTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
-  // TODO: power down CAN
+  logger.powerDownCAN(CAN_SHDN_PIN);
 }
 
 

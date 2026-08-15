@@ -81,7 +81,7 @@ public:
 
   String baseName() const { return File.baseName(); };
 
-  void R41powerDownCAN();
+  void powerDownCAN(uint8_t shdn_pin);
   
 
 protected:

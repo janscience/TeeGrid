@@ -560,9 +560,8 @@ void Logger::stop() {
 }
 
 
-void Logger::R41powerDownCAN() {
-  #define CAN_SHDN_PIN 37      // R4.1 CAN shutdown pin
-  pinMode(CAN_SHDN_PIN, OUTPUT);
-  digitalWrite(CAN_SHDN_PIN, HIGH);
+void Logger::powerDownCAN(uint8_t shdn_pin) {
+  pinMode(shdn_pin, OUTPUT);
+  digitalWrite(shdn_pin, HIGH);
 }
 
