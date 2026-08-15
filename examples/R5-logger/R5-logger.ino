@@ -3,7 +3,7 @@
 #include <ControlTLV320ADC.h>
 #include <InputTDM.h>
 #include <SDCard.h>
-#include <Storage.h>
+#include <I2CEEPROMStorage.h>
 #include <RTClockDS1307.h>
 #include <Blink.h>
 #include <MicroConfig.h>
@@ -87,7 +87,7 @@ Blink blink("Status", LED_BUILTIN);
 Blink errorblink("Error", ERROR_LED_PIN, true);
 Blink syncblink("Synchronization", SYNC_LED_PIN, true);
 SDCard sdcard;
-Storage storage;
+I2CEEPROMStorage storage(0x50, I2C_DEVICESIZE_24LC128);
 
 ESensors sensors;
 VoltageADC vbat(&sensors, A0, 2*3.3);
@@ -113,8 +113,8 @@ SDCardMenu sdcard_menu(config, sdcard);
 FirmwareMenu firmware_menu(config, sdcard);
 InputMenu input_menu(config, aidata, aisettings, tlvs, NTLVS, R5SetupTLVs);
 ESensorsMenu sensors_menu(config, sensors);
-DiagnosticMenu diagnostic_menu(config, &tlv1, &tlv2, &tlv3, &tlv4, &tlv5,
-	       		       &tlv6, &tlv7, &tlv8, &rtclock, &gpio);
+DiagnosticMenu diagnostic_menu(config, storage, &tlv1, &tlv2, &tlv3, &tlv4,
+                               &tlv5, &tlv6, &tlv7, &tlv8, &rtclock, &gpio);
 BlinkMenu blink_menu(diagnostic_menu, &blink, &errorblink, &syncblink);
 Menu ampl_info(diagnostic_menu, "Amplifier board");
 HelpAction help_act(config, "Help");
@@ -163,6 +163,7 @@ void setupBoard() {
   rtclock.check();
   ampl_info.addConstString("Version", "R5.0");
   sdcard.begin();
+  storage.begin();
   powerupTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
   // TODO: power down CAN
 }
