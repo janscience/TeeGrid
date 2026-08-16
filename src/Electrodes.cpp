@@ -10,12 +10,14 @@ const char *Electrodes::Materials[NMaterials] = {
 
 Electrodes::Electrodes(Menu &menu, const char *geometry,
 		       float spacing, const char *material,
-		       float depth, const char *description) :
+		       float depth, const char *location,
+		       const char *description) :
   Menu(menu, "Electrodes"),
   Geometry(*this, "Geometry", geometry, Geometries, NGeometries, Admin),
   Spacing(*this, "Spacing", spacing, 0.0, 10.0, "%.0f", "m", "cm", Admin),
   Material(*this, "Material", material, Materials, NMaterials, Admin),
   Depth(*this, "Depth", depth, 0.0, 100.0, "%.0f", "m", "cm"),
+  Location(*this, "Location", location),
   Description(*this, "Description", description) {
 }
 
@@ -37,6 +39,11 @@ void Electrodes::setMaterial(const char *material) {
 
 void Electrodes::setDepth(float depth) {
   Depth.setValue(depth);
+}
+
+
+void Electrodes::setLocation(const char *location) {
+  Location.setValue(location);
 }
 
 

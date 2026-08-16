@@ -10,6 +10,7 @@
 #include <LoggerSettings.h>
 #include <BlinkSettings.h>
 #include <InputTDMSettings.h>
+#include <Electrodes.h>
 #include <SetupPCM.h>
 #include <InputMenu.h>
 #include <RTClockMenu.h>
@@ -69,6 +70,7 @@ LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
                         FILE_SAVE_TIME, INITIAL_DELAY);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS, GAIN, PREGAIN);
 BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT, SYNC_TIMEOUT);
+Electrodes electrodes(config);
 
 RTClockMenu datetime_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);

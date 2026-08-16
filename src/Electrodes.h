@@ -24,6 +24,7 @@ public:
 	     float spacing=0.5,
 	     const char *material=Materials[0],
 	     float depth=0.0,
+	     const char *location="",
 	     const char *description="");
   
   static const size_t MaxStr = 32;
@@ -53,6 +54,12 @@ public:
   /* Set depth of electrodes below water surface. */
   void setDepth(float depth);
 
+  /* Description of the location of the electrodes. */
+  const char *location() const { return Location.value(); };
+
+  /* Set description of the location of the electrodes. */
+  void setLocation(const char *location);
+
   /* Optional additional description of electrode configuration. */
   const char *description() const { return Description.value(); };
 
@@ -66,6 +73,7 @@ protected:
   NumberParameter<float> Spacing;
   StringParameter<MaxStr> Material;
   NumberParameter<float> Depth;
+  StringParameter<MaxDescription> Location;
   StringParameter<MaxDescription> Description;
   
 };

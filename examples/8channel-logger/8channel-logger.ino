@@ -7,6 +7,7 @@
 #include <MicroConfig.h>
 #include <LoggerSettings.h>
 #include <InputADCSettings.h>
+#include <Electrodes.h>
 #include <InputMenu.h>
 #include <RTClockMenu.h>
 #include <SDCardMenu.h>
@@ -53,6 +54,7 @@ LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
                         FILE_SAVE_TIME, INITIAL_DELAY);
 InputADCSettings aisettings(config, SAMPLING_RATE, BITS, AVERAGING,
 			    CONVERSION, SAMPLING, REFERENCE, PREGAIN);
+Electrodes electrodes(config);
 RTClockMenu rtclock_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard);
 SDCardMenu sdcard_menu(config, sdcard);
