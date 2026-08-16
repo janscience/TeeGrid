@@ -12,6 +12,7 @@
 #include <BlinkSettings.h>
 #include <InputTDMSettings.h>
 #include <Timing.h>
+#include <Electrodes.h>
 #include <SetupTLV.h>
 #include <InputMenu.h>
 #include <RTClockMenu.h>
@@ -109,6 +110,7 @@ InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS,
 Timing timing(config, INITIAL_DELAY, "", "", SENSORS_INTERVAL);
 BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT, SYNC_TIMEOUT,
 			    LIGHT_THRESHOLD);
+Electrodes electrodes(config);
 
 RTClockMenu datetime_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard, storage);
