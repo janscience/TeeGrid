@@ -7,6 +7,7 @@
 #define LoggerSettings_h
 
 
+#include <CANLogger.h>
 #include <MicroConfig.h>
 
 class DeviceID;
@@ -15,11 +16,16 @@ class DeviceID;
 class LoggerSettings : public Menu {
 
 public:
+  
+  static const int NCANModes = 3;
+  static const CAN_MODE CANModeEnums[NCANModes];
+  static const char *CANModes[NCANModes];
 
   LoggerSettings(Menu &menu, const char *label="logger", int deviceid=0,
 		 const char *path="LABELID2-SDATETIMEM",
 		 const char *filename="LABELID2-SDATETIME",
-		 float filetime=10.0, float initialdelay=-1.0);
+		 float filetime=10.0, float initialdelay=-1.0,
+		 CAN_MODE canmode=CAN_NONE);
   
   static const size_t MaxStr = 64;
 
@@ -72,6 +78,12 @@ public:
   /* Set initial delay to time seconds. */
   void setInitialDelay(float time);
 
+  /* Synchronization mode via CAN bus. */
+  CAN_MODE canMode() const { return CANMode.enumValue(); };
+
+  /* Set synchronization mode via CAN bus. */
+  void setCANMode(CAN_MODE canmode);
+
 
 protected:
 
@@ -81,7 +93,8 @@ protected:
   StringParameter<MaxStr> FileName;
   NumberParameter<float> FileTime;
   NumberParameter<float> InitialDelay;
-  
+  EnumParameter<CAN_MODE> CANMode;
+
 };
 
 #endif

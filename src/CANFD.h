@@ -41,8 +41,8 @@ public:
   void transmitTime();
   void receiveTime();
 
-  void transmitGrid(const char gs[8]);
-  void receiveGrid(char gs[8]);
+  void transmitLabel(const char gs[8]);
+  void receiveLabel(char gs[8]);
 
   void transmitSamplingRate(int rate);
   int receiveSamplingRate();

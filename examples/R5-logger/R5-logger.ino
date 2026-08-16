@@ -6,6 +6,7 @@
 #include <I2CEEPROMStorage.h>
 #include <RTClockDS1307.h>
 #include <Blink.h>
+#include <CANFD.h>
 #include <MicroConfig.h>
 #include <LoggerSettings.h>
 #include <PowerSettings.h>
@@ -20,7 +21,7 @@
 #include <DiagnosticMenu.h>
 #include <BlinkMenu.h>
 #include <TeensyBoard.h>
-#include <SensorsLogger.h>
+#include <CANLogger.h>
 #include <ESensors.h>
 #include <VoltageADC.h>
 #include <TemperatureDS3231.h>
@@ -62,6 +63,9 @@
 #define CAN_SHDN_PIN     28       // R5 CAN shutdown pin
 #define CAN_STB_PIN      29       // R5 CAN standby pin
 
+#define CAN_IO_IN        27
+#define CAN_IO_OUT       26
+
 #define STS4x_ADDR  STS4x_ADDR2   // I2C address of STS4x temperature sensor
 
 
@@ -92,6 +96,7 @@ Blink errorblink("Error", ERROR_LED_PIN, true);
 Blink syncblink("Synchronization", SYNC_LED_PIN, true);
 SDCard sdcard;
 I2CEEPROMStorage storage(0x50, I2C_DEVICESIZE_24LC128);
+CANFD can(CAN_IO_IN, CAN_IO_OUT, CAN_SHDN_PIN, CAN_STB_PIN);
 
 ESensors sensors;
 VoltageADC vbat(&sensors, A0, 2*3.3);
@@ -124,8 +129,8 @@ BlinkMenu blink_menu(diagnostic_menu, &blink, &errorblink, &syncblink);
 Menu ampl_info(diagnostic_menu, "Amplifier board");
 HelpAction help_act(config, "Help");
 
-SensorsLogger logger(aidata, sensors, sdcard, rtclock,
-                     blink, errorblink, syncblink);
+CANLogger logger(aidata, sensors, sdcard, can,
+	  	 rtclock, blink, errorblink, syncblink);
 
 
 void setupLEDs() {
@@ -145,6 +150,7 @@ void setupLEDs() {
 void setupMenu() {
   settings.setDeviceIDAdmin();
   settings.disable("InitialDelay");
+  settings.enable("Synchronization");
   aisettings.setRateSelection(ControlTLV320ADC::SamplingRates,
                               ControlTLV320ADC::MaxSamplingRates);
   aisettings.enable("Source");
@@ -171,7 +177,8 @@ void setupBoard() {
   sdcard.begin();
   storage.begin();
   powerupTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
-  logger.powerDownCAN(CAN_SHDN_PIN);
+  can.begin();
+  logger.powerDownCAN();
 }
 
 
@@ -215,6 +222,7 @@ void setup() {
   //powerdownTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
   //logger.snooze(timing.startTime());
   //powerupTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
+  logger.setupSynchronization(settings.canMode(), settings, aisettings, blink);
   logger.startSensors(timing.sensorsInterval(), blinksettings.lightThreshold());
   logger.setCPUSpeed(aisettings.rate());
   settings.preparePaths();

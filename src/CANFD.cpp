@@ -38,7 +38,7 @@ CANFD::CANFD(uint8_t in_pin, uint8_t out_pin,
 void CANFD::begin() {
   pinMode(InPin, INPUT);
   pinMode(OutPin, OUTPUT);
-  digitalWrite(OutPin, LOW);
+  setOutPin(LOW);
   if (ShutdownPin >= 0) {
     pinMode(ShutdownPin, OUTPUT);
     digitalWrite(ShutdownPin, LOW);
@@ -98,7 +98,7 @@ int CANFD::detectDevices() {
   elapsedMillis timeout;
 
   Serial.println("Detect all devices:");
-  digitalWrite(OutPin, HIGH);
+  setOutPin(HIGH);
   // clear device IDs:
   msg.id = CAN_ID_CLEAR_DEVICES;
   int r = write20(msg);
@@ -131,7 +131,7 @@ int CANFD::detectDevices() {
   msg.id = CAN_ID_GOT_DEVICES;
   r = write20(msg);
   Serial.printf("  write got devices message, r=%d\n", r);
-  digitalWrite(OutPin, LOW);
+  setOutPin(LOW);
   delay(10);
   Serial.printf("  got %d devices\n", id-1);
   Serial.println();
@@ -145,7 +145,7 @@ int CANFD::detectOtherDevices() {
   elapsedMillis timeout;
 
   Serial.println("Detect all devices:");
-  digitalWrite(OutPin, HIGH);
+  setOutPin(HIGH);
   // clear device IDs:
   msg.id = CAN_ID_CLEAR_DEVICES;
   int r = write20(msg);
@@ -180,7 +180,7 @@ int CANFD::detectOtherDevices() {
   msg.id = CAN_ID_GOT_DEVICES;
   r = write20(msg);
   Serial.printf("  write got devices message, r=%d\n", r);
-  digitalWrite(OutPin, LOW);
+  setOutPin(LOW);
   delay(10);
   Serial.printf("  got %d devices\n", id-1);
   Serial.println();
@@ -208,7 +208,7 @@ int CANFD::assignDevice() {
     return 0;
   }
   DeviceID = 0;
-  digitalWrite(OutPin, LOW);
+  setOutPin(LOW);
 
   // assign device ID:
   while (true) {
@@ -221,7 +221,7 @@ int CANFD::assignDevice() {
     Serial.printf("    got message 0x%02x\n", msg.id);
     if (msg.id != CAN_ID_FIND_DEVICES)
       break;
-    if (digitalRead(InPin)) {
+    if (readInPin()) {
       DeviceID = *(int *)(&msg.buf[0]);
       Serial.printf("    assign ID %d\n", DeviceID);
       msg.id = CAN_ID_REPORT_DEVICE;
@@ -229,7 +229,7 @@ int CANFD::assignDevice() {
       int r = write20(msg);
       Serial.printf("    write report device message, r=%d\n", r);
       delay(10);
-      digitalWrite(OutPin, HIGH);
+      setOutPin(HIGH);
       break;
     }
     else {
@@ -241,7 +241,7 @@ int CANFD::assignDevice() {
   while (!Can.read(msg) || msg.id != CAN_ID_GOT_DEVICES) {
     delay(10);
   };
-  digitalWrite(OutPin, LOW);
+  setOutPin(LOW);
   Serial.println("  done");
   Serial.println();
   return DeviceID;
@@ -338,7 +338,7 @@ void CANFD::receiveTime() {
 }
 
 
-void CANFD::transmitGrid(const char gs[8]) {
+void CANFD::transmitLabel(const char gs[8]) {
   CANFD_message_t msg;
   msg.id = CAN_ID_SET_GRID;
   strncpy((char *)msg.buf, gs, 7);
@@ -347,7 +347,7 @@ void CANFD::transmitGrid(const char gs[8]) {
 }
 
 
-void CANFD::receiveGrid(char gs[8]) {
+void CANFD::receiveLabel(char gs[8]) {
   CANFD_message_t msg;
   Serial.println("wait for grid name message");
   read(msg, CAN_ID_SET_GRID);
