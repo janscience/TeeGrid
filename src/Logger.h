@@ -36,7 +36,7 @@ public:
 
   // Check availability of SD card, set real-time clock from file,
   // load configuration file, execute menu, and report on serial.
-  void configure(Config &config, Storage &storage);
+  void configure(Config &config, Storage &storage=EEPROMStorage);
 
   // Hibernate until start_time is reached.
   void snooze(const char *start_time);
