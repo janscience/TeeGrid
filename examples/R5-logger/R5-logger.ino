@@ -149,6 +149,7 @@ void setupMenu() {
                               ControlTLV320ADC::MaxSamplingRates);
   aisettings.enable("Source");
   aisettings.enable("Pregain");
+  aisettings.enable("ReverseInputs");
   aisettings.setPreGainFormat("%g");
   aisettings.setPreGainSelection(pregains, NPREGAINS);
   //timing.enable("StartTime");
