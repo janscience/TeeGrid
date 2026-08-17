@@ -36,7 +36,10 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
   // Master mode:
   if (CANMode == CAN_MASTER) {
     Serial.println("CAN Master mode");
-    CAN.detectDevices();
+    if (CAN.detectDevices() == 0) {
+      blink.switchOff();
+      halt(5);
+    }
     delay(100);
     CAN.transmitLabel(settings.label());
     CAN.transmitTime();
@@ -48,11 +51,11 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
   // Slave mode:
   if (CANMode == CAN_SLAVE) {
     Serial.println("CAN Slave mode");
-    CAN.assignDevice();
-    if (CAN.id() > 0 )
-      blink.setMultiple(CAN.id());
-    else
+    if (CAN.assignDevice() == 0) {
       blink.switchOff();
+      halt(5);
+    }
+    blink.setMultiple(CAN.id());
     //CAN.setupRecorderMBs();
     char gs[32];
     CAN.receiveLabel(gs);

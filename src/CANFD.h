@@ -25,7 +25,7 @@ public:
   int id() const { return DeviceID; };
   int numDevices() const { return NumDevices; };
 
-  // write CAN2.0 messages (brs = edl = false)
+  // write CAN2.0 messages (brs = edl = false). Returns 1 on success.
   virtual int write20(CANFD_message_t &msg);
 
   // wait for maximum timeout ms and poll for a message with specific ID

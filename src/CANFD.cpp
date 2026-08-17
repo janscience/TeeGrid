@@ -106,6 +106,7 @@ int CANFD::detectDevices() {
   delay(10);
 
   // assign device IDs:
+  // TODO: which id to start with, set own id!
   int id;
   for (id=1; ; id++) {
     Serial.printf("  check for ID=%d\n", id);
@@ -115,7 +116,7 @@ int CANFD::detectDevices() {
     Serial.printf("    write find message, r=%d\n", r);
     timeout = 0;
     msg.id = 0;
-    while (!Can.read(msg) && timeout < 1000) {
+    while (!Can.read(msg) && timeout < 10000) {
       delay(10);
     };
     if (msg.id != CAN_ID_REPORT_DEVICE) {
@@ -195,10 +196,11 @@ int CANFD::assignDevice() {
 
   Serial.println("Setting up device ID:");
   // clear device IDs:
-  Serial.printf("  wait for clear devices command 0x%02x\n", CAN_ID_CLEAR_DEVICES);
+  Serial.printf("  wait for clear devices command 0x%02x\n",
+		CAN_ID_CLEAR_DEVICES);
   timeout = 0;
   msg.id = 0;
-  while (!Can.read(msg) && timeout < 2000) {
+  while (!Can.read(msg) && timeout < 10000) {
     delay(10);
   };
   Serial.printf("  got message 0x%02x\n", msg.id);
@@ -214,8 +216,10 @@ int CANFD::assignDevice() {
   while (true) {
     timeout = 0;
     msg.id = 0;
-    Serial.printf("  wait for find devices command 0x%02x\n", CAN_ID_FIND_DEVICES);
-    while ((!Can.read(msg) || msg.id == CAN_ID_REPORT_DEVICE) && timeout < 1000) {
+    Serial.printf("  wait for find devices command 0x%02x\n",
+		  CAN_ID_FIND_DEVICES);
+    while ((!Can.read(msg) || msg.id == CAN_ID_REPORT_DEVICE) &&
+	   timeout < 1000) {
       delay(10);
     };
     Serial.printf("    got message 0x%02x\n", msg.id);
