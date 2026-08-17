@@ -42,7 +42,7 @@ public:
   void snooze(const char *start_time);
 
   // Reduce CPU speed according to sampling rate.
-  void setCPUSpeed(uint32_t rate);
+  void setCPUSpeed(uint32_t rate, uint8_t nchannels=16);
 
   // Report blink pins.
   void reportBlink(Stream &stream=Serial) const;

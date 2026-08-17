@@ -176,9 +176,9 @@ void Logger::snooze(const char *start_time) {
 }
 
 
-void Logger::setCPUSpeed(uint32_t rate) {
+void Logger::setCPUSpeed(uint32_t rate, uint8_t nchannels) {
   rate /= 1000;                    // sampling rate in kHz
-  int speed = ((12+rate/2)/24)*24; // CPU speed in MHz, steps of 24, TODO: take channels into account?
+  int speed = ((12+rate*nchannels/32)/24)*24; // CPU speed in steps of 24MHz
   if (speed < 24)
     speed = 24;
   setTeensySpeed(speed);

@@ -46,7 +46,7 @@
 #define FILE_SAVE_TIME   300       // seconds
 #define INITIAL_DELAY    10        // seconds
 #define START_VOLTAGE    3.7       // Volt
-#define STOP_VOLTAGE     3.48      // Volt
+#define STOP_VOLTAGE     3.5       // Volt
 #define RANDOM_BLINKS    false     // set to true for blinking the status LED randomly (sync LED is always blinked randomly)
 #define BLINK_TIMEOUT    0         // time after which internal LEDs are switched off in seconds
 #define SYNC_TIMEOUT     0         // time after which synchronization LED is switched off in seconds
@@ -224,7 +224,7 @@ void setup() {
   //powerupTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
   logger.setupSynchronization(settings.canMode(), settings, aisettings, blink);
   logger.startSensors(timing.sensorsInterval(), blinksettings.lightThreshold());
-  logger.setCPUSpeed(aisettings.rate());
+  logger.setCPUSpeed(aisettings.rate(), aisettings.nchannels());
   settings.preparePaths();
   R5SetupTLVs(aidata, aisettings, tlvs, NTLVS);
   logger.startInput(aisettings.nchannels());
