@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 #include <FlexCAN_T4.h>
+#include <Blink.h>
+#include <RTClock.h>
 #include <TeensyBoard.h>
 
 
@@ -18,6 +20,9 @@ public:
 	int8_t shutdown_pin=-1, int8_t standby_pin=-1);
 
   void begin();
+
+  void setBlink(Blink &blink);
+  void setRTClock(RTClock &clock);
   
   void powerDown();
   void powerUp();
@@ -32,7 +37,6 @@ public:
   bool read(CANFD_message_t &msg, unsigned int id, unsigned int timeout=1000);
   
   int detectDevices();
-  int detectOtherDevices();
   int assignDevice();
 
   void setupControllerMBs();
@@ -75,6 +79,9 @@ protected:
 
   int DeviceID;
   int NumDevices;
+
+  Blink *StatusLED;
+  RTClock *Clock;
   
 };
 

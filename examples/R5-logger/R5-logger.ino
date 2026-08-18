@@ -222,7 +222,7 @@ void setup() {
   //powerdownTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
   //logger.snooze(timing.startTime());
   //powerupTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
-  logger.setupSynchronization(settings.canMode(), settings, aisettings, blink);
+  logger.setupSynchronization(settings.canMode(), settings, aisettings);
   logger.startSensors(timing.sensorsInterval(), blinksettings.lightThreshold());
   logger.setCPUSpeed(aisettings.rate(), aisettings.nchannels());
   settings.preparePaths();

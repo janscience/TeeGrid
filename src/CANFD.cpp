@@ -1,6 +1,5 @@
 #include <CANFD.h>
-#include <RTClock.h>
-#include <Blink.h>
+
 
 #ifdef TEENSY4
 
@@ -20,10 +19,6 @@
 #define CAN_ID_END_FILE      0x11
 
 
-extern RTClock rtclock;
-extern Blink blink;
-
-
 CANFD::CANFD(uint8_t in_pin, uint8_t out_pin,
 	     int8_t shutdown_pin, int8_t standby_pin) :
   InPin(in_pin),
@@ -31,7 +26,9 @@ CANFD::CANFD(uint8_t in_pin, uint8_t out_pin,
   ShutdownPin(shutdown_pin),
   StandbyPin(standby_pin),
   DeviceID(0),
-  NumDevices(0) {
+  NumDevices(0),
+  StatusLED(0),
+  Clock(0) {
 }
 
 
@@ -57,6 +54,16 @@ void CANFD::begin() {
   config.sample = 70;
   Can.setBaudRate(config);
   
+}
+
+
+void CANFD::setBlink(Blink &blink) {
+  StatusLED = &blink;
+}
+
+
+void CANFD::setRTClock(RTClock &clock) {
+  Clock = &clock;
 }
 
 
@@ -87,7 +94,7 @@ bool CANFD::read(CANFD_message_t &msg, unsigned int id,
   while ((!Can.read(msg) || msg.id != id) &&
 	 (timepassed < timeout || timeout == 0)) {
     delay(1);
-    blink.update();
+    StatusLED->update();
   };
   return (msg.id == id);
 }
@@ -95,65 +102,17 @@ bool CANFD::read(CANFD_message_t &msg, unsigned int id,
   
 int CANFD::detectDevices() {
   CANFD_message_t msg;
-  elapsedMillis timeout;
 
   Serial.println("Detect all devices:");
-  setOutPin(HIGH);
-  // clear device IDs:
-  msg.id = CAN_ID_CLEAR_DEVICES;
-  int r = write20(msg);
-  Serial.printf("  write clear message, r=%d\n", r);
-  delay(10);
-
-  // assign device IDs:
-  // TODO: which id to start with, set own id!
-  int id;
-  for (id=1; ; id++) {
-    Serial.printf("  check for ID=%d\n", id);
-    msg.id = CAN_ID_FIND_DEVICES;
-    *(int *)(&msg.buf[0]) = id;
-    int r = write20(msg);
-    Serial.printf("    write find message, r=%d\n", r);
-    timeout = 0;
-    msg.id = 0;
-    while (!Can.read(msg) && timeout < 10000) {
-      delay(10);
-    };
-    if (msg.id != CAN_ID_REPORT_DEVICE) {
-      Serial.println("    no device responded");
-      break;
-    }
-    int devid = *(int *)(&msg.buf[0]);
-    Serial.printf("    device reported id %d\n", devid);
-    if (devid != id)
-      Serial.println("WARNING reported device id does not match expectation!");
-    delay(10);
-  }
-  msg.id = CAN_ID_GOT_DEVICES;
-  r = write20(msg);
-  Serial.printf("  write got devices message, r=%d\n", r);
-  setOutPin(LOW);
-  delay(10);
-  Serial.printf("  got %d devices\n", id-1);
-  Serial.println();
-  NumDevices = id - 1;
-  return NumDevices;
-}
-
-  
-int CANFD::detectOtherDevices() {
-  CANFD_message_t msg;
-  elapsedMillis timeout;
-
-  Serial.println("Detect all devices:");
-  setOutPin(HIGH);
-  // clear device IDs:
-  msg.id = CAN_ID_CLEAR_DEVICES;
-  int r = write20(msg);
-  Serial.printf("  write clear message, r=%d\n", r);
-  delay(10);
-  // set own ID:
+  StatusLED->clear();
+  StatusLED->delay(500);
   DeviceID = 1;
+  setOutPin(HIGH);
+  // clear device IDs:
+  msg.id = CAN_ID_CLEAR_DEVICES;
+  int r = write20(msg);
+  Serial.printf("  write clear message, r=%d\n", r);
+  delay(10);
 
   // assign device IDs:
   int id;
@@ -163,12 +122,7 @@ int CANFD::detectOtherDevices() {
     *(int *)(&msg.buf[0]) = id;
     int r = write20(msg);
     Serial.printf("    write find message, r=%d\n", r);
-    timeout = 0;
-    msg.id = 0;
-    while (!Can.read(msg) && timeout < 1000) {
-      delay(10);
-    };
-    if (msg.id != CAN_ID_REPORT_DEVICE) {
+    if (!read(msg, CAN_ID_REPORT_DEVICE)) {
       Serial.println("    no device responded");
       break;
     }
@@ -176,63 +130,60 @@ int CANFD::detectOtherDevices() {
     Serial.printf("    device reported id %d\n", devid);
     if (devid != id)
       Serial.println("WARNING reported device id does not match expectation!");
-    delay(10);
+    StatusLED->blinkMultiple(devid);
+    StatusLED->delay(1500);
   }
+  StatusLED->delay(1000);
+  NumDevices = id - 1;
+  Serial.printf("  got %d devices\n", NumDevices);
+  StatusLED->setMultiple(NumDevices);
+  StatusLED->delay(2000);
   msg.id = CAN_ID_GOT_DEVICES;
   r = write20(msg);
-  Serial.printf("  write got devices message, r=%d\n", r);
+  Serial.printf("  write got all devices message, r=%d\n", r);
   setOutPin(LOW);
-  delay(10);
-  Serial.printf("  got %d devices\n", id-1);
+  Serial.println("  done");
   Serial.println();
-  NumDevices = id - 1;
+  StatusLED->clear();
+  StatusLED->blinkSingle(0, 2000);
+  StatusLED->delay(2500);
   return NumDevices;
 }
 
 
 int CANFD::assignDevice() {
   CANFD_message_t msg;
-  elapsedMillis timeout;
 
   Serial.println("Setting up device ID:");
+  StatusLED->clear();
+  DeviceID = -1;
+  setOutPin(LOW);
   // clear device IDs:
   Serial.printf("  wait for clear devices command 0x%02x\n",
 		CAN_ID_CLEAR_DEVICES);
-  timeout = 0;
-  msg.id = 0;
-  while (!Can.read(msg) && timeout < 10000) {
-    delay(10);
-  };
-  Serial.printf("  got message 0x%02x\n", msg.id);
-  if (msg.id != CAN_ID_CLEAR_DEVICES) {
-    Serial.println("  timeout");
+  if (!read(msg, CAN_ID_CLEAR_DEVICES, 0)) {
+    Serial.println("  failed");
     Serial.println();
-    return 0;
+    return -1;
   }
-  DeviceID = 0;
-  setOutPin(LOW);
 
   // assign device ID:
   while (true) {
-    timeout = 0;
-    msg.id = 0;
     Serial.printf("  wait for find devices command 0x%02x\n",
 		  CAN_ID_FIND_DEVICES);
-    while ((!Can.read(msg) || msg.id == CAN_ID_REPORT_DEVICE) &&
-	   timeout < 1000) {
-      delay(10);
-    };
-    Serial.printf("    got message 0x%02x\n", msg.id);
-    if (msg.id != CAN_ID_FIND_DEVICES)
-      break;
+    if (!read(msg, CAN_ID_FIND_DEVICES, 2000)) {
+      Serial.println("    timed out");
+      return -1;
+    }
     if (readInPin()) {
       DeviceID = *(int *)(&msg.buf[0]);
       Serial.printf("    assign ID %d\n", DeviceID);
       msg.id = CAN_ID_REPORT_DEVICE;
       *(int *)(&msg.buf[0]) = DeviceID;
       int r = write20(msg);
-      Serial.printf("    write report device message, r=%d\n", r);
-      delay(10);
+      Serial.printf("    wrote report device message, r=%d\n", r);
+      StatusLED->setMultiple(DeviceID);
+      StatusLED->delay(1500);
       setOutPin(HIGH);
       break;
     }
@@ -242,12 +193,13 @@ int CANFD::assignDevice() {
     }
   }
   Serial.println("  wait for all devices to be detected");
-  while (!Can.read(msg) || msg.id != CAN_ID_GOT_DEVICES) {
-    delay(10);
-  };
+  read(msg, CAN_ID_GOT_DEVICES, 0);
   setOutPin(LOW);
   Serial.println("  done");
   Serial.println();
+  StatusLED->clear();
+  StatusLED->blinkSingle(0, 2000);
+  StatusLED->delay(2000);
   return DeviceID;
 }
 
@@ -268,11 +220,11 @@ void CANFD::setupControllerMBs() {
   Can.mailboxStatus();
 }
 
-
+/*
 void setTime(const CANFD_message_t &msg) {
   time_t t = *(time_t *)(&msg.buf[0]);
-  rtclock.set(t);
-  rtclock.report();
+  Clock->set(t);
+  Clock->report();
 }
 
 
@@ -280,25 +232,23 @@ void CANFD::setupRecorderMBs() {
   int i;
   for (i=0; i<5; i++)
     Can.setMB((FLEXCAN_MAILBOX)i, RX, STD);
-  /*
-  for (; i<10; i++)
-    Can.setMB((FLEXCAN_MAILBOX)i, TX, STD);
-  */
+  //for (; i<10; i++)
+  //  Can.setMB((FLEXCAN_MAILBOX)i, TX, STD);
   Can.setMBFilter(REJECT_ALL);
   Can.enableMBInterrupts();
   Can.onReceive(MB0, setTime);
   Can.setMBFilter(MB0, CAN_ID_SET_TIME);
   Can.mailboxStatus();
 }
-
+*/
 
 void CANFD::transmitTime() {
   CANFD_message_t msg;
   time_t t = now();
   char ds[10];
-  rtclock.date(ds, t, true);
+  Clock->date(ds, t, true);
   char ts[10];
-  rtclock.time(ts, t, true);
+  Clock->time(ts, t, true);
   msg.id = CAN_ID_SET_DATE;
   memcpy((void *)msg.buf, (void *)ds, 8);
   Can.write(msg);
@@ -337,8 +287,8 @@ void CANFD::receiveTime() {
   int sec = atoi(s);
   Serial.printf("received time %04d-%02d-02dT%02d:$02d:%02d\n",
 		year, month, day, hour, min, sec);
-  rtclock.set(year, month, day, hour, min, sec, false, false);
-  rtclock.report();
+  Clock->set(year, month, day, hour, min, sec, false, false);
+  Clock->report();
 }
 
 

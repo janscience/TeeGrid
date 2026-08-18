@@ -13,6 +13,8 @@ CANLogger::CANLogger(Input &aiinput, ESensors &sensors, SDCard &sdcard,
 		rtclock, blink, errorblink, syncblink),
   CAN(can),
   CANMode(CAN_NONE) {
+  CAN.setRTClock(rtclock);
+  CAN.setBlink(blink);
 }
 
 
@@ -23,23 +25,16 @@ void CANLogger::setCANMode(CAN_MODE canmode) {
 
 void CANLogger::setupSynchronization(CAN_MODE canmode,
 				     LoggerSettings &settings,
-				     InputTDMSettings &aisettings,
-				     Blink &blink) {
+				     InputTDMSettings &aisettings) {
   CANMode = canmode;
-  // do not use CAN bus:
-  if (CANMode == CAN_NONE) {
-    powerDownCAN();
-    Serial.println("Powered down CAN bus.");
-    return;
-  }
   powerUpCAN();
   // Master mode:
   if (CANMode == CAN_MASTER) {
-    Serial.println("CAN Master mode");
-    if (CAN.detectDevices() == 0) {
-      blink.switchOff();
-      halt(5);
-    }
+    Serial.println("CAN MASTER MODE ---");
+    if (CAN.detectDevices() == 0)
+      CANMode = CAN_NONE;
+  }
+  if (CANMode == CAN_MASTER) {
     delay(100);
     CAN.transmitLabel(settings.label());
     CAN.transmitTime();
@@ -51,11 +46,10 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
   // Slave mode:
   if (CANMode == CAN_SLAVE) {
     Serial.println("CAN Slave mode");
-    if (CAN.assignDevice() == 0) {
-      blink.switchOff();
+    if (CAN.assignDevice() < 0) {
+      StatusLED.switchOff();
       halt(5);
     }
-    blink.setMultiple(CAN.id());
     //CAN.setupRecorderMBs();
     char gs[32];
     CAN.receiveLabel(gs);
@@ -94,6 +88,12 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
       FileName.replace("DEV", devs);
       }
     */
+  }
+  // do not use CAN bus:
+  if (CANMode == CAN_NONE) {
+    powerDownCAN();
+    Serial.println("Powered down CAN bus.");
+    return;
   }
 }
 

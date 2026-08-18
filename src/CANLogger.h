@@ -10,7 +10,6 @@
 #include <CANFD.h>
 #include <SensorsLogger.h>
 
-class Blink;
 class LoggerSettings;
 class InputTDMSettings;
 
@@ -43,8 +42,7 @@ public:
 
   void setupSynchronization(CAN_MODE canmode,
 			    LoggerSettings &settings,
-			    InputTDMSettings &aisettings,
-			    Blink &blink);
+			    InputTDMSettings &aisettings);
 
   
 protected:
