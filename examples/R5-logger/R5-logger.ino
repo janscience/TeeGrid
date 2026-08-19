@@ -109,13 +109,13 @@ LightBH1750 light2(&sensors);
 Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
                         FILE_SAVE_TIME, INITIAL_DELAY);
-PowerSettings powersettings(config, START_VOLTAGE, STOP_VOLTAGE);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS,
                             GAIN, PREGAIN, SOURCE, 2);
 Timing timing(config, INITIAL_DELAY, "", "", SENSORS_INTERVAL);
 BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT, SYNC_TIMEOUT,
 			    LIGHT_THRESHOLD);
 Electrodes electrodes(config);
+PowerSettings powersettings(config, START_VOLTAGE, STOP_VOLTAGE);
 
 RTClockMenu datetime_menu(config, rtclock);
 ConfigurationMenu configuration_menu(config, sdcard, storage);
