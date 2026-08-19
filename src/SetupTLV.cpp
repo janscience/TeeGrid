@@ -53,10 +53,14 @@ void R5SetupTLVs(Input &aidata, const InputSettings &aisettings,
 		  tlvs[k]->TDMBus(), 'A' + tlvs[k]->TDMPin());
     R5SetupTLV(inputdata, *tlvs[k], k%2==1, aitdmsettings);
   }
-  if (ncontrols > 6)
+  if (inputdata.nchannels() > 24)
     static_cast<InputTDM&>(aidata).setRoll(8);
+  else
+    static_cast<InputTDM&>(aidata).setRoll(0);
   if (aitdmsettings.reverseInputs())
     static_cast<InputTDM&>(aidata).setReverse(4);
+  else
+    static_cast<InputTDM&>(aidata).setReverse(1);
   stream.println();
 }
 
