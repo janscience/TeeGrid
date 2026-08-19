@@ -1,6 +1,7 @@
 #include <Blink.h>
 #include <LoggerSettings.h>
 #include <InputTDMSettings.h>
+#include <Timing.h>
 #include <CANLogger.h>
 
 #ifdef TEENSY4
@@ -25,7 +26,8 @@ void CANLogger::setCANMode(CAN_MODE canmode) {
 
 void CANLogger::setupSynchronization(CAN_MODE canmode,
 				     LoggerSettings &settings,
-				     InputTDMSettings &aisettings) {
+				     InputTDMSettings &aisettings,
+				     Timing &timing) {
   CANMode = canmode;
   powerUpCAN();
   // Master mode:
@@ -37,11 +39,13 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
   if (CANMode == CAN_MASTER) {
     delay(100);
     CAN.transmitLabel(settings.label());
+    CAN.transmitFileName(settings.fileName());
+    CAN.transmitPath(settings.path());
     CAN.transmitTime();
     CAN.transmitSamplingRate(aisettings.rate());
     CAN.transmitGain(aisettings.gainDecibel());
     CAN.transmitFileTime(settings.fileTime());
-    return;
+    CAN.transmitSensorsInterval(timing.sensorsInterval());
   }
   // Slave mode:
   if (CANMode == CAN_SLAVE) {
@@ -50,31 +54,32 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
       StatusLED.switchOff();
       halt(5);
     }
-    //CAN.setupRecorderMBs();
-    char gs[32];
-    CAN.receiveLabel(gs);
-    /*
-      TODO: should receive full file name!!!
-      if (strlen(gs) == 0 || CAN.id() > 0)
-      strncpy(gs, GRID, 32);
-      else
-      Serial.printf("  got grid name %s\n", gs);
-    */
+    char buffer[64];
+    buffer[0] = '\0';
+    CAN.receiveLabel(buffer);
+    if (strlen(buffer) > 0)
+      settings.setLabel(buffer);
+    buffer[0] = '\0';
+    CAN.receiveFileName(buffer);
+    if (strlen(buffer) > 0)
+      settings.setFileName(buffer);
+    buffer[0] = '\0';
+    CAN.receivePath(buffer);
+    if (strlen(buffer) > 0)
+      settings.setPath(buffer);
     CAN.receiveTime();
     int rate = CAN.receiveSamplingRate();
-    if (rate > 0 || CAN.id() > 0) {
+    if (rate > 0)
       aisettings.setRate(rate);
-      Serial.printf("  got %dHz sampling rate\n", aisettings.rate());
-    }
     float gain = CAN.receiveGain();
-    if (gain > -1000 || CAN.id() > 0) {
+    if (gain > -100)
       aisettings.setGainDecibel(gain);
-      Serial.printf("  got gain of %.1fdB\n", aisettings.gainDecibel());
-    }
-    // TODO: PREGAIN!
     float time = CAN.receiveFileTime();
-    if (time > 0.0 && CAN.id() > 0)
+    if (time > 0.0)
       settings.setFileTime(time);
+    float interval = CAN.receiveSensorsInterval();
+    if (time > 0.0)
+      timing.setSensorsInterval(interval);
     /*
       if (CAN.id() == 0)
       FileName = settings.fileName();
@@ -89,6 +94,7 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
       }
     */
   }
+  Serial.println();
   // do not use CAN bus:
   if (CANMode == CAN_NONE) {
     powerDownCAN();

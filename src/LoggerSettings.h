@@ -27,7 +27,7 @@ public:
 		 float filetime=10.0, float initialdelay=-1.0,
 		 CAN_MODE canmode=CAN_NONE);
   
-  static const size_t MaxStr = 64;
+  static const size_t MaxStr = 64; // maximum payload of CAN bus!
 
   /* Label to be used for naming the recordings. */
   const char *label() const { return Label.value(); };

@@ -12,6 +12,7 @@
 
 class LoggerSettings;
 class InputTDMSettings;
+class Timing;
 
   
 enum CAN_MODE : uint8_t {
@@ -42,7 +43,8 @@ public:
 
   void setupSynchronization(CAN_MODE canmode,
 			    LoggerSettings &settings,
-			    InputTDMSettings &aisettings);
+			    InputTDMSettings &aisettings,
+			    Timing &timing);
 
   
 protected:
