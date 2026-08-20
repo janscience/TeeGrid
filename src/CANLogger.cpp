@@ -105,6 +105,7 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
 
 
 void CANLogger::synchronize(float stopvoltage) {
+  checkVoltage(stopvoltage);
   /*
   if (CANMode != CAN_MASTER)
     CAN.transmitEndFile();
