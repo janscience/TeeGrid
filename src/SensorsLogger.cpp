@@ -1,3 +1,4 @@
+#include <PowerSave.h>
 #include <LoggerSettings.h>
 #include <SensorsLogger.h>
 
@@ -53,8 +54,7 @@ void SensorsLogger::checkVoltage(float minvoltage) {
       Serial.println();
       Serial.println();
       Serial.flush();
-      while (true)
-	yield();
+      shutdown_teensy();
     }
   }
 }
