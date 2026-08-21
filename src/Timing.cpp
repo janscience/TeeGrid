@@ -41,5 +41,6 @@ void Timing::transmit(Storage &storage) {
   StartTime.transmit(storage);
   StopTime.transmit(storage);
   SensorsInterval.transmit(storage);
+  storage.put(1, false);
 }
 

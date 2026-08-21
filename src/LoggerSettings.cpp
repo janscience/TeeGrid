@@ -106,5 +106,6 @@ void LoggerSettings::transmit(Storage &storage) {
   Path.transmit(storage);
   FileName.transmit(storage);
   FileTime.transmit(storage);
+  storage.put(1, false);
 }
 

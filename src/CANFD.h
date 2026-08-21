@@ -51,10 +51,6 @@ public:
   void transmitTime();
   void receiveTime();
 
-  void transmitConfigStart();
-  void transmitConfigEnd();
-  void receiveConfigStart();
-
   void transmitLabel(const char label[64]);
   void receiveLabel(char label[64]);
 

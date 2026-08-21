@@ -4,10 +4,9 @@
 #ifdef TEENSY4
 
 
-#define CAN_ID_CONFIG_ID     0x01
-#define CAN_ID_CONFIG_VALUE  0x02
-#define CAN_ID_CONFIG_START  0x03
-#define CAN_ID_CONFIG_END    0x04
+#define CAN_ID_CONFIG_MODE   0x01
+#define CAN_ID_CONFIG_ID     0x02
+#define CAN_ID_CONFIG_VALUE  0x03
 
 #define CAN_ID_CLEAR_DEVICES 0x05
 #define CAN_ID_FIND_DEVICES  0x06
@@ -54,6 +53,7 @@ void CANFD::begin() {
     digitalWrite(StandbyPin, LOW);
   }
   Can.begin();
+  // Can.setRegions(32); this puts messages into mailboxes, so that we don not se them?
   CANFD_timings_t config;
   config.clock = CLK_24MHz;
   config.baudrate = 500000;
@@ -62,7 +62,6 @@ void CANFD::begin() {
   config.bus_length = 1;
   config.sample = 70;
   Can.setBaudRate(config);
-  
 }
 
 
@@ -111,7 +110,15 @@ int CANFD::read(unsigned int idx, uint8_t *dest, size_t len) {
   if (msg.id == idx) {
     size_t n = len <= sizeof(msg.buf) ? len : sizeof(msg.buf);
     memcpy((void *)dest, (void *)msg.buf, n);
-    Serial.printf("\nget %d %d %s\n", len, n, (char *)msg.buf);
+    Serial.printf("\nget %d %d %d %d ", msg.brs, msg.edl, len, n);
+    for (size_t k=0; k<20; k++) {
+      char c = (char)(msg.buf[k]);
+      if (msg.buf[k] < 32)
+	Serial.printf("#%02x", msg.buf[k]);
+      else
+	Serial.print(c);
+    }
+    Serial.println();
     return n;
   }
   else
@@ -133,7 +140,15 @@ int CANFD::update(unsigned int idx, const uint8_t *src, size_t len) {
   size_t n = len <= sizeof(msg.buf) ? len : sizeof(msg.buf);
   memcpy((void *)msg.buf, (void *)src, n);
   int r = Can.write(msg);
-  Serial.printf("\nupdate %d %d %s\n", len, n, (char *)msg.buf);
+  Serial.printf("\nupdate %d %d %d %d ", msg.brs, msg.edl, len, n);
+  for (size_t k=0; k<20; k++) {
+    char c = (char)(msg.buf[k]);
+    if (msg.buf[k] < 32)
+      Serial.printf("#%02x", msg.buf[k]);
+    else
+      Serial.print(c);
+  }
+  Serial.println();
   if (r == 1)
     return n;
   else
@@ -312,21 +327,6 @@ void CANFD::receiveTime() {
   Clock->set(t);
   Serial.printf("  received time %ul: ", t);
   Clock->print();
-}
-
-
-void CANFD::transmitConfigStart() {
-  write(CAN_ID_CONFIG_START);
-}
-
-
-void CANFD::transmitConfigEnd() {
-  write(CAN_ID_CONFIG_END);
-}
-
-
-void CANFD::receiveConfigStart() {
-  read(CAN_ID_CONFIG_START);
 }
 
 

@@ -38,18 +38,12 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
   }
   if (CANMode == CAN_MASTER) {
     delay(100);
-    CAN.transmitConfigStart();
     settings.transmit(CAN);
-    CAN.transmitConfigEnd();
     //CAN.transmitLabel(settings.label());
     //CAN.transmitFileName(settings.fileName());
     //CAN.transmitPath(settings.path());
-    CAN.transmitConfigStart();
     aisettings.transmit(CAN);
-    CAN.transmitConfigEnd();
-    CAN.transmitConfigStart();
     timing.transmit(CAN);
-    CAN.transmitConfigEnd();
     CAN.transmitTime();
     //CAN.transmitSamplingRate(aisettings.rate());
     //CAN.transmitGain(aisettings.gainDecibel());
@@ -91,12 +85,9 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
       timing.setSensorsInterval(interval);
     */
     CAN.setTimeout(2000);
-    CAN.receiveConfigStart();
-    while (settings.receive(CAN) >= 0) {};
-    CAN.receiveConfigStart();
-    while (aisettings.receive(CAN) >= 0) {};
-    CAN.receiveConfigStart();
-    while (timing.receive(CAN) >= 0) {};
+    while (settings.receive(CAN) > 0) {};
+    while (aisettings.receive(CAN) > 0) {};
+    while (timing.receive(CAN) > 0) {};
     CAN.receiveTime();
     /*
       if (CAN.id() == 0)
