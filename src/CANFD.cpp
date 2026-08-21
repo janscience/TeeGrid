@@ -293,7 +293,6 @@ void CANFD::setupRecorderMBs() {
 */
 
 void CANFD::transmitTime() {
-  CANFD_message_t msg;
   time_t t = now();
   put(CAN_ID_SET_TIME, t);
   delay(1);
@@ -308,7 +307,7 @@ void CANFD::receiveTime() {
   time_t t = 0;
   Serial.println("wait for time message");
   Timeout = 1000;
-  if (!read(CAN_ID_SET_TIME, t))
+  if (!get(CAN_ID_SET_TIME, t))
     return;
   Clock->set(t);
   Serial.printf("  received time %ul: ", t);
