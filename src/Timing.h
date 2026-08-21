@@ -41,6 +41,11 @@ public:
   /* Set time between sensor readings to time seconds. */
   void setSensorsInterval(float time);
 
+  using Menu::transmit;
+
+  /* Transmit InitialDelay, StartTime, StopTime and SensorsInterval via storage. */
+  void transmit(Storage &storage);
+
 
 protected:
 

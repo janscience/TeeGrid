@@ -38,14 +38,23 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
   }
   if (CANMode == CAN_MASTER) {
     delay(100);
-    CAN.transmitLabel(settings.label());
-    CAN.transmitFileName(settings.fileName());
-    CAN.transmitPath(settings.path());
+    CAN.transmitConfigStart();
+    settings.transmit(CAN);
+    CAN.transmitConfigEnd();
+    //CAN.transmitLabel(settings.label());
+    //CAN.transmitFileName(settings.fileName());
+    //CAN.transmitPath(settings.path());
+    CAN.transmitConfigStart();
+    aisettings.transmit(CAN);
+    CAN.transmitConfigEnd();
+    CAN.transmitConfigStart();
+    timing.transmit(CAN);
+    CAN.transmitConfigEnd();
     CAN.transmitTime();
-    CAN.transmitSamplingRate(aisettings.rate());
-    CAN.transmitGain(aisettings.gainDecibel());
-    CAN.transmitFileTime(settings.fileTime());
-    CAN.transmitSensorsInterval(timing.sensorsInterval());
+    //CAN.transmitSamplingRate(aisettings.rate());
+    //CAN.transmitGain(aisettings.gainDecibel());
+    //CAN.transmitFileTime(settings.fileTime());
+    //CAN.transmitSensorsInterval(timing.sensorsInterval());
   }
   // Slave mode:
   if (CANMode == CAN_SLAVE) {
@@ -54,6 +63,7 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
       StatusLED.switchOff();
       halt(5);
     }
+    /*
     char buffer[64];
     buffer[0] = '\0';
     CAN.receiveLabel(buffer);
@@ -67,7 +77,6 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
     CAN.receivePath(buffer);
     if (strlen(buffer) > 0)
       settings.setPath(buffer);
-    CAN.receiveTime();
     int rate = CAN.receiveSamplingRate();
     if (rate > 0)
       aisettings.setRate(rate);
@@ -80,6 +89,15 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
     float interval = CAN.receiveSensorsInterval();
     if (time > 0.0)
       timing.setSensorsInterval(interval);
+    */
+    CAN.setTimeout(2000);
+    CAN.receiveConfigStart();
+    while (settings.receive(CAN) >= 0) {};
+    CAN.receiveConfigStart();
+    while (aisettings.receive(CAN) >= 0) {};
+    CAN.receiveConfigStart();
+    while (timing.receive(CAN) >= 0) {};
+    CAN.receiveTime();
     /*
       if (CAN.id() == 0)
       FileName = settings.fileName();

@@ -32,10 +32,10 @@ class I2CEEPROMStorage : public Storage {
 protected:
 
   // Read len bytes from storage at idx into buffer at address dest.
-  virtual void read(int idx, uint8_t *dest, size_t len);
+  virtual int read(unsigned int idx, uint8_t *dest, size_t len);
   
-  // Write a len bytes from buffer at address src to storage at idx.
-  virtual void update(int idx, const uint8_t *src, size_t len);
+  // Write len bytes from buffer at address src to storage at idx.
+  virtual int update(unsigned int idx, const uint8_t *src, size_t len);
 
   I2C_eeprom I2CEEPROM;
 

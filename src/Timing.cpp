@@ -35,3 +35,11 @@ void Timing::setSensorsInterval(float time) {
   SensorsInterval.setValue(time);
 }
 
+
+void Timing::transmit(Storage &storage) {
+  InitialDelay.transmit(storage);
+  StartTime.transmit(storage);
+  StopTime.transmit(storage);
+  SensorsInterval.transmit(storage);
+}
+

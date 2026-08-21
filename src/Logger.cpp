@@ -113,6 +113,8 @@ bool Logger::check(Config &config) {
 
 
 void Logger::configure(Config &config, Storage &storage) {
+  config.setRoot();
+  config.setIdentifier();
   // get configuration from EEPROM:
   config.get(storage);
   Serial.println();

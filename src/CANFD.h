@@ -6,13 +6,14 @@
 #include <Blink.h>
 #include <RTClock.h>
 #include <TeensyBoard.h>
+#include <Storage.h>
 
 
 #ifdef TEENSY4
 // CANFD is only supported on Teensy 4
 
 
-class CANFD {
+class CANFD : public Storage {
   
 public:
 
@@ -27,6 +28,17 @@ public:
   void powerDown();
   void powerUp();
 
+  // Size of storage in bytes.
+  virtual uint16_t length();
+
+  void setTimeout(unsigned int timeout);
+
+  // Wait for maximum timeout ms and poll for a message with specific ID
+  bool read(uint8_t id, unsigned int timeout=1000);
+
+  // Write id without payload.
+  bool write(uint8_t id);
+
   int id() const { return DeviceID; };
   int numDevices() const { return NumDevices; };
   
@@ -38,6 +50,10 @@ public:
 
   void transmitTime();
   void receiveTime();
+
+  void transmitConfigStart();
+  void transmitConfigEnd();
+  void receiveConfigStart();
 
   void transmitLabel(const char label[64]);
   void receiveLabel(char label[64]);
@@ -71,20 +87,11 @@ public:
   
 protected:
 
-  // Wait for maximum timeout ms and poll for a message with specific ID
-  bool read(uint8_t id, unsigned int timeout=1000);
-
-  // Write id without payload.
-  bool write(uint8_t id);
-
-  // Wait for maximum timeout ms and poll for a message with specific ID.
-  // On success return payload in t.
-  template<typename T>
-  bool read(uint8_t id, T &t, unsigned int timeout=1000);
-
-  // Write message with id and payload t.
-  template<typename T>
-  bool write(uint8_t id, const T &t);
+  // Read len bytes from storage at idx into buffer at address dest.
+  virtual int read(unsigned int idx, uint8_t *dest, size_t len);
+  
+  // Write len bytes from buffer at address src to storage at idx.
+  virtual int update(unsigned int idx, const uint8_t *src, size_t len);
 
   void setOutPin(uint8_t value);
   uint8_t readInPin();
@@ -100,43 +107,10 @@ protected:
 
   Blink *StatusLED;
   RTClock *Clock;
+
+  unsigned int Timeout;
   
 };
-
-
-template<typename T>
-bool CANFD::read(uint8_t id, T &t, unsigned int timeout) {
-  elapsedMillis timepassed = 0;
-  CANFD_message_t msg;
-  msg.id = 0;
-  memset(msg.buf, 0, sizeof(msg.buf));
-  while ((!Can.read(msg) || msg.id != id) &&
-	 (timepassed < timeout || timeout == 0)) {
-    delay(1);
-    StatusLED->update();
-  };
-  if (msg.id == id) {
-    size_t n = sizeof(T) <= sizeof(msg.buf) ? sizeof(T) : sizeof(msg.buf);
-    memcpy((void *)&t, (void *)msg.buf, n);
-    return true;
-  }
-  else
-    return false;
-}
-
-
-template<typename T>
-bool CANFD::write(uint8_t id, const T &t) {
-  CANFD_message_t msg;
-  msg.id = id;
-  if (sizeof(T) <= 8) {
-    msg.brs = false;
-    msg.edl = false;
-  }
-  size_t n = sizeof(T) <= sizeof(msg.buf) ? sizeof(T) : sizeof(msg.buf);
-  memcpy((void *)msg.buf, (void *)&t, n);
-  return (Can.write(msg) == 1);
-}
 
 
 #endif

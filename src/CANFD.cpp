@@ -3,10 +3,16 @@
 
 #ifdef TEENSY4
 
-#define CAN_ID_CLEAR_DEVICES 0x01
-#define CAN_ID_FIND_DEVICES  0x02
-#define CAN_ID_REPORT_DEVICE 0x03
-#define CAN_ID_GOT_DEVICES   0x04
+
+#define CAN_ID_CONFIG_ID     0x01
+#define CAN_ID_CONFIG_VALUE  0x02
+#define CAN_ID_CONFIG_START  0x03
+#define CAN_ID_CONFIG_END    0x04
+
+#define CAN_ID_CLEAR_DEVICES 0x05
+#define CAN_ID_FIND_DEVICES  0x06
+#define CAN_ID_REPORT_DEVICE 0x07
+#define CAN_ID_GOT_DEVICES   0x08
 
 #define CAN_ID_SET_TIME             0x10
 #define CAN_ID_SET_LABEL            0x11
@@ -30,7 +36,8 @@ CANFD::CANFD(uint8_t in_pin, uint8_t out_pin,
   DeviceID(0),
   NumDevices(0),
   StatusLED(0),
-  Clock(0) {
+  Clock(0),
+  Timeout(1000) {
 }
 
 
@@ -81,6 +88,59 @@ void CANFD::powerUp() {
 }
 
 
+uint16_t CANFD::length() {
+  return 0;
+}
+
+
+void CANFD::setTimeout(unsigned int timeout) {
+  Timeout = timeout;
+}
+
+
+int CANFD::read(unsigned int idx, uint8_t *dest, size_t len) {
+  elapsedMillis timepassed = 0;
+  CANFD_message_t msg;
+  msg.id = 0;
+  memset(msg.buf, 0, sizeof(msg.buf));
+  while ((!Can.read(msg) || msg.id != idx) &&
+	 (timepassed < Timeout || Timeout == 0)) {
+    delay(1);
+    StatusLED->update();
+  };
+  if (msg.id == idx) {
+    size_t n = len <= sizeof(msg.buf) ? len : sizeof(msg.buf);
+    memcpy((void *)dest, (void *)msg.buf, n);
+    Serial.printf("\nget %d %d %s\n", len, n, (char *)msg.buf);
+    return n;
+  }
+  else
+    return -1;
+}
+
+
+int CANFD::update(unsigned int idx, const uint8_t *src, size_t len) {
+  CANFD_message_t msg;
+  msg.id = idx;
+  if (len <= 8) {
+    msg.brs = false;
+    msg.edl = false;
+  }
+  else {
+    msg.brs = true;
+    msg.edl = true;
+  }
+  size_t n = len <= sizeof(msg.buf) ? len : sizeof(msg.buf);
+  memcpy((void *)msg.buf, (void *)src, n);
+  int r = Can.write(msg);
+  Serial.printf("\nupdate %d %d %s\n", len, n, (char *)msg.buf);
+  if (r == 1)
+    return n;
+  else
+    return -1;
+}
+
+
 bool CANFD::write(uint8_t id) {
   CANFD_message_t msg;
   msg.id = id;
@@ -118,9 +178,9 @@ int CANFD::detectDevices() {
   int id;
   for (id=2; ; id++) {
     Serial.printf("  check for ID=%d\n", id);
-    write(CAN_ID_FIND_DEVICES, id);
+    put(CAN_ID_FIND_DEVICES, id);
     int devid = -1;
-    if (!read(CAN_ID_REPORT_DEVICE, devid)) {
+    if (get(CAN_ID_REPORT_DEVICE, devid) <= 0) {
       Serial.println("    no device responded");
       break;
     }
@@ -164,14 +224,15 @@ int CANFD::assignDevice() {
   while (true) {
     Serial.println("  wait for find devices command");
     int id;
-    if (!read(CAN_ID_FIND_DEVICES, id, 2000)) {
+    Timeout = 2000;
+    if (get(CAN_ID_FIND_DEVICES, id) <= 0) {
       Serial.println("    timed out");
       return -1;
     }
     if (readInPin()) {
       DeviceID = id;
       Serial.printf("    assign ID %d\n", DeviceID);
-      write(CAN_ID_REPORT_DEVICE, DeviceID);
+      put(CAN_ID_REPORT_DEVICE, DeviceID);
       Serial.println("    wrote report device message");
       StatusLED->setMultiple(DeviceID);
       StatusLED->delay(1500);
@@ -234,7 +295,7 @@ void CANFD::setupRecorderMBs() {
 void CANFD::transmitTime() {
   CANFD_message_t msg;
   time_t t = now();
-  write(CAN_ID_SET_TIME, t);
+  put(CAN_ID_SET_TIME, t);
   delay(1);
   Clock->set(t);
   Serial.printf("sent time %ul: ", t);
@@ -246,6 +307,7 @@ void CANFD::transmitTime() {
 void CANFD::receiveTime() {
   time_t t = 0;
   Serial.println("wait for time message");
+  Timeout = 1000;
   if (!read(CAN_ID_SET_TIME, t))
     return;
   Clock->set(t);
@@ -254,8 +316,23 @@ void CANFD::receiveTime() {
 }
 
 
+void CANFD::transmitConfigStart() {
+  write(CAN_ID_CONFIG_START);
+}
+
+
+void CANFD::transmitConfigEnd() {
+  write(CAN_ID_CONFIG_END);
+}
+
+
+void CANFD::receiveConfigStart() {
+  read(CAN_ID_CONFIG_START);
+}
+
+
 void CANFD::transmitLabel(const char label[64]) {
-  write(CAN_ID_SET_LABEL, label);
+  put(CAN_ID_SET_LABEL, label);
   Serial.printf("sent label \"%s\"\n", label);
   StatusLED->delay(100);
 }
@@ -263,13 +340,14 @@ void CANFD::transmitLabel(const char label[64]) {
 
 void CANFD::receiveLabel(char label[64]) {
   Serial.println("wait for label message");
-  if (read(CAN_ID_SET_LABEL, label))
+  Timeout = 1000;
+  if (get(CAN_ID_SET_LABEL, label) > strlen(label))
     Serial.printf("  got label \"%s\"\n", label);
 }
 
 
 void CANFD::transmitFileName(const char filename[64]) {
-  write(CAN_ID_SET_FILENAME, filename);
+  put(CAN_ID_SET_FILENAME, filename);
   Serial.printf("sent filename \"%s\"\n", filename);
   StatusLED->delay(100);
 }
@@ -277,13 +355,14 @@ void CANFD::transmitFileName(const char filename[64]) {
 
 void CANFD::receiveFileName(char filename[64]) {
   Serial.println("wait for filename message");
-  if (read(CAN_ID_SET_FILENAME, filename))
+  Timeout = 1000;
+  if (get(CAN_ID_SET_FILENAME, filename) > strlen(filename))
     Serial.printf("  got filename \"%s\"\n", filename);
 }
 
 
 void CANFD::transmitPath(const char path[64]) {
-  write(CAN_ID_SET_PATH, path);
+  put(CAN_ID_SET_PATH, path);
   Serial.printf("sent path \"%s\"\n", path);
   StatusLED->delay(100);
 }
@@ -291,13 +370,14 @@ void CANFD::transmitPath(const char path[64]) {
 
 void CANFD::receivePath(char path[64]) {
   Serial.println("wait for path message");
-  if (read(CAN_ID_SET_PATH, path))
+  Timeout = 1000;
+  if (get(CAN_ID_SET_PATH, path) < strlen(path))
     Serial.printf("  got path \"%s\"\n", path);
 }
 
 
 void CANFD::transmitSamplingRate(int rate) {
-  write(CAN_ID_SET_RATE, rate);
+  put(CAN_ID_SET_RATE, rate);
   Serial.printf("sent sampling rate %dHz\n", rate);
   StatusLED->delay(100);
 }
@@ -306,14 +386,15 @@ void CANFD::transmitSamplingRate(int rate) {
 int CANFD::receiveSamplingRate() {
   int rate = 0;
   Serial.println("wait for sampling rate message");
-  if (read(CAN_ID_SET_RATE, rate))
+  Timeout = 1000;
+  if (get(CAN_ID_SET_RATE, rate) == sizeof(int))
     Serial.printf("  got %dHz sampling rate\n", rate);
   return rate;
 }
 
 
 void CANFD::transmitGain(float gain) {
-  write(CAN_ID_SET_GAIN, gain);
+  put(CAN_ID_SET_GAIN, gain);
   Serial.printf("sent gain %.1fdB\n", gain);
   StatusLED->delay(100);
 }
@@ -322,14 +403,15 @@ void CANFD::transmitGain(float gain) {
 float CANFD::receiveGain() {
   float gain = -1000.0;
   Serial.println("wait for gain message");
-  if (read(CAN_ID_SET_GAIN, gain))
+  Timeout = 1000;
+  if (get(CAN_ID_SET_GAIN, gain) == sizeof(float))
     Serial.printf("  got gain of %.1fdB\n", gain);
   return gain;
 }
 
 
 void CANFD::transmitFileTime(float filetime) {
-  write(CAN_ID_SET_FILE_TIME, filetime);
+  put(CAN_ID_SET_FILE_TIME, filetime);
   Serial.printf("sent file time %.0fs\n", filetime);
   StatusLED->delay(100);
 }
@@ -338,14 +420,15 @@ void CANFD::transmitFileTime(float filetime) {
 float CANFD::receiveFileTime() {
   float filetime = 0.0;
   Serial.println("wait for file time message");
-  if (read(CAN_ID_SET_FILE_TIME, filetime))
+  Timeout = 1000;
+  if (get(CAN_ID_SET_FILE_TIME, filetime) == sizeof(float))
     Serial.printf("  got file time of %.0fs\n", filetime);
   return filetime;
 }
 
 
 void CANFD::transmitSensorsInterval(float sensorsinterval) {
-  write(CAN_ID_SET_SENSORS_INTERVAL, sensorsinterval);
+  put(CAN_ID_SET_SENSORS_INTERVAL, sensorsinterval);
   Serial.printf("sent sensors interval %.0fs\n", sensorsinterval);
   StatusLED->delay(100);
 }
@@ -354,16 +437,15 @@ void CANFD::transmitSensorsInterval(float sensorsinterval) {
 float CANFD::receiveSensorsInterval() {
   float sensorsinterval = 0.0;
   Serial.println("wait for sensors interval message");
-  if (read(CAN_ID_SET_SENSORS_INTERVAL, sensorsinterval))
+  Timeout = 1000;
+  if (get(CAN_ID_SET_SENSORS_INTERVAL, sensorsinterval) == sizeof(float))
     Serial.printf("  got sensors interval of %.0fs\n", sensorsinterval);
   return sensorsinterval;
 }
 
 
 void CANFD::transmitStart() {
-  CANFD_message_t msg;
-  msg.id = CAN_ID_START_REC;
-  Can.write(msg);
+  write(CAN_ID_START_REC);
   Serial.println("sent start recording");
 }
 
@@ -375,10 +457,7 @@ void CANFD::receiveStart() {
 
 
 void CANFD::transmitEndFile() {
-  CANFD_message_t msg;
-  msg.id = CAN_ID_END_FILE;
-  *(int *)(&msg.buf[0]) = DeviceID;
-  Can.write(msg);
+  put(CAN_ID_END_FILE, DeviceID);
   Serial.println("sent end file");
 }
 

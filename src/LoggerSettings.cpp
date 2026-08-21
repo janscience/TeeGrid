@@ -100,3 +100,11 @@ void LoggerSettings::setCANMode(CAN_MODE canmode) {
   CANMode.setEnumValue(canmode);
 }
 
+
+void LoggerSettings::transmit(Storage &storage) {
+  Label.transmit(storage);
+  Path.transmit(storage);
+  FileName.transmit(storage);
+  FileTime.transmit(storage);
+}
+

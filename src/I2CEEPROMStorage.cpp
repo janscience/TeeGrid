@@ -17,12 +17,12 @@ uint16_t I2CEEPROMStorage::length() {
 }
 
 
-void I2CEEPROMStorage::read(int idx, uint8_t *dest, size_t len) {
-  I2CEEPROM.readBlock(idx, dest, len);
+int I2CEEPROMStorage::read(unsigned int idx, uint8_t *dest, size_t len) {
+  return I2CEEPROM.readBlock(idx, dest, len);
 }
 
   
-void I2CEEPROMStorage::update(int idx, const uint8_t *src, size_t len) {
-  I2CEEPROM.updateBlock(idx, const_cast<uint8_t*>(src), len);
+int I2CEEPROMStorage::update(unsigned int idx, const uint8_t *src, size_t len) {
+  return I2CEEPROM.updateBlock(idx, const_cast<uint8_t*>(src), len);
 }
 

@@ -84,6 +84,11 @@ public:
   /* Set synchronization mode via CAN bus. */
   void setCANMode(CAN_MODE canmode);
 
+  using Menu::transmit;
+
+  /* Transmit Label, Path, FileName and FileTime via storage. */
+  void transmit(Storage &storage);
+
 
 protected:
 
