@@ -51,27 +51,6 @@ public:
   void transmitTime();
   void receiveTime();
 
-  void transmitLabel(const char label[64]);
-  void receiveLabel(char label[64]);
-
-  void transmitFileName(const char filename[64]);
-  void receiveFileName(char filename[64]);
-
-  void transmitPath(const char path[64]);
-  void receivePath(char path[64]);
-
-  void transmitSamplingRate(int rate);
-  int receiveSamplingRate();
-
-  void transmitGain(float gain);
-  float receiveGain();
-
-  void transmitFileTime(float filetime);
-  float receiveFileTime();
-
-  void transmitSensorsInterval(float sensorsinterval);
-  float receiveSensorsInterval();
-
   void transmitStart();
   void receiveStart();
 

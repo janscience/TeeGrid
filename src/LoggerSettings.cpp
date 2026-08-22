@@ -101,11 +101,11 @@ void LoggerSettings::setCANMode(CAN_MODE canmode) {
 }
 
 
-void LoggerSettings::transmit(Storage &storage) {
+void LoggerSettings::transmitSync(Storage &storage, Stream &stream) const {
   Label.transmit(storage);
   Path.transmit(storage);
   FileName.transmit(storage);
   FileTime.transmit(storage);
-  storage.put(1, false);
+  storage.put(1, false);   // stop transmission
 }
 

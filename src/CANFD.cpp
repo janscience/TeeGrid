@@ -7,23 +7,15 @@
 #define CAN_ID_CONFIG_MODE   0x01
 #define CAN_ID_CONFIG_ID     0x02
 #define CAN_ID_CONFIG_VALUE  0x03
+#define CAN_ID_SET_TIME      0x04
 
 #define CAN_ID_CLEAR_DEVICES 0x05
 #define CAN_ID_FIND_DEVICES  0x06
 #define CAN_ID_REPORT_DEVICE 0x07
 #define CAN_ID_GOT_DEVICES   0x08
 
-#define CAN_ID_SET_TIME             0x10
-#define CAN_ID_SET_LABEL            0x11
-#define CAN_ID_SET_FILENAME         0x12
-#define CAN_ID_SET_PATH             0x13
-#define CAN_ID_SET_RATE             0x14
-#define CAN_ID_SET_GAIN             0x15
-#define CAN_ID_SET_FILE_TIME        0x16
-#define CAN_ID_SET_SENSORS_INTERVAL 0x17
-
-#define CAN_ID_START_REC     0x20
-#define CAN_ID_END_FILE      0x21
+#define CAN_ID_START_REC     0x10
+#define CAN_ID_END_FILE      0x11
 
 
 CANFD::CANFD(uint8_t in_pin, uint8_t out_pin,
@@ -53,14 +45,13 @@ void CANFD::begin() {
     digitalWrite(StandbyPin, LOW);
   }
   Can.begin();
-  // Can.setRegions(32); this puts messages into mailboxes, so that we don not se them?
   CANFD_timings_t config;
   config.clock = CLK_24MHz;
   config.baudrate = 500000;
   config.baudrateFD = 2000000;
-  config.propdelay = 190;
-  config.bus_length = 1;
-  config.sample = 70;
+  config.bus_length = 1;     // maximum node-to-node distance in in meters
+  config.propdelay = 150;    // TCAN330 total loop delay 135ns
+  config.sample = 75;        // standard 75% sample point
   Can.setBaudRate(config);
 }
 
@@ -100,59 +91,43 @@ void CANFD::setTimeout(unsigned int timeout) {
 int CANFD::read(unsigned int idx, uint8_t *dest, size_t len) {
   elapsedMillis timepassed = 0;
   CANFD_message_t msg;
+  size_t offs = 0;
   msg.id = 0;
-  memset(msg.buf, 0, sizeof(msg.buf));
-  while ((!Can.read(msg) || msg.id != idx) &&
-	 (timepassed < Timeout || Timeout == 0)) {
-    delay(1);
-    StatusLED->update();
-  };
-  if (msg.id == idx) {
-    size_t n = len <= sizeof(msg.buf) ? len : sizeof(msg.buf);
-    memcpy((void *)dest, (void *)msg.buf, n);
-    Serial.printf("\nget %d %d %d %d ", msg.brs, msg.edl, len, n);
-    for (size_t k=0; k<20; k++) {
-      char c = (char)(msg.buf[k]);
-      if (msg.buf[k] < 32)
-	Serial.printf("#%02x", msg.buf[k]);
-      else
-	Serial.print(c);
+  msg.len = 0;
+  while (offs < len) {
+    while ((!Can.read(msg) || msg.id != idx) &&
+	   (timepassed < Timeout || Timeout == 0)) {
+      delay(1);
+      StatusLED->update();
+    };
+    if (msg.id == idx) {
+      memcpy((void *)(dest + offs), (void *)msg.buf, msg.len);
+      offs += msg.len;
     }
-    Serial.println();
-    return n;
+    else
+      return -1;
   }
-  else
-    return -1;
+  return len;
 }
 
 
 int CANFD::update(unsigned int idx, const uint8_t *src, size_t len) {
   CANFD_message_t msg;
   msg.id = idx;
-  if (len <= 8) {
-    msg.brs = false;
-    msg.edl = false;
-  }
-  else {
-    msg.brs = true;
-    msg.edl = true;
-  }
-  size_t n = len <= sizeof(msg.buf) ? len : sizeof(msg.buf);
-  memcpy((void *)msg.buf, (void *)src, n);
-  int r = Can.write(msg);
-  Serial.printf("\nupdate %d %d %d %d ", msg.brs, msg.edl, len, n);
-  for (size_t k=0; k<20; k++) {
-    char c = (char)(msg.buf[k]);
-    if (msg.buf[k] < 32)
-      Serial.printf("#%02x", msg.buf[k]);
+  msg.flags.extended = 0;
+  msg.brs = 0;
+  msg.edl = 0;
+  size_t offs = 0;
+  while (offs < len) {
+    size_t n = len - offs > 8 ? 8 : len - offs;
+    memcpy((void *)msg.buf, (void *)(src + offs), n);
+    if (Can.write(msg))
+      offs += n;
     else
-      Serial.print(c);
+      return -1;
+    delay(100);
   }
-  Serial.println();
-  if (r == 1)
-    return n;
-  else
-    return -1;
+  return len;
 }
 
 
@@ -312,7 +287,7 @@ void CANFD::transmitTime() {
   put(CAN_ID_SET_TIME, t);
   delay(1);
   Clock->set(t);
-  Serial.printf("sent time %ul: ", t);
+  Serial.printf("sent time %lu: ", t);
   Clock->print();
   StatusLED->delay(100);
 }
@@ -320,126 +295,15 @@ void CANFD::transmitTime() {
 
 void CANFD::receiveTime() {
   time_t t = 0;
-  Serial.println("wait for time message");
+  Serial.print("wait for time message");
   Timeout = 1000;
-  if (!get(CAN_ID_SET_TIME, t))
+  if (!get(CAN_ID_SET_TIME, t)) {
+    Serial.println(": failed");
     return;
+  }
   Clock->set(t);
-  Serial.printf("  received time %ul: ", t);
+  Serial.printf("  received time %lu: ", t);
   Clock->print();
-}
-
-
-void CANFD::transmitLabel(const char label[64]) {
-  put(CAN_ID_SET_LABEL, label);
-  Serial.printf("sent label \"%s\"\n", label);
-  StatusLED->delay(100);
-}
-
-
-void CANFD::receiveLabel(char label[64]) {
-  Serial.println("wait for label message");
-  Timeout = 1000;
-  if (get(CAN_ID_SET_LABEL, label) > strlen(label))
-    Serial.printf("  got label \"%s\"\n", label);
-}
-
-
-void CANFD::transmitFileName(const char filename[64]) {
-  put(CAN_ID_SET_FILENAME, filename);
-  Serial.printf("sent filename \"%s\"\n", filename);
-  StatusLED->delay(100);
-}
-
-
-void CANFD::receiveFileName(char filename[64]) {
-  Serial.println("wait for filename message");
-  Timeout = 1000;
-  if (get(CAN_ID_SET_FILENAME, filename) > strlen(filename))
-    Serial.printf("  got filename \"%s\"\n", filename);
-}
-
-
-void CANFD::transmitPath(const char path[64]) {
-  put(CAN_ID_SET_PATH, path);
-  Serial.printf("sent path \"%s\"\n", path);
-  StatusLED->delay(100);
-}
-
-
-void CANFD::receivePath(char path[64]) {
-  Serial.println("wait for path message");
-  Timeout = 1000;
-  if (get(CAN_ID_SET_PATH, path) < strlen(path))
-    Serial.printf("  got path \"%s\"\n", path);
-}
-
-
-void CANFD::transmitSamplingRate(int rate) {
-  put(CAN_ID_SET_RATE, rate);
-  Serial.printf("sent sampling rate %dHz\n", rate);
-  StatusLED->delay(100);
-}
-
-
-int CANFD::receiveSamplingRate() {
-  int rate = 0;
-  Serial.println("wait for sampling rate message");
-  Timeout = 1000;
-  if (get(CAN_ID_SET_RATE, rate) == sizeof(int))
-    Serial.printf("  got %dHz sampling rate\n", rate);
-  return rate;
-}
-
-
-void CANFD::transmitGain(float gain) {
-  put(CAN_ID_SET_GAIN, gain);
-  Serial.printf("sent gain %.1fdB\n", gain);
-  StatusLED->delay(100);
-}
-
-
-float CANFD::receiveGain() {
-  float gain = -1000.0;
-  Serial.println("wait for gain message");
-  Timeout = 1000;
-  if (get(CAN_ID_SET_GAIN, gain) == sizeof(float))
-    Serial.printf("  got gain of %.1fdB\n", gain);
-  return gain;
-}
-
-
-void CANFD::transmitFileTime(float filetime) {
-  put(CAN_ID_SET_FILE_TIME, filetime);
-  Serial.printf("sent file time %.0fs\n", filetime);
-  StatusLED->delay(100);
-}
-
-
-float CANFD::receiveFileTime() {
-  float filetime = 0.0;
-  Serial.println("wait for file time message");
-  Timeout = 1000;
-  if (get(CAN_ID_SET_FILE_TIME, filetime) == sizeof(float))
-    Serial.printf("  got file time of %.0fs\n", filetime);
-  return filetime;
-}
-
-
-void CANFD::transmitSensorsInterval(float sensorsinterval) {
-  put(CAN_ID_SET_SENSORS_INTERVAL, sensorsinterval);
-  Serial.printf("sent sensors interval %.0fs\n", sensorsinterval);
-  StatusLED->delay(100);
-}
-
-
-float CANFD::receiveSensorsInterval() {
-  float sensorsinterval = 0.0;
-  Serial.println("wait for sensors interval message");
-  Timeout = 1000;
-  if (get(CAN_ID_SET_SENSORS_INTERVAL, sensorsinterval) == sizeof(float))
-    Serial.printf("  got sensors interval of %.0fs\n", sensorsinterval);
-  return sensorsinterval;
 }
 
 

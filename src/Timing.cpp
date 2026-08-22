@@ -36,7 +36,7 @@ void Timing::setSensorsInterval(float time) {
 }
 
 
-void Timing::transmit(Storage &storage) {
+void Timing::transmitSync(Storage &storage, Stream &stream) const {
   InitialDelay.transmit(storage);
   StartTime.transmit(storage);
   StopTime.transmit(storage);

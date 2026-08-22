@@ -32,62 +32,31 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
   powerUpCAN();
   // Master mode:
   if (CANMode == CAN_MASTER) {
-    Serial.println("CAN MASTER MODE ---");
+    Serial.println("MASTER MODE");
     if (CAN.detectDevices() == 0)
       CANMode = CAN_NONE;
   }
   if (CANMode == CAN_MASTER) {
     delay(100);
-    settings.transmit(CAN);
-    //CAN.transmitLabel(settings.label());
-    //CAN.transmitFileName(settings.fileName());
-    //CAN.transmitPath(settings.path());
-    aisettings.transmit(CAN);
-    timing.transmit(CAN);
+    //settings.transmitSync(CAN);
+    //delay(100);
+    aisettings.transmitSync(CAN);
+    delay(100);
+    //timing.transmitSync(CAN);
     CAN.transmitTime();
-    //CAN.transmitSamplingRate(aisettings.rate());
-    //CAN.transmitGain(aisettings.gainDecibel());
-    //CAN.transmitFileTime(settings.fileTime());
-    //CAN.transmitSensorsInterval(timing.sensorsInterval());
+    delay(100);
   }
   // Slave mode:
   if (CANMode == CAN_SLAVE) {
-    Serial.println("CAN Slave mode");
+    Serial.println("SLAVE MODE");
     if (CAN.assignDevice() < 0) {
       StatusLED.switchOff();
       halt(5);
     }
-    /*
-    char buffer[64];
-    buffer[0] = '\0';
-    CAN.receiveLabel(buffer);
-    if (strlen(buffer) > 0)
-      settings.setLabel(buffer);
-    buffer[0] = '\0';
-    CAN.receiveFileName(buffer);
-    if (strlen(buffer) > 0)
-      settings.setFileName(buffer);
-    buffer[0] = '\0';
-    CAN.receivePath(buffer);
-    if (strlen(buffer) > 0)
-      settings.setPath(buffer);
-    int rate = CAN.receiveSamplingRate();
-    if (rate > 0)
-      aisettings.setRate(rate);
-    float gain = CAN.receiveGain();
-    if (gain > -100)
-      aisettings.setGainDecibel(gain);
-    float time = CAN.receiveFileTime();
-    if (time > 0.0)
-      settings.setFileTime(time);
-    float interval = CAN.receiveSensorsInterval();
-    if (time > 0.0)
-      timing.setSensorsInterval(interval);
-    */
     CAN.setTimeout(2000);
-    while (settings.receive(CAN) > 0) {};
+    //while (settings.receive(CAN) > 0) {};
     while (aisettings.receive(CAN) > 0) {};
-    while (timing.receive(CAN) > 0) {};
+    //while (timing.receive(CAN) > 0) {};
     CAN.receiveTime();
     /*
       if (CAN.id() == 0)
