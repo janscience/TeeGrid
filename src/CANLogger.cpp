@@ -24,6 +24,51 @@ void CANLogger::setCANMode(CAN_MODE canmode) {
 }
 
 
+void CANLogger::insertDevice(String &path) {
+  if (CAN.id() == 0)
+    return;
+  // ID ID2 ID3 IDA IDAA
+  char devs[2];
+  devs[1] = '\0';
+  devs[0] = char('A' + CAN.id() - 1);
+  if (path.indexOf("IDAA") >= 0) {
+    char ids[10] = "IDAA-";
+    strcat(ids, devs);
+    path.replace("IDAA", ids);
+  }
+  else if (path.indexOf("IDA") >= 0) {
+    char ids[10] = "IDA-";
+    strcat(ids, devs);
+    path.replace("IDA", ids);
+  }
+  else if (path.indexOf("ID3") >= 0) {
+    char ids[10] = "ID3";
+    strcat(ids, devs);
+    path.replace("ID3", ids);
+  }
+  else if (path.indexOf("ID2") >= 0) {
+    char ids[10] = "ID2";
+    strcat(ids, devs);
+    path.replace("ID2", ids);
+  }
+  else if (path.indexOf("ID") >= 0) {
+    char ids[10] = "ID";
+    strcat(ids, devs);
+    path.replace("ID", ids);
+  }
+}
+
+
+void CANLogger::prepareFilePath(LoggerSettings &settings) {
+  String filename(settings.fileName());
+  insertDevice(filename);
+  settings.setFileName(filename.c_str());
+  String path(settings.path());
+  insertDevice(path);
+  settings.setPath(path.c_str());
+}
+
+
 void CANLogger::setupSynchronization(CAN_MODE canmode,
 				     LoggerSettings &settings,
 				     InputTDMSettings &aisettings,
@@ -39,12 +84,10 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
   if (CANMode == CAN_MASTER) {
     delay(100);
     //settings.transmitSync(CAN);
-    //delay(100);
-    aisettings.transmitSync(CAN);
-    delay(100);
+    //aisettings.transmitSync(CAN);
     //timing.transmitSync(CAN);
     CAN.transmitTime();
-    delay(100);
+    prepareFilePath(settings);
   }
   // Slave mode:
   if (CANMode == CAN_SLAVE) {
@@ -55,22 +98,10 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
     }
     CAN.setTimeout(2000);
     //while (settings.receive(CAN) > 0) {};
-    while (aisettings.receive(CAN) > 0) {};
+    //while (aisettings.receive(CAN) > 0) {};
     //while (timing.receive(CAN) > 0) {};
     CAN.receiveTime();
-    /*
-      if (CAN.id() == 0)
-      FileName = settings.fileName();
-      FileName.replace("GRID", gs);
-      if (CAN.id() == 0)
-      FileName.replace("DEV", DEV);
-      else {
-      char devs[2];
-      devs[1] = '\0';
-      devs[0] = char('A' + CAN.id() - 1);
-      FileName.replace("DEV", devs);
-      }
-    */
+    prepareFilePath(settings);
   }
   Serial.println();
   // do not use CAN bus:
@@ -82,15 +113,36 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
 }
 
 
+void CANLogger::synchronizeStart() {
+  if (CANMode == CAN_MASTER) {
+    delay(100);
+    CAN.transmitStart();
+  }
+  if (CANMode == CAN_SLAVE) {
+    CAN.receiveStart();
+  }
+}
+
+
+void CANLogger::initialDelay(float initial_delay, const char *stop_time,
+			     Stream &stream) {
+  synchronizeStart();
+  SensorsLogger::initialDelay(initial_delay, stop_time, stream);
+  synchronizeStart();
+}
+
+
 void CANLogger::synchronize(float stopvoltage) {
   checkVoltage(stopvoltage);
   /*
-  if (CANMode != CAN_MASTER)
-    CAN.transmitEndFile();
-  if (CANMode == CAN_MASTER)
+  if (CANMode == CAN_MASTER) {
+    CAN.receiveEndFile();
     CAN.transmitStart();
-  else if (CAN.id() > 0)
+  }
+  if (CANMode == CAN_SLAVE) {
+    CAN.transmitEndFile();
     CAN.receiveStart();
+  }
   */
 }
 
