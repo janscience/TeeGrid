@@ -34,10 +34,10 @@
 // Default settings: ----------------------------------------------------------
 // (may be overwritten by config file logger.cfg or EEPROM)
 #define NCHANNELS      16       // number of channels (even, from 2 to 32)
-#define SAMPLING_RATE  24000    // samples per second and channel in Hertz
+#define SAMPLING_RATE  48000    // samples per second and channel in Hertz
 #define SOURCE         Input::SINGLE_ENDED
 #define PREGAIN        2.0     // gain factor of preamplifier
-#define GAIN           0.0     // dB
+#define GAIN           20.0     // dB
 
 #define LABEL            "logger"               // may be used for naming files
 #define DEVICEID         1                      // may be used for naming files
@@ -71,7 +71,7 @@
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid R5-logger v0.1"
+#define SOFTWARE      "TeeGrid R5-logger v1.0"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
