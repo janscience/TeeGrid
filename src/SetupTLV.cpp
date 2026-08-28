@@ -14,17 +14,16 @@ bool R5SetupTLV(InputTDM &aidata, ControlTLV320ADC &ctlv, bool offs,
   uint8_t slot_offs = offs ? 4 : 0;
   ctlv.setRate(aidata, aisettings.rate());
   ControlTLV320ADC::HIGHPASS hp = ControlTLV320ADC::LOW_HP;
-  if (aisettings.highpass() < 0.001*aisettings.rate())
-    hp = ControlTLV320ADC::LOW_HP;  // 12Hz @ 48kHz sampling
+  if (aisettings.highpass() < 0.0001*aisettings.rate())
+    hp = ControlTLV320ADC::CUSTOM_HP; // all pass
+  else if (aisettings.highpass() < 0.001*aisettings.rate())
+    hp = ControlTLV320ADC::LOW_HP;    // 0.00025*rate, 12Hz @ 48kHz sampling
   else if (aisettings.highpass() < 0.004*aisettings.rate())
-    hp = ControlTLV320ADC::MED_HP;  // 96Hz @ 48kHz sampling
+    hp = ControlTLV320ADC::MED_HP;    // 0.002*rate, 96Hz @ 48kHz sampling
   else
-    hp = ControlTLV320ADC::HIGH_HP; // 384Hz @ 48kHz sampling
+    hp = ControlTLV320ADC::HIGH_HP;   // 0.008*rate, 384Hz @ 48kHz sampling
   ctlv.setFilters(ControlTLV320ADC::LINEAR, hp);
-  // TODO: check whether higher high-pass cutoff is better for eels
-  // TODO: program highpass filter to custom cutoff frequency, independent of sampling rate, see page 33
-  ctlv.setBias(ControlTLV320ADC::BIAS_VREF);
-  //ctlv.setBias(ControlTLV320ADC::BIAS_VREF11);  // TODO: does this fix 40dB gain?
+  ctlv.setBias(ControlTLV320ADC::BIAS_VREF11);  // this does not fix the 40dB gain issue
   if (aidata.nchannels() < aisettings.nchannels()) {
     if (aisettings.nchannels() - aidata.nchannels() == 2) {
       ctlv.setupChannels(2, source, impedance, coupling, -1, slot_offs);
