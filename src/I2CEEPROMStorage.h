@@ -39,6 +39,8 @@ protected:
 
   I2C_eeprom I2CEEPROM;
 
+  bool Available;
+
 };
 
 
