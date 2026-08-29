@@ -37,12 +37,13 @@
 #define SAMPLING_RATE  48000    // samples per second and channel in Hertz
 #define SOURCE         Input::SINGLE_ENDED
 #define PREGAIN        2.0     // gain factor of preamplifier
-#define GAIN           20.0     // dB
+#define GAIN           0.0     // dB
+#define HIGHPASS       0.5      // Hz
 
-#define LABEL            "logger"               // may be used for naming files
+#define LABEL            "iriri01-grid01"       // may be used for naming files
 #define DEVICEID         1                      // may be used for naming files
-#define PATH             "LABELID2-SDATETIMEM"  // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
-#define FILENAME         "LABELID2-SDATETIME"   // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
+#define PATH             "LABEL-devID2-SDATETIMEM"  // folder where to store the recordings, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, NUM
+#define FILENAME         "LABEL-devID2-SDATETIME"   // ".wav" is appended, may include LABEL, ID, IDA, DATE, SDATE, TIME, STIME, DATETIME, SDATETIME, ANUM, NUM
 #define FILE_SAVE_TIME   300       // seconds
 #define INITIAL_DELAY    10        // seconds
 #define START_VOLTAGE    3.8       // Volt
@@ -51,7 +52,7 @@
 #define BLINK_TIMEOUT    0         // time after which internal LEDs are switched off in seconds
 #define SYNC_TIMEOUT     0         // time after which synchronization LED is switched off in seconds
 #define SENSORS_INTERVAL 30.0      // interval between sensors readings in seconds
-#define LIGHT_THRESHOLD  10.0      // threshold for switching off LEDs in lux.
+#define LIGHT_THRESHOLD  0.0       // threshold for switching off LEDs in lux.
 
 // ----------------------------------------------------------------------------
 
@@ -110,7 +111,7 @@ Config config("logger.cfg", &sdcard);
 LoggerSettings settings(config, LABEL, DEVICEID, PATH, FILENAME,
                         FILE_SAVE_TIME, INITIAL_DELAY);
 InputTDMSettings aisettings(config, SAMPLING_RATE, NCHANNELS,
-                            GAIN, PREGAIN, SOURCE, 2);
+                            GAIN, PREGAIN, SOURCE, 2, HIGHPASS);
 Timing timing(config, INITIAL_DELAY, "", "", SENSORS_INTERVAL);
 BlinkSettings blinksettings(config, RANDOM_BLINKS, BLINK_TIMEOUT, SYNC_TIMEOUT,
 			    LIGHT_THRESHOLD);

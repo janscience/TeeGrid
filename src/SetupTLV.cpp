@@ -13,6 +13,7 @@ bool R5SetupTLV(InputTDM &aidata, ControlTLV320ADC &ctlv, bool offs,
   }
   uint8_t slot_offs = offs ? 4 : 0;
   ctlv.setRate(aidata, aisettings.rate());
+  /*
   ControlTLV320ADC::HIGHPASS hp = ControlTLV320ADC::LOW_HP;
   if (aisettings.highpass() < 0.0001*aisettings.rate())
     hp = ControlTLV320ADC::CUSTOM_HP; // all pass
@@ -23,7 +24,10 @@ bool R5SetupTLV(InputTDM &aidata, ControlTLV320ADC &ctlv, bool offs,
   else
     hp = ControlTLV320ADC::HIGH_HP;   // 0.008*rate, 384Hz @ 48kHz sampling
   ctlv.setFilters(ControlTLV320ADC::LINEAR, hp);
-  ctlv.setBias(ControlTLV320ADC::BIAS_VREF11);  // this does not fix the 40dB gain issue
+  */
+  ctlv.setFilters(ControlTLV320ADC::LINEAR, ControlTLV320ADC::CUSTOM_HP,
+  		  aisettings.highpass());
+  ctlv.setBias(ControlTLV320ADC::BIAS_VREF);  // this does not fix the 40dB gain issue
   if (aidata.nchannels() < aisettings.nchannels()) {
     if (aisettings.nchannels() - aidata.nchannels() == 2) {
       ctlv.setupChannels(2, source, impedance, coupling, -1, slot_offs);
