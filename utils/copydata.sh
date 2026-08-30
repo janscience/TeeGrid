@@ -46,10 +46,11 @@ for disk in /media/$USER/*; do
 	for path in $disk/*; do
 	    if test -d "$path"; then
 		destpath=${path#$disk/}
-		site=${destpath%%-*}
-		grid=${destpath#$site-}
-		grid=${grid%%-*}
-		destpath="$site/$grid/$destpath"
+		if [[ $destpath =~ ^([^-]+)-([^-]+)-[^-]+-[0-9]{8}T[0-9]{4,6} ]]; then
+		    destpath="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}/$destpath"
+		else
+		    echo "UNSORTED $path" >> "$logfile"
+		fi
 		mkdir -p $destpath
 		if test "$mode" = "r"; then
 		    rsync -av $path $destpath
