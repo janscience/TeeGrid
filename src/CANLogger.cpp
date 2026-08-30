@@ -28,10 +28,17 @@ void CANLogger::insertDevice(String &path) {
   if (CAN.id() == 0)
     return;
   // ID ID2 ID3 IDA IDAA
-  char devs[2];
+  char devs[4];
   devs[1] = '\0';
   devs[0] = char('A' + CAN.id() - 1);
-  if (path.indexOf("IDAA") >= 0) {
+  int idx = path.indexOf("grid");
+  if (idx >= 0) {
+    idx += 4;
+    sprintf(devs, "%02d", CAN.id());
+    path[idx++] = devs[0];
+    path[idx++] = devs[1];
+  }
+  else if (path.indexOf("IDAA") >= 0) {
     char ids[10] = "IDAA-";
     strcat(ids, devs);
     path.replace("IDAA", ids);
@@ -59,13 +66,15 @@ void CANLogger::insertDevice(String &path) {
 }
 
 
-void CANLogger::prepareFilePath(LoggerSettings &settings) {
-  String filename(settings.fileName());
-  insertDevice(filename);
-  settings.setFileName(filename.c_str());
-  String path(settings.path());
-  insertDevice(path);
-  settings.setPath(path.c_str());
+void CANLogger::preparePaths(LoggerSettings &settings) {
+  if ((CANMode == CAN_MASTER) || (CANMode == CAN_SLAVE)) {
+    String filename(settings.fileName());
+    insertDevice(filename);
+    settings.setFileName(filename.c_str());
+    String path(settings.path());
+    insertDevice(path);
+    settings.setPath(path.c_str());
+  }
 }
 
 
@@ -87,7 +96,6 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
     //aisettings.transmitSync(CAN);
     //timing.transmitSync(CAN);
     CAN.transmitTime();
-    prepareFilePath(settings);
   }
   // Slave mode:
   if (CANMode == CAN_SLAVE) {
@@ -101,7 +109,6 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
     //while (aisettings.receive(CAN) > 0) {};
     //while (timing.receive(CAN) > 0) {};
     CAN.receiveTime();
-    prepareFilePath(settings);
   }
   Serial.println();
   // do not use CAN bus:

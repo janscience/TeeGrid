@@ -229,6 +229,7 @@ void setup() {
   logger.startSensors(timing.sensorsInterval(), blinksettings.lightThreshold());
   logger.setCPUSpeed(aisettings.rate(), aisettings.nchannels());
   settings.preparePaths();
+  logger.preparePaths(settings);
   R5SetupTLVs(aidata, aisettings, tlvs, NTLVS);
   logger.startInput(aisettings.nchannels());
   logger.setup(settings.path(), settings.fileName(),

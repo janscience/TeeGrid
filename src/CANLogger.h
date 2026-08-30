@@ -46,6 +46,8 @@ public:
 			    InputTDMSettings &aisettings,
 			    Timing &timing);
   
+  void preparePaths(LoggerSettings &settings);
+  
   // Delay with double blinks for initial_delay seconds.
   // Initialize a potential stop time.
   void initialDelay(float initial_delay, const char *stop_time=0,
@@ -55,7 +57,6 @@ public:
 protected:
 
   void insertDevice(String &path);
-  void prepareFilePath(LoggerSettings &settings);
   void synchronizeStart();
 
   // Use CAN bus to synchronize opening of next file.
