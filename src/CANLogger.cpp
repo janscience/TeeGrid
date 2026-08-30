@@ -114,7 +114,7 @@ void CANLogger::setupSynchronization(CAN_MODE canmode,
   // do not use CAN bus:
   if (CANMode == CAN_NONE) {
     powerDownCAN();
-    Serial.println("Powered down CAN bus.");
+    Serial.println("CAN bus powered down .");
     return;
   }
 }
