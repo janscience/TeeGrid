@@ -20,6 +20,8 @@ test -z "$resp" && resp='y'
 test "$resp" != "y" && exit 1
 
 mode="w"
+logfile="$PWD/copydata-problems.log"
+: > "$logfile"
 #echo
 #echo "Use"
 #echo "[r] rsync (no compression)"
@@ -58,8 +60,12 @@ for disk in /media/$USER/*; do
 			destfile=${wavfile##*/}
 			destfile=${destfile/.wav/.wv}
 			if test -s "$wavfile" && ! test -s $destpath/${destfile}; then
-			    wavpack -q -f -t $wavfile -o $destpath/${destfile}.part
-			    mv $destpath/${destfile}.part $destpath/${destfile}
+			    if wavpack -q -f -t $wavfile -o $destpath/${destfile}.part; then
+				mv $destpath/${destfile}.part $destpath/${destfile}
+			    else
+				rm -f $destpath/${destfile}.part
+				echo "FAILED $wavfile" >> "$logfile"
+			    fi
 			fi
 		    done
 		fi
@@ -75,6 +81,14 @@ end_time="$(date -u +%s)"
 elapsed="$(($end_time-$start_time))"
 
 echo
+if test -s "$logfile"; then
+    echo "!!! $(wc -l < "$logfile") files were NOT copied:"
+    cat "$logfile"
+    echo
+    echo "finished in ${elapsed}s WITH PROBLEMS, see $logfile"
+    exit 1
+fi
+rm -f "$logfile"
 echo "finished copying in ${elapsed}s!"
 
 ## TODO
