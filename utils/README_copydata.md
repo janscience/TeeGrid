@@ -72,7 +72,7 @@ DEST/
 ├── copy_manifest.jsonl        # per file: source, sha256, codec, WAV metadata
 ├── copy_logs/
 ├── site01/grid01/site01-grid01-dev01-20260826T175746/
-│   ├── site01-grid01-dev01-20260826T175746.wav.wv
+│   ├── site01-grid01-dev01-20260826T175746.wv
 │   └── site01-grid01-dev01-20260826T175746-sensors.csv   # sidecars stay plain
 ├── site02/grid01/site02-grid01-dev01-20260827T090000__mac1b9999/   # only on a real collision
 └── logger24A-20260826T1757/   # name does not parse: left at the top level

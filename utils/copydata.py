@@ -856,6 +856,35 @@ def effective_codec(it: Item, codec: Codec) -> Codec:
     return codec
 
 
+def archive_name(name: str, eff: Codec) -> str:
+    """The destination file name for a source file called *name*.
+
+    wavpack replaces the extension -- rec-000.wav becomes rec-000.wv -- because
+    a .wv is a wav container already and carrying both extensions says nothing.
+    A stream codec wraps the file as it is, so there the whole name is kept:
+    rec-000.wav.zst.
+    """
+    if eff.name == "wavpack":
+        stem, dot, ext = name.rpartition(".")
+        if dot and "." + ext.lower() in WAV_SUFFIXES:
+            return stem + eff.suffix
+    return name + eff.suffix
+
+
+def source_name(rel: str, codec: Codec) -> str:
+    """Inverse of archive_name: the original name of an archived file.
+
+    Handles archives written before the rename too, where the name still
+    carries both extensions (rec-000.wav.wv).
+    """
+    if not codec.suffix or not rel.endswith(codec.suffix):
+        return rel
+    rel = rel[: -len(codec.suffix)]
+    if codec.name == "wavpack" and "." + rel.rpartition(".")[2].lower() not in WAV_SUFFIXES:
+        rel += ".wav"
+    return rel
+
+
 def transfer_item(
     it: Item, dest: Path, codec: Codec, level: int, threads: int,
     manifest: Manifest, stats: Stats, *, verify: str, overwrite: bool, dry_run: bool,
@@ -864,7 +893,8 @@ def transfer_item(
     eff = effective_codec(it, codec)
     # a fallback codec gets its own default level, not the requested codec's
     eff_level = level if eff.name == codec.name else eff.default_level
-    out_rel = os.path.join(it.rel_dir, it.name + eff.suffix) if it.rel_dir else it.name + eff.suffix
+    out_name = archive_name(it.name, eff)
+    out_rel = os.path.join(it.rel_dir, out_name) if it.rel_dir else out_name
     out_path = dest / out_rel
 
     if manifest.already_done(out_rel, it.size, it.mtime) and out_path.exists():
@@ -1200,7 +1230,7 @@ def cmd_restore(args: argparse.Namespace) -> int:
         p = src / rel
         cname = rec.get("codec", "none").split(":")[0]
         codec = CODECS.get(cname, CODECS["none"])
-        target = out / (rel[: -len(codec.suffix)] if codec.suffix and rel.endswith(codec.suffix) else rel)
+        target = out / source_name(rel, codec)
         if target.exists() and not args.overwrite:
             log(f"  skip (exists): {target}")
             skipped += 1
