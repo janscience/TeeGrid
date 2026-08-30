@@ -58,7 +58,7 @@ for disk in /media/$USER/*; do
 			destfile=${wavfile##*/}
 			destfile=${destfile/.wav/.wv}
 			if test -s "$wavfile" && ! test -s $destpath/${destfile}; then
-			    wavpack -q -f --no-overwrite -t $wavfile -o $destpath/${destfile}.part
+			    wavpack -q -f -t $wavfile -o $destpath/${destfile}.part
 			    mv $destpath/${destfile}.part $destpath/${destfile}
 			fi
 		    done
