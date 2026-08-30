@@ -54,8 +54,10 @@ for disk in /media/$USER/*; do
 		if test "$mode" = "r"; then
 		    rsync -av $path $destpath
 		elif test "$mode" = "w"; then
-		    cp -a --update=none $path/*.csv $destpath
-		    cp -a --update=none $path/*.yml $destpath
+		    for extra in $path/*.csv $path/*.yml; do
+			test -f "$extra" || continue
+			test -e $destpath/${extra##*/} || cp -a "$extra" $destpath
+		    done
 		    for wavfile in $path/*.wav; do
 			destfile=${wavfile##*/}
 			destfile=${destfile/.wav/.wv}
