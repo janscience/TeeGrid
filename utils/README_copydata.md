@@ -27,7 +27,7 @@ files *back* is what costs time:
 
 | `--verify` | reads back | 4 x 500 GB |
 |---|---|---|
-| `sample` (default) | 5% of each deployment, every sidecar, every truncated wav | ~6.3 h |
+| `sample` (default) | 5% of each deployment, every sidecar | ~6.3 h |
 | `full` | everything | ~12 h |
 | `none` | nothing | ~6 h |
 
@@ -95,9 +95,6 @@ match the cards, and `verify` and `restore` have nothing to check against.
 * **The custom `LIST`/`INFO` chunk survives.** `wvunpack` reconstructs a
   byte-identical `.wav`, `DTIM` included. It can also be read without decoding:
   wavpack keeps the original RIFF header in the first 8 KB of the `.wv`.
-* **Truncated WAVs fall back to `zstd`.** WavPack `-i` *corrects* the declared
-  length, so the file would no longer be the file that was on the card.
-  Reported in the summary.
 * **0-byte WAVs are skipped** (`--keep-empty` to copy them). A scan of 23,699
   flona2025 WAVs found 61, always the last file of a deployment.
 * **`verify --jobs N`** checks N files at a time (default `min(4, cores)`) and
