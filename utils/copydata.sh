@@ -36,9 +36,9 @@ for disk in /media/$USER/*; do
     diskname=${disk#/media/$USER/}
     test "${diskname:0:1}" = "d" && continue
     if test "$mode" = "r"; then
-	echo "copy $disk using rsync ..."
+	echo "copy $disk/* using rsync ..."
     elif test "$mode" = "w"; then
-	echo "copy $disk using wavpack ..."
+	echo "copy $disk/* using wavpack ..."
     fi
     {
 	for path in $disk/*; do
@@ -52,12 +52,20 @@ for disk in /media/$USER/*; do
 		if test "$mode" = "r"; then
 		    rsync -av $path $destpath
 		elif test "$mode" = "w"; then
-		    cp -a $path/*.csv $destpath
-		    cp -a $path/*.yml $destpath
-		    wavpack -q -f --no-overwrite -t $path/*.wav -o $destpath
+		    cp -a --update=none $path/*.csv $destpath
+		    cp -a --update=none $path/*.yml $destpath
+		    for wavfile in $path/*.wav; do
+			destfile=${wavfile##*/}
+			destfile=${destfile/.wav/.wv}
+			if test -s "$wavfile" && ! test -s $destpath/${destfile}; then
+			    wavpack -q -f --no-overwrite -t $wavfile -o $destpath/${destfile}.part
+			    mv $destpath/${destfile}.part $destpath/${destfile}
+			fi
+		    done
 		fi
-		chmod -R a-w $destpath
-		chmod -R a+r $destpath
+		chmod a-w $destpath/*
+		chmod a+r $destpath/*
+		chmod a+rw $destpath
 	    fi
 	done
     } &
