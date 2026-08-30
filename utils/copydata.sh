@@ -52,6 +52,8 @@ for disk in /media/$USER/*; do
 		if test "$mode" = "r"; then
 		    rsync -av $path $destpath
 		elif test "$mode" = "w"; then
+		    cp -a $path/*.csv $destpath
+		    cp -a $path/*.yml $destpath
 		    wavpack -q -f --no-overwrite -t $path/*.wav -o $destpath
 		fi
 		chmod -R a-w $destpath
