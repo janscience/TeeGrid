@@ -20,6 +20,8 @@ test -z "$resp" && resp='y'
 test "$resp" != "y" && exit 1
 
 mode="w"
+logfile="$PWD/copydata-problems.log"
+: > "$logfile"
 #echo
 #echo "Use"
 #echo "[r] rsync (no compression)"
@@ -44,22 +46,29 @@ for disk in /media/$USER/*; do
 	for path in $disk/*; do
 	    if test -d "$path"; then
 		destpath=${path#$disk/}
-		site=${destpath%%-*}
-		grid=${destpath#$site-}
-		grid=${grid%%-*}
-		destpath="$site/$grid/$destpath"
+		if [[ $destpath =~ ^([^-]+)-([^-]+)-[^-]+-[0-9]{8}T[0-9]{4,6} ]]; then
+		    destpath="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}/$destpath"
+		else
+		    echo "UNSORTED $path" >> "$logfile"
+		fi
 		mkdir -p $destpath
 		if test "$mode" = "r"; then
 		    rsync -av $path $destpath
 		elif test "$mode" = "w"; then
-		    cp -a --update=none $path/*.csv $destpath
-		    cp -a --update=none $path/*.yml $destpath
+		    for extra in $path/*.csv $path/*.yml; do
+			test -f "$extra" || continue
+			test -e $destpath/${extra##*/} || cp -a "$extra" $destpath
+		    done
 		    for wavfile in $path/*.wav; do
 			destfile=${wavfile##*/}
 			destfile=${destfile/.wav/.wv}
 			if test -s "$wavfile" && ! test -s $destpath/${destfile}; then
-			    wavpack -q -f -t $wavfile -o $destpath/${destfile}.part
-			    mv $destpath/${destfile}.part $destpath/${destfile}
+			    if wavpack -q -f -t $wavfile -o $destpath/${destfile}.part; then
+				mv $destpath/${destfile}.part $destpath/${destfile}
+			    else
+				rm -f $destpath/${destfile}.part
+				echo "FAILED $wavfile" >> "$logfile"
+			    fi
 			fi
 		    done
 		fi
@@ -75,6 +84,14 @@ end_time="$(date -u +%s)"
 elapsed="$(($end_time-$start_time))"
 
 echo
+if test -s "$logfile"; then
+    echo "!!! $(wc -l < "$logfile") files were NOT copied:"
+    cat "$logfile"
+    echo
+    echo "finished in ${elapsed}s WITH PROBLEMS, see $logfile"
+    exit 1
+fi
+rm -f "$logfile"
 echo "finished copying in ${elapsed}s!"
 
 ## TODO

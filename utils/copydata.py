@@ -9,7 +9,7 @@ past -- that hash costs nothing extra, because the file is being read anyway.
 
 A spread of those files is then read back and re-hashed on the spot
 (``--verify sample``, the default: 5% of each deployment, plus every sidecar and
-every truncated WAV). Reading *everything* back inline doubles the run -- about
+sidecar). Reading *everything* back inline doubles the run -- about
 12 h rather than 6 h on four 500 GB cards, all of it with the cards still in the
 reader -- so the default is sized to catch a card or a destination going bad
 while it is happening, and the exhaustive pass is left for afterwards::
@@ -38,7 +38,7 @@ Design notes for the field
   written, so an interrupted transfer costs you only the file it died on.
   (Written, not verified: under the default spot check most files are never
   read back, and those must not be copied a second time.)
-* **Fails loudly.** An empty card list, a full destination, a truncated WAV or a
+* **Fails loudly.** An empty card list, a full destination or a
   failed round-trip check is an error you get told about, not a silent success.
 
 Typical use::
@@ -237,9 +237,7 @@ class WavInfo:
     rate: int = 0
     bits: int = 0
     data_bytes: int = 0
-    declared_data_bytes: int = 0
     info: Dict[str, str] = field(default_factory=dict)
-    truncated: bool = False
 
     @property
     def logger_mac(self) -> str:
@@ -258,10 +256,9 @@ class WavInfo:
 def read_wav_info(path: Path) -> Optional[WavInfo]:
     """Parse the RIFF chunk table. Returns None if this is not a RIFF/WAVE file.
 
-    Deliberately tolerant: field recordings get truncated when a battery dies
-    mid-file, which leaves a ``data`` chunk whose declared size overruns the
-    file. We record that as ``truncated`` rather than raising -- the samples
-    that did land are still worth keeping.
+    Deliberately tolerant: a header that disagrees with the file size gives the
+    duration from the bytes that are actually there rather than raising, so one
+    odd file cannot stop a card from being read.
     """
     try:
         size = path.stat().st_size
@@ -291,10 +288,8 @@ def read_wav_info(path: Path) -> Optional[WavInfo]:
                             wi.info[key] = val.decode("utf-8", "replace")
                             off += 8 + n + (n & 1)
                 elif cid == b"data":
-                    wi.declared_data_bytes = csize
                     available = size - (pos + 8)
                     wi.data_bytes = min(csize, max(available, 0))
-                    wi.truncated = csize > available
                     break  # data is last; do not scan past it
                 pos += 8 + csize + (csize & 1)
             return wi
@@ -637,7 +632,6 @@ def mark_verify_sample(per_source: Dict[str, List[Item]], percent: float) -> int
     * ``percent`` of each deployment's WAVs, evenly spaced from the first to
       the last, so a card or a destination that degrades part-way through
       shows up wherever it starts going wrong;
-    * every truncated WAV, since those take the zstd fallback path;
     * every non-WAV sidecar -- together ~0.007% of a deployment, so free.
 
     A share rather than a count, because deployment folders vary by three
@@ -650,7 +644,7 @@ def mark_verify_sample(per_source: Dict[str, List[Item]], percent: float) -> int
     groups: Dict[Tuple[str, str], List[Item]] = {}
     for items in per_source.values():
         for it in items:
-            if it.is_wav and not (it.wav and it.wav.truncated):
+            if it.is_wav:
                 groups.setdefault((it.source_label, it.rel_dir), []).append(it)
             else:
                 it.sample_verify = True
@@ -746,7 +740,6 @@ class Stats:
         self.src_bytes = 0
         self.out_bytes = 0
         self.errors: List[str] = []
-        self.truncated: List[str] = []
         self.empty: List[str] = []
         self.out_of_space = False
         self.protect_failed = False
@@ -850,18 +843,46 @@ def effective_codec(it: Item, codec: Codec) -> Codec:
     """Which codec actually gets used for this one file.
 
     Sidecar CSVs are ~0.007% of a deployment, so they are stored plain and stay
-    directly readable. An audio codec additionally needs a well-formed WAV: a
-    file the logger left truncated cannot be represented losslessly by wavpack
-    (verified -- the round-trip hash differs even with -i), so those fall back
-    to a general-purpose codec rather than being silently mangled.
+    directly readable. An audio codec additionally needs a WAV whose format
+    wavpack can represent losslessly; anything else falls back to a
+    general-purpose codec rather than being silently mangled.
     """
     if not it.is_wav:
         return CODECS["none"]
     if codec.stream:
         return codec
-    if it.wav is None or it.wav.truncated or it.wav.bits not in (8, 16, 24, 32) or not it.wav.channels:
+    if it.wav is None or it.wav.bits not in (8, 16, 24, 32) or not it.wav.channels:
         return CODECS["zstd"] if shutil.which("zstd") else CODECS["none"]
     return codec
+
+
+def archive_name(name: str, eff: Codec) -> str:
+    """The destination file name for a source file called *name*.
+
+    wavpack replaces the extension -- rec-000.wav becomes rec-000.wv -- because
+    a .wv is a wav container already and carrying both extensions says nothing.
+    A stream codec wraps the file as it is, so there the whole name is kept:
+    rec-000.wav.zst.
+    """
+    if eff.name == "wavpack":
+        stem, dot, ext = name.rpartition(".")
+        if dot and "." + ext.lower() in WAV_SUFFIXES:
+            return stem + eff.suffix
+    return name + eff.suffix
+
+
+def source_name(rel: str, codec: Codec) -> str:
+    """Inverse of archive_name: the original name of an archived file.
+
+    Handles archives written before the rename too, where the name still
+    carries both extensions (rec-000.wav.wv).
+    """
+    if not codec.suffix or not rel.endswith(codec.suffix):
+        return rel
+    rel = rel[: -len(codec.suffix)]
+    if codec.name == "wavpack" and "." + rel.rpartition(".")[2].lower() not in WAV_SUFFIXES:
+        rel += ".wav"
+    return rel
 
 
 def transfer_item(
@@ -872,7 +893,8 @@ def transfer_item(
     eff = effective_codec(it, codec)
     # a fallback codec gets its own default level, not the requested codec's
     eff_level = level if eff.name == codec.name else eff.default_level
-    out_rel = os.path.join(it.rel_dir, it.name + eff.suffix) if it.rel_dir else it.name + eff.suffix
+    out_name = archive_name(it.name, eff)
+    out_rel = os.path.join(it.rel_dir, out_name) if it.rel_dir else out_name
     out_path = dest / out_rel
 
     if manifest.already_done(out_rel, it.size, it.mtime) and out_path.exists():
@@ -907,7 +929,7 @@ def transfer_item(
         if nbytes != it.size:
             # A failing card can return a short read without raising. The hash
             # would then cover only what we got, so verification would happily
-            # pass on a truncated archive -- catch it here instead.
+            # pass on a short copy -- catch it here instead.
             raise RuntimeError(f"read {nbytes} bytes but the card reported {it.size}; "
                                f"source file may be failing or changing")
         do_verify = verify == "full" or (verify == "sample" and it.sample_verify)
@@ -940,10 +962,7 @@ def transfer_item(
     if do_verify:
         with stats.lock:
             stats.verified += 1
-    if it.wav and it.wav.truncated:
-        with stats.lock:
-            stats.truncated.append(out_rel)
-    elif it.is_wav and it.size == 0:
+    if it.is_wav and it.size == 0:
         with stats.lock:
             stats.empty.append(out_rel)
 
@@ -959,7 +978,7 @@ def transfer_item(
         "verified": do_verify,
         "wav": ({
             "channels": it.wav.channels, "rate": it.wav.rate, "bits": it.wav.bits,
-            "duration_s": round(it.wav.duration_s, 3), "truncated": it.wav.truncated,
+            "duration_s": round(it.wav.duration_s, 3),
             "logger": logger_tag(it.wav, it.name), **it.wav.info,
         } if it.wav else None),
         "copied_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -988,15 +1007,12 @@ def summarise_plan(per_source: Dict[str, List[Item]]) -> Tuple[int, int]:
         nbytes = sum(i.size for i in items)
         secs = sum(i.wav.duration_s for i in wavs if i.wav)
         loggers = sorted({logger_tag(i.wav, i.name) for i in wavs if i.wav})
-        trunc = [i for i in wavs if i.wav and i.wav.truncated]
         log(f"\n  {label}:")
         log(f"    {len(wavs)} wav + {other} other = {human(nbytes)}, {hms(secs)} of audio")
         if loggers:
             log(f"    logger(s): {', '.join(loggers)}")
         folders = sorted({(i.rel_dir or '<card root>') for i in items})
         log(f"    -> {', '.join(folders[:6])}{' ...' if len(folders) > 6 else ''}")
-        if trunc:
-            log(f"    NOTE: {len(trunc)} truncated wav(s) (logger stopped mid-file) -- still copied")
         total_files += len(items)
         total_bytes += nbytes
     return total_files, total_bytes
@@ -1053,7 +1069,7 @@ def cmd_copy(args: argparse.Namespace) -> int:
     if args.verify == "sample":
         log(f"  verify: spot check {n_sample} of {total_files} files "
             f"({100 * n_sample / max(total_files, 1):.1f}%) -- ~{args.sample_percent:g}% of "
-            f"each deployment's wavs, evenly spaced, plus every sidecar and truncated wav")
+            f"each deployment's wavs, evenly spaced, plus every sidecar")
     log(f"  estimated on destination: ~{human(need)}  (free: {human(free)})")
     if need > free * 0.97:
         die(f"not enough free space on {dest}: need ~{human(need)}, have {human(free)}. "
@@ -1101,10 +1117,6 @@ def cmd_copy(args: argparse.Namespace) -> int:
         log("just opened when it was stopped. Copied anyway.")
         for e in stats.empty[:10]:
             log(f"  - {e}")
-    if stats.truncated:
-        log(f"\ntruncated wavs ({len(stats.truncated)}) -- copied, but the logger did not close them:")
-        for t in stats.truncated[:20]:
-            log(f"  - {t}")
     if stats.protect_failed:
         log("\nNOTE: could not make the copied files read-only -- the destination "
             "filesystem\n      (exFAT/NTFS/vfat) does not carry unix permissions. "
@@ -1218,7 +1230,7 @@ def cmd_restore(args: argparse.Namespace) -> int:
         p = src / rel
         cname = rec.get("codec", "none").split(":")[0]
         codec = CODECS.get(cname, CODECS["none"])
-        target = out / (rel[: -len(codec.suffix)] if codec.suffix and rel.endswith(codec.suffix) else rel)
+        target = out / source_name(rel, codec)
         if target.exists() and not args.overwrite:
             log(f"  skip (exists): {target}")
             skipped += 1
@@ -1348,7 +1360,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help="codec level; default is the codec's own (wavpack 1, zstd 12, xz 6)")
     c.add_argument("--verify", choices=("full", "sample", "none"), default="sample",
                    help="'sample' (default) reads back a spread of each deployment (see "
-                        "--sample-percent) plus every sidecar and truncated wav; 'full' "
+                        "--sample-percent) plus every sidecar; 'full' "
                         "reads back every file, which roughly doubles the run; 'none' reads "
                         "back nothing. Every file is hashed while being read either way, so "
                         "'verify --only-unverified' proves the rest later without needing "

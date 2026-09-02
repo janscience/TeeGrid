@@ -92,7 +92,7 @@ straight out of a `.wv`: a 10 s window costs 0.19 s whether it starts at 0 s or
 4 min in, and a full 300 s file decodes in 5.9 s (~50x realtime).
 
 ```
-wvunpack -q -y --skip=00:02:00 --until=+00:00:10 -o - FILE.wav.wv
+wvunpack -q -y --skip=00:02:00 --until=+00:00:10 -o - FILE.wv
 ```
 
 Note the header of a *partial* decode is synthetic and carries no `LIST`/`INFO`
