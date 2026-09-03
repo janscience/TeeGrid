@@ -542,9 +542,7 @@ void Logger::update(float stopvoltage) {
   }
   storeBlinks();
   if ((BlinkTimeout > 0) && (millis() > BlinkTimeout))
-    StatusLED.disablePin(0);
-  if ((BlinkTimeout > 0) && (millis() > 2*BlinkTimeout))
-    StatusLED.disablePin(1);
+    StatusLED.clearPins();
   if ((SyncTimeout > 0) && (millis() > SyncTimeout))
     SyncLED.clearPins();
   StatusLED.update();

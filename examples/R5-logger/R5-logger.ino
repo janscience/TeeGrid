@@ -72,7 +72,7 @@
 
 // ----------------------------------------------------------------------------
 
-#define SOFTWARE      "TeeGrid R5-logger v1.0"
+#define SOFTWARE      "TeeGrid R5-logger v1.2"
 
 EXT_DATA_BUFFER(AIBuffer, NAIBuffer, 16*512*256)
 InputTDM aidata(AIBuffer, NAIBuffer);
@@ -160,13 +160,13 @@ void setupMenu() {
   aisettings.enable("ReverseInputs");
   aisettings.setPreGainFormat("%g");
   aisettings.setPreGainSelection(pregains, NPREGAINS);
-  //timing.enable("StartTime");
-  //timing.enable("StopTime");
+  timing.enable("StartTime");
+  timing.enable("StopTime");
   timing.enable("SensorsInterval");
   sdcard_menu.CleanRecsAct.setRemove(true);
-  blinksettings.enable("RandomBlinks");
+  blinksettings.disable("RandomBlinks");
   blinksettings.enable("BlinkTimeout");
-  blinksettings.enable("SyncTimeout");
+  //blinksettings.enable("SyncTimeout");
 }
 
 
@@ -205,8 +205,10 @@ void setupSensors() {
   light2.setName("illuminance2");
   light2.setSymbol("I2");
   logger.setupSensors();
+  /*
   if (light1.available() || light2.available())
     blinksettings.enable("LightThreshold");
+  */
 }
 
 
@@ -222,9 +224,9 @@ void setup() {
   setupSensors();
   logger.configure(config, storage);
   logger.checkVoltage(powersettings.startVoltage());
-  //powerdownTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
-  //logger.snooze(timing.startTime());
-  //powerupTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
+  powerdownTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
+  logger.snooze(timing.startTime());
+  powerupTLVs(tlvs, NTLVS, TLV_SHDNZ_PIN);
   logger.setupSynchronization(settings.canMode(), settings, aisettings, timing);
   logger.startSensors(timing.sensorsInterval(), blinksettings.lightThreshold());
   logger.setCPUSpeed(aisettings.rate(), aisettings.nchannels());
