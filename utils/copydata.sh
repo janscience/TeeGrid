@@ -55,7 +55,7 @@ for disk in /media/$USER/*; do
 		if test "$mode" = "r"; then
 		    rsync -av $path $destpath
 		elif test "$mode" = "w"; then
-		    for extra in $path/*.csv $path/*.yml; do
+		    for extra in $path/*.csv $path/*.yml $path/*.png; do
 			test -f "$extra" || continue
 			test -e $destpath/${extra##*/} || cp -a "$extra" $destpath
 		    done
