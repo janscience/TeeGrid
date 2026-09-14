@@ -36,7 +36,7 @@ for disk in /media/$USER/*; do
 		problems=$((problems+1))
 	    fi
 	done
-	for extra in "$path"/*.csv "$path"/*.yml; do
+	for extra in "$path"/*.csv "$path"/*.yml "$path"/*.png; do
 	    test -f "$extra" || continue
 	    if ! test -e "$dst/${extra##*/}"; then
 		echo "MISSING $session/${extra##*/}"
