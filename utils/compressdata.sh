@@ -3,6 +3,7 @@ base=suriname
 src=/media/benda/eeldata/$base
 dest=/media/benda/data3/efish/fielddata/$base
 dry_run=false
+overwrite=true
 compress_args="-f 50 -l 3000"
 
 
@@ -47,7 +48,7 @@ function compute-fulltrace () {
     cd "$1"
     if test $(ls *.wv 2> /dev/null | wc -l) -gt 0; then
 	echo "compute full trace for $(ls *.wv | wc -l) wv files in $1 ..."
-	if test $(ls *-fulltrace.wav 2> /dev/null | wc -l) -eq 0; then
+	if $overwrite || test $(ls *-fulltrace.wav 2> /dev/null | wc -l) -eq 0; then
 	    $dry_run || audian-compress ${compress_args} *.wv
 	fi
     fi
