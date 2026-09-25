@@ -8,14 +8,15 @@ compress_args="-f 50 -l 3000"
 
 # make directories:
 function make-directories () {
-echo "make directories ..."
-for path in $(find $src -type d); do
-    dest_path="${dest}${path#$src}"
-    test -d "$dest_path" && continue
-    echo "$path -> $dest_path"
-    $dry_run || mkdir -p "$dest_path"
-done
-echo
+    echo "make directories ..."
+    for path in $(find $src -type d); do
+	dest_path="${dest}${path#$src}"
+	test -d "$dest_path" && continue
+	echo "$path -> $dest_path"
+	$dry_run || mkdir -p "$dest_path"
+    done
+    echo
+}
 
 
 # copy and compress files:
@@ -37,6 +38,7 @@ function copy-compress () {
 	$dry_run || chmod a-wx "$dest_file"
     done
     echo
+}
 
     
 # compute full trace for audian:
