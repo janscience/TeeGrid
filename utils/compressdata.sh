@@ -1,4 +1,4 @@
-#base=ducke2026
+#base=ducke2026-compressed
 base=suriname
 src=/media/benda/eeldata/$base
 dest=/media/benda/data3/efish/fielddata/$base
@@ -24,16 +24,16 @@ function make-directories () {
 function copy-compress () {
     echo "compress files ..."
     for name in $(find $src -type f); do
+	test -s "$name" || continue
 	dest_file="${dest}${name#$src}"
-	if test "${dest_file##*.}" = "wav"; then
-	    dest_file="${dest_file%wav}wv"
-	    test -f "$dest_file" && continue
-	    test -s "$name" || continue
-	    echo "$name -> $dest_file"
+	test "${dest_file##*.}" = "wav" && dest_file="${dest_file%wav}wv"
+	test "${dest_file##*.}" = "WAV" && dest_file="${dest_file%WAV}wv"
+	test -f "$dest_file" && continue
+	echo "$name -> $dest_file"
+	#echo "${name#$src/}"
+	if test "${dest_file##*.}" = "wv"; then
 	    $dry_run || wavpack -q -f -t "$name" -o "$dest_file"
 	else
-	    test -f "$dest_file" && continue
-	    echo "$name -> $dest_file"
 	    $dry_run || cp -a "$name" "$dest_file"
 	fi
 	$dry_run || chmod a-wx "$dest_file"
